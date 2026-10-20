@@ -1,0 +1,13 @@
+# Force LF so scripts run in WSL/Linux regardless of the editor host.
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+# Keep patches byte-exact (git apply must see the original bytes).
+*.patch -text
+*.wav binary
+*.c2 binary
+*.png binary
+*.jpg binary
+*.sqlite binary

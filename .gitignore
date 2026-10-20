@@ -1,0 +1,13 @@
+node_modules/
+wallets/
+*.age
+.env
+bin/
+vendor/
+logs/
+*.zip
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+out/
