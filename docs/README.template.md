@@ -192,4 +192,4 @@ python3 scripts/gen_readme.py --check  # fail if README.md is stale or the templ
 
 ## License
 
-To be added before the repository goes public on 28 Oct 2026 (the hackathon requires open source).
+Released under the [MIT License](LICENSE). Third-party tools used by the setup scripts (zcash-devtool, the Aegis Gate patch, Codec2, espeak-ng) keep their own licenses.
