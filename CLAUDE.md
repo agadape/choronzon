@@ -10,7 +10,7 @@ Handoff from the research/spike session (13–20 Oct 2026). Read this first, the
 - **One-liner:** A collective god whose voice and body are made of secrets people release through Zcash shielded transactions. Anyone holding the choir's public viewing key can hear everything; nothing links a secret to its sender. Strangers can **whisper back** privately (Whisper Back).
 - **Tagline:** *A place to release a secret without attaching your name to it.*
 - **Narrative words:** a contribution is an **offering** (persembahan); a reply is a **whisper that returns**; the conductor's authenticated lines are **the god's own voice**. Cosmic-horror tone. God stays center stage; Whisper Back is a mechanic, not the product.
-- **Decisions locked:** Choir + God merged into one work; choir wallet's **full viewing key (UFVK) is public**; text→local TTS is the primary input mode (voice+mask secondary); contributions are fixed-amount (0.00001 TAZ) so amounts carry no information; renderer is deterministic & open source and prints a **render hash**; demo on **testnet (NU7)**; no cloud AI anywhere; no leaderboard, no accounts, no NFT per secret.
+- **Decisions locked:** Choir + God merged into one work; choir wallet's **full viewing key (UFVK) is public**; text→local TTS is the primary input mode (voice+mask secondary); contributions are fixed-amount (0.00001 TAZ) so amounts carry no information; renderer is deterministic & open source and prints two versioned hashes, **`score_hash`** (chain data only, decoder-independent = "the blockchain is the score") and **`render_hash`** (`score_hash` + PCM from the pinned decoder + composer version = what two laptops compare in the demo); demo on **testnet (NU7)**; no cloud AI anywhere; no leaderboard, no accounts, no NFT per secret.
 
 ## 2. What is PROVEN on-chain (do not re-spike)
 
@@ -29,9 +29,11 @@ Known explorer: https://testnet.zcashexplorer.app/transactions/{txid} (txids in 
 
 Not in the zip (size/secrets): `bin/`, `vendor/`, `node_modules/`, `wallets/` (wallets are in a separate TESTNET-ONLY archive).
 
+**Work inside WSL (Ubuntu 24.04) at `~/zecathon`, never under `/mnt/c`** (cargo is slow there, SQLite wallet DBs lock, `.sh` files break on CRLF; `.gitattributes` forces LF). Windows is only the editor. `./scripts/setup.sh` does everything below and also builds the **pinned Codec2 decoder** (tag `1.2.0`, commit `06d4c11e`, static, `-ffp-contract=off`) into `bin/c2enc` + `bin/c2dec`; renderer and smoke test use `bin/c2dec`, never a system copy. Repo is private until 28 Oct.
+
 ```bash
 # system deps (Linux/WSL)
-sudo apt install -y build-essential pkg-config libssl-dev protobuf-compiler git codec2 espeak-ng sox libsox-fmt-all python3 python3-pip
+sudo apt install -y build-essential pkg-config libssl-dev protobuf-compiler git cmake codec2 espeak-ng sox libsox-fmt-all python3 python3-pip python3-pytest python3-venv sqlite3 nodejs npm
 pip install --break-system-packages "qrcode[pil]" scikit-learn   # qrcode for QR tests; sklearn only for the old TOPENG spike
 # rust + node
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source ~/.cargo/env
@@ -67,7 +69,9 @@ mkdir -p bin && cp vendor/devtool-aegis/target/release/zcash-devtool bin/devtool
 Memo 512 B. Header 12 B: `FF 'G' ver=1 | contrib_id u32 | kind(1=contribution,2=reply) | seq | total(≤3) | len u16`.
 Contribution body: `[codec][data…]` + last chunk `[reply_len][reply_addr][crc32]` (`reply_len=0` = no reply). Reply: `[codec][data…][crc32]` sent **directly** to the reply address.
 Codecs: 10=text UTF-8, 1=Codec2 700C, 2=Codec2 1200, 3=1300.
-Phone path: `GC1:` + base64url(binary memo), 381 B binary per memo. `normalize_memo()` accepts raw / envelope / UTF-8-mangled. **TODO:** human-readable reply format for phones (`GC1R:<contrib_id>:<text>`) since Zingo shows memos as text.
+Phone path: `GC1:` + base64url(binary memo), 381 B binary per memo. `normalize_memo()` accepts raw / envelope / UTF-8-mangled. Replies to phones use the human-readable form `GC1R:<contrib_id in decimal>:<text>` (Zingo shows memos as text).
+The CRC covers `codec+data` only, not the reply address (validate the address by parsing it; UAs carry their own checksum). Wallets trim trailing zero bytes, so the decoder must zero-pad each memo back to `12 + len` before reading the body (the spike decoder does not: ~1/256 contributions, those whose CRC ends in `0x00`, fail; fixed in `protocol/`, spike left as evidence).
+`'G'`, `GC1:` and `GC1R:` are protocol markers, not the brand; changing them is a protocol version bump (not before the deadline).
 Canonical order = `(mined_height, tx_index, action_index)` → **miner order within a block, not send order** (observed; say so in README).
 
 ## 6. Privacy claims (exact wording matters)
@@ -76,6 +80,7 @@ MAY say: "we, the operator, cannot learn who contributed"; "replies travel direc
 MAY NOT say: "anonymous", "untraceable", "nobody can ever connect you to your secret".
 MUST say: secrets are public to every key holder, forever (key is irrevocable); content and voice can identify you (hence text→TTS default); **your own wallet stores what you sent** (`sent_notes`) — kiosk uses an ephemeral wallet; replies to a per-contribution address can be spammed by anyone holding the public key; lightwalletd sees your IP (Tor is on the roadmap); the choir's own spends are public (full viewing key).
 Content filter: renderer may skip flagged txids (open list in repo) but never reorders/edits others; chain data remains.
+Handling rules (decided 21 Oct): the choir UFVK is published deliberately (README + the Séance reveal) but never appears in code, tests, logs or commits. Reply addresses are never persisted outside the wallet DB: `score.json` carries only `has_reply`; the Whisper Back button re-reads the address from the wallet DB when pressed.
 
 ## 7. Scope rules for the build (from the critical review)
 
@@ -96,6 +101,8 @@ Content filter: renderer may skip flagged txids (open list in repo) but never re
 - ZIP-302: binary memos start with `0xFF` (we used `0xF5` once; it is legacy/ambiguous).
 - Wallet DB txids are byte-reversed vs explorers/Zingo.
 - Old regexes broke on new address encodings; match `(zu|tu|u)test1…`.
+- `scripts/smoke.sh` has two chain checks: **regression** (`spikes/g6_render.py` at the fixed height 4522002 must give `c46dd5de…`, 7 accepted) and **health** (current height; V and B must agree). `as_of` is inside every hash, so a render at the current height never equals the G6 value.
+- Editing files from Windows over `\\wsl.localhost\…` resets the exec bit; `chmod +x` scripts afterwards (`git diff --summary` shows mode changes).
 
 ## 9. Next (day 2 →) — full checklist in `TODO.md`
 

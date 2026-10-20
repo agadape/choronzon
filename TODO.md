@@ -12,9 +12,11 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [x] Handoff: `CLAUDE.md`, wallets archive
 
 ## Open decisions (decide before Day 2 coding)
-- [ ] Final name: "Ghost Choir", "God Made of Secrets", or "Ghost Choir: A God Made of Secrets"
+- [ ] Final name: "Ghost Choir", "God Made of Secrets", or "Ghost Choir: A God Made of Secrets" (working title until then; the human-facing name lives only in `config/brand.json`)
 - [ ] Assign A / B / C to real people
-- [ ] Testnet (patched devtool, proven) vs mainnet (stock devtool, untested G5) for the demo → default **testnet**
+- [x] Testnet (patched devtool, proven) vs mainnet (stock devtool, untested G5) for the demo → **testnet** (21 Oct)
+- [x] 21 Oct: protocol v1 on chain is canonical; two versioned hashes (`score_hash` chain-only, `render_hash` = score + pinned-decoder PCM + composer version); Codec2 pinned to tag 1.2.0 built from source; 0.00001 TAZ; UFVK published deliberately but never in code/tests/logs/commits; reply addresses never persisted outside the wallet DB; `GC1R:<contrib_id decimal>:<text>`; work in WSL `~/zecathon`; repo private until 28 Oct
+- [x] Risk accepted: single lightwalletd (`testnet.zec.rocks`). Mitigation: wallet DBs synced before the demo, seed contributions pre-sent, demo video as backup; look for an alternative testnet lightwalletd only if time allows (≤30 min)
 
 ## Day 2 (21 Oct) — repo + protocol + renderer daemon  [~12 h]
 - [ ] **?** Create product repo layout: `protocol/`, `renderer/`, `kiosk/`, `web/`, `scripts/`, `README.md`, `.env.example`, keep `spikes/` as smoke tests

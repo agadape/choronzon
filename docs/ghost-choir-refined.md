@@ -56,7 +56,7 @@ Deadline 28 Okt 2026. Tim 2–3 orang, ±12 jam fokus per hari.
 2. **Viewing key publik = partitur.** Dompet paduan suara mempublikasikan **full viewing key (UFVK)**-nya:
    - Siapa pun bisa membaca semua memo yang masuk dan menyusun ulang karya yang identik.
    - Viewing key ini **tidak** mengungkap pengirim.
-   - Nominal kontribusi dibuat **tetap** (misal 0,0001 ZEC), jadi nominal pun tidak bercerita apa-apa.
+   - Nominal kontribusi dibuat **tetap**: 0,00001 TAZ (nominal yang benar-benar dipakai di chain testnet), jadi nominal pun tidak bercerita apa-apa.
    - Kenapa *full*, bukan *incoming*: deteksi suara konduktor (poin 3) butuh kemampuan melihat pengeluaran dompet itu sendiri, dan itu hanya ada di full viewing key.
    - Konsekuensinya: **semua pengeluaran dompet paduan suara juga publik.** Aturannya: dana kontribusi hanya dipakai untuk self-send konduktor, atau dipakai secara terbuka (misalnya "semua dana karya ini dikirim ke X"). Ini jadi akuntansi transparan, bukan kebocoran, karena tidak menyentuh identitas kontributor.
 3. **Suara Sang Dewa tidak bisa dipalsukan.** Baris narasi dari dompet "konduktor" adalah transaksi yang membelanjakan note milik konduktor sendiri. Pemegang viewing key bisa membedakannya dari kiriman orang luar (S13).
@@ -78,8 +78,8 @@ Deadline 28 Okt 2026. Tim 2–3 orang, ±12 jam fokus per hari.
 **Gotcha yang sudah diketahui:**
 - Memo tidak ada di compact block. Receiver wajib `enhance` (ambil transaksi lengkap).
 - Memo biner tampil sebagai `Memo::Future(f5)` di devtool. Byte mentahnya dibaca dari `ironwood_received_notes.memo` di SQLite wallet.
-- Spike S12 memakai byte awal `0xF5`, yang menurut ZIP-302 adalah nilai legacy yang ambigu. Protokol v2 memakai `0xFF` (data arbitrer resmi). Perlu satu tes ulang singkat.
-- Wallet memotong nol di ujung memo. Panjang payload harus ditulis eksplisit di header.
+- Spike S12 memakai byte awal `0xF5`, yang menurut ZIP-302 adalah nilai legacy yang ambigu. Protokol v1 memakai `0xFF` (data arbitrer resmi). Sudah dites ulang (G7 ✅).
+- Wallet memotong nol di ujung memo. Panjang payload ditulis eksplisit di header, dan decoder **wajib menambal ulang** memo sampai `12 + len` sebelum membaca body (kalau tidak, ±1/256 kontribusi yang CRC-nya berakhir `0x00` ikut terbuang).
 - Broadcast yang ditolak mengunci note ±40 blok. Siapkan beberapa note kecil.
 - Testnet NU7 butuh devtool yang di-patch; mainnet (NU6.3) bisa pakai devtool stok (belum dites, S6).
 
@@ -101,26 +101,33 @@ Deadline 28 Okt 2026. Tim 2–3 orang, ±12 jam fokus per hari.
 
 ---
 
-## 5. Protokol payload v2 (biner)
+## 5. Protokol payload v1 (biner)
+
+**Kanonik = v1 yang sudah ada di chain** (`spikes/wb_protocol.py`, `CLAUDE.md` §5): `kind` ada di header, `codec` ada di body. Draf "v2" sebelumnya (codec di header, tanpa `kind`) tidak pernah dipakai dan sudah dihapus dari dokumen ini.
 
 Satu kontribusi = satu transaksi, 1–3 output ke alamat paduan suara. Satu memo per output.
 
 ```
 offset  size  field
 0       1     0xFF           ZIP-302 marker "arbitrary data" (spike S12 pakai 0xF5 = legacy/ambigu; jangan dipakai)
-1       1     0x47 ('G')     magic Ghost Choir
+1       1     0x47 ('G')     magic (penanda protokol, bukan nama brand; tidak diganti)
 2       1     version        = 1
-3       4     contrib_id     acak 32-bit (bukan identitas)
-7       1     seq            0..total-1
-8       1     total          1..3
-9       1     codec          1=C2-700C, 2=C2-1200, 3=C2-1300, 10=teks UTF-8
-10      2     len            panjang payload di memo ini (big-endian)
-12      ≤500  payload        audio Codec2; memo terakhir diakhiri CRC32 (4 B) seluruh stream
+3       4     contrib_id     acak 32-bit, dibuat di sisi klien (bukan identitas)
+7       1     kind           1 = chunk kontribusi, 2 = balasan
+8       1     seq            0..total-1
+9       1     total          1..3
+10      2     len            panjang body di memo ini (big-endian, ≤ 500)
+12      ≤500  body
 ```
 
+- **Body kontribusi** (`kind=1`): stream = `[codec:1][data…]` dipotong ke chunk. Chunk terakhir diakhiri `[reply_len:1][reply_addr ASCII][crc32:4]`. CRC32 hanya mencakup stream (codec + data), **bukan** alamat balasan; alamat balasan divalidasi lewat checksum alamatnya sendiri (bech32m) saat di-parse. `reply_len = 0` = tidak ada alamat balasan.
+- **Body balasan** (`kind=2`, satu memo, dikirim langsung ke alamat balasan): `[codec:1][data…][crc32:4]`.
+- **Codec:** 1 = C2-700C, 2 = C2-1200, 3 = C2-1300, 10 = teks UTF-8.
+- **Amplop HP:** `GC1:` + base64url(memo biner) (381 B biner per memo), karena wallet HP memperlakukan memo ZIP-321 sebagai teks. Decoder menerima biner mentah, amplop, dan bentuk yang ter-UTF-8-kan.
+- **Balasan ke HP:** teks yang bisa dibaca manusia, `GC1R:<contrib_id desimal>:<teks>`.
 - **Kapasitas:** 500 B per memo ≈ 5,7 detik @700C. Maksimal 3 memo ≈ 17 detik per rahasia.
 - **Biaya:** ±0,0002 ZEC per rahasia (3 output + change, ZIP-317).
-- **Validasi:** magic, versi, `seq < total`, `len ≤ 500`, CRC32 cocok, durasi ≤ batas. Payload yang gagal validasi diabaikan, tidak pernah dieksekusi.
+- **Validasi:** magic, versi, `kind`, `seq < total ≤ 3`, `len ≤ 500`, chunk lengkap tanpa duplikat, CRC32 cocok, codec dikenal. Memo yang terpotong nol di ujung ditambal ulang sampai `12 + len`. Payload yang gagal validasi diabaikan, tidak pernah dieksekusi.
 - **Baris konduktor:** format sama, tapi dikirim dari dompet konduktor ke dirinya sendiri. Renderer hanya memperlakukannya sebagai "suara dewa" kalau terdeteksi sebagai spend milik konduktor (S13).
 - **Checksum ≠ autentikasi.** CRC32 hanya mendeteksi kerusakan. Siapa yang mengirim dibuktikan terpisah, lewat bukti spend (konduktor) atau tidak sama sekali (kontributor biasa memang anonim).
 
@@ -152,7 +159,7 @@ Renderer (SIAPA PUN yang memegang viewing key publik)
   sync view-only → enhance → baca memo → validasi → susun stream
         ▼
 Komposer deterministik
-  urutan = (tinggi blok, indeks tx)  ·  pan/pitch-layer = hash(contrib_id)
+  urutan = (tinggi blok, indeks tx, indeks action)  ·  pan/pitch-layer = hash(contrib_id)
         ▼
 Audio engine (WebAudio)  +  Makhluk 2D (Canvas), digerakkan energi & pitch audio
 ```
@@ -170,7 +177,11 @@ Audio engine (WebAudio)  +  Makhluk 2D (Canvas), digerakkan energi & pitch audio
 4. **Duplikat:** kunci unik = `txid`. Isi identik di transaksi berbeda dihitung sebagai dua kontribusi (sesuai kenyataan di chain).
 5. **Tubuh God:** `G_n = F(G_{n-1}, A_n, I_n)`. `A_n` = fitur audio hasil decode (energi, pitch rata-rata, durasi); `I_n` = `contrib_id`; tanpa `Math.random()` atau sumber acak lain.
 6. **Audio bit-exact:** Codec2 didekode ke PCM 8 kHz dengan decoder yang sama (versi dikunci), lalu **dimixing offline** dengan aritmetika integer menjadi satu buffer. WebAudio hanya memutar buffer itu, bukan ikut mencampur, karena mixing realtime antar-browser tidak dijamin identik.
-7. **Hash render:** renderer mencetak `SHA-256(PCM final ‖ state God final ‖ as_of_height)`. Dua laptop yang mencetak hash yang sama = bukti karya identik. Ini dipakai di demo.
+7. **Dua hash, keduanya berversi** (keputusan 21 Okt):
+   - **`score_hash` v1** = `SHA-256(canonical score JSON ‖ raw on-chain payload bytes ‖ as_of_height)`. Murni dari data chain, **tidak** bergantung pada decoder. Inilah klaim "the blockchain is the score".
+   - **`render_hash` v1** = `SHA-256(score_hash ‖ PCM dari decoder Codec2 yang di-pin ‖ versi composer)`. Ini yang dibandingkan antar laptop di demo.
+   - Kalau dua mesin punya versi codec2 berbeda, `score_hash` tetap sama dan hanya `render_hash` yang berbeda, jadi penyebabnya langsung ketahuan. Decoder tetap di-pin: `scripts/setup.sh` membangun codec2 dari source di tag `1.2.0` ke `bin/c2dec`.
+   - Hash G6 dari spike (`c46dd5de…` @ 4.522.002, rumus `SHA-256(score JSON ‖ PCM/teks digabung ‖ as_of)`) tetap dipakai sebagai **tes regresi** di `scripts/smoke.sh`, bukan sebagai format produk.
 8. **Filter konten:** renderer boleh **melewatkan** kontribusi yang ditandai (daftar `txid` terbuka di repo), tapi tidak pernah mengubah urutan atau isi kontribusi lain. Data aslinya tetap di chain dan tercatat sebagai "disembunyikan" di log publik.
 
 ---
@@ -195,8 +206,7 @@ Audio engine (WebAudio)  +  Makhluk 2D (Canvas), digerakkan energi & pitch audio
 
 **Konten di chain tidak bisa dihapus.** Renderer menyaring secara lokal (tanpa cloud AI) dan bisa melewatkan kontribusi yang ditandai, tapi data tetap ada di chain. Ini ditulis terang-terangan di README.
 
-**Klaim yang boleh:** "Transaksinya tidak mengungkap siapa kamu, dan suaramu disamarkan."
-**Klaim yang dilarang:** "100% anonim."
+**Klaim:** pakai hanya kalimat MAY / MAY NOT / MUST di `CLAUDE.md` §6. (Draf lama "suaramu disamarkan" tidak dipakai: mode utama adalah teks → TTS, dan penyamaran suara tidak dijamin.) Dilarang: "anonymous", "untraceable", "100% anonim".
 
 ---
 
@@ -227,11 +237,12 @@ Audio engine (WebAudio)  +  Makhluk 2D (Canvas), digerakkan energi & pitch audio
 5. Laptop kedua merekonstruksi karya identik dari viewing key publik, dengan hash render yang sama.
 6. README: model privasi 3 lapis, batasan, cara menjalankan.
 
-**Milestone terpisah (masing-masing boleh gagal tanpa membunuh demo)**
+**Milestone terpisah (masing-masing boleh gagal tanpa membunuh demo; penomoran mengikuti `TODO.md`)**
 - M1: Suara konduktor vs palsu (S13 sudah terbukti; tinggal integrasi).
-- M2: Kirim dari HP lewat QR (G1).
-- M3: Codec2 di browser (G2).
-- M4: Halaman publik "dengarkan dewa" dengan viewing key tertanam.
+- M2: Whisper Back: tombol "whisper back" → URI/QR ZIP-321 ke alamat balasan; inbox balasan untuk wallet demo.
+- M3: Kontribusi dari HP lewat QR dengan amplop ASCII (G1).
+- M4: Codec2 di browser (G2), atau dilewati.
+- M5: Format Séance: viewing key disembunyikan selama sesi, dibuka di akhir sebagai klimaks.
 
 **Dipotong:** AI generatif, akun, leaderboard, NFT, upload file bebas, 3D, streaming real-time.
 
@@ -239,17 +250,19 @@ Audio engine (WebAudio)  +  Makhluk 2D (Canvas), digerakkan energi & pitch audio
 
 ## 10. Rencana 9 hari (±100 jam tim)
 
+**`TODO.md` yang berlaku** (checklist per hari, pemilik, gate). Tabel ini hanya ringkasannya.
+
 | Hari | Fokus | Output |
 |---|---|---|
-| 1 (20 Okt) | Spike G1–G5 | Keputusan HP vs kiosk, browser vs lokal |
-| 2 | Protokol v2: encoder/decoder + CRC + tes unit | `choir-protocol` lulus round-trip |
-| 3 | Renderer view-only + antrean kontribusi | 3 kontribusi testnet terbaca otomatis |
-| 4 | Komposer + audio engine | Paduan suara berbunyi dari data chain |
-| 5 | Makhluk 2D + integrasi audio→visual | Dewa tumbuh per kontribusi |
-| 6 | Kiosk pengirim + voice mask + suara konduktor (S13) | Alur end-to-end live |
-| 7 | Review privasi, uji gagal, kolam note, freeze fitur | Demo bisa diulang 5× tanpa campur tangan |
-| 8 | Video demo + polish visual & suara | Video final |
-| 9 (28 Okt) | README, diagram, submission | Repo publik + submit |
+| 1 (20 Okt) | Spike G1–G7 + Whisper Back | Gate hari 1 lulus (lihat `SPIKE_LOG.md`) |
+| 2 (21 Okt) | Layout repo, `protocol/` + tes §5a, renderer daemon view-only, README skeleton | `score.json` + hash dari wallet V; G6 tetap ter-reproduksi |
+| 3 (22 Okt) | Komposer offline: codec2 di-pin, mixing integer, teks → TTS lokal | Satu WAV deterministik + `render_hash` |
+| 4 (23 Okt) | Kiosk pengirim: teks → TTS → Codec2 → `pay` dari wallet ephemeral; kolam note | Kontribusi terkirim dari kiosk |
+| 5 (24 Okt) | Makhluk 2D Canvas + pemutaran buffer; **GATE** vertical slice | Kirim live → chain → render → dewa bereaksi → laptop kedua hash sama |
+| 6 (25 Okt) | Milestone M1–M5 (masing-masing boleh dibuang) | — |
+| 7 (26 Okt) | Review privasi, uji gagal, demo 5× tanpa campur tangan, freeze fitur | Demo stabil |
+| 8 (27 Okt) | Video demo + polish di jalur demo saja | Video final |
+| 9 (28 Okt) | Smoke ulang, README final, submission | Repo publik + submit |
 
 ---
 
