@@ -1,4 +1,4 @@
-# CLAUDE.md — Ghost Choir: A God Made of Secrets (ZECATHON 2026)
+# CLAUDE.md — ZECATHON 2026 WILDCARD entry (name, tagline, one-liner: `config/brand.json`)
 
 Handoff from the research/spike session (13–20 Oct 2026). Read this first, then **`TODO.md`** (day-by-day checklist, owners, gates), then `docs/ghost-choir-refined.md` (concept v3),
 `ai/whisper-back-spike.md` (Whisper Back GO report), `SPIKE_LOG.md` (every on-chain proof), `docs/ghost-choir-critical-review.md`.
@@ -8,8 +8,8 @@ Handoff from the research/spike session (13–20 Oct 2026). Read this first, the
 - **Hackathon:** ZECATHON by zkSNARKs (thezecathon.com). Track: **WILDCARD** ($15K; grand prize $20K on top). Prompt: *"Art, games, social, hardware. Anything that makes a shielded transaction worth making."* Judging priority (from our notes): **Privacy (leak = DQ) > Usefulness > Execution > Originality.** Rules: all code written in the window, open source, **deadline 28 Oct 2026**, one submission, one track, prize paid in ZEC to a shielded address.
 - **Team:** 2–3 people, ~12 focused hours/day. Roles A (Zcash) / B (audio+visual) / C (product+demo) — assignment still open.
 - **One-liner:** A collective god whose voice and body are made of secrets people release through Zcash shielded transactions. Anyone holding the choir's public viewing key can hear everything; nothing links a secret to its sender. Strangers can **whisper back** privately (Whisper Back).
-- **Tagline:** *A place to release a secret without attaching your name to it.*
-- **Narrative words:** a contribution is an **offering** (persembahan); a reply is a **whisper that returns**; the conductor's authenticated lines are **the god's own voice**. Cosmic-horror tone. God stays center stage; Whisper Back is a mechanic, not the product.
+- **Name / tagline / one-liner / kiosk CTA:** final since 20 Oct, and they live **only** in `config/brand.json`. README, web, kiosk, `package.json` and the demo script read or are generated from it; never hardcode the name in code, tests, file names, or these docs. "Ghost Choir: A God Made of Secrets" was the working title and survives only in historical evidence (`docs/`, `SPIKE_LOG.md`, `ai/`, `logs/`, `spikes/`). The old tagline "A place to release a secret without attaching your name to it." is retired. Internal identifiers stay neutral (offering/contribution, reply, renderer, composer, creature, conductor).
+- **Narrative words:** a contribution is an **offering** (persembahan); a reply is a **whisper that returns**; the conductor's authenticated lines are **the god's own voice**. Cosmic-horror tone. God stays center stage; Whisper Back is a mechanic, not the product. Full lore layer for copy and the demo script: `docs/lore.md`.
 - **Decisions locked:** Choir + God merged into one work; choir wallet's **full viewing key (UFVK) is public**; text→local TTS is the primary input mode (voice+mask secondary); contributions are fixed-amount (0.00001 TAZ) so amounts carry no information; renderer is deterministic & open source and prints two versioned hashes, **`score_hash`** (chain data only, decoder-independent = "the blockchain is the score") and **`render_hash`** (`score_hash` + PCM from the pinned decoder + composer version = what two laptops compare in the demo); demo on **testnet (NU7)**; no cloud AI anywhere; no leaderboard, no accounts, no NFT per secret.
 
 ## 2. What is PROVEN on-chain (do not re-spike)
@@ -80,6 +80,7 @@ MAY say: "we, the operator, cannot learn who contributed"; "replies travel direc
 MAY NOT say: "anonymous", "untraceable", "nobody can ever connect you to your secret".
 MUST say: secrets are public to every key holder, forever (key is irrevocable); content and voice can identify you (hence text→TTS default); **your own wallet stores what you sent** (`sent_notes`) — kiosk uses an ephemeral wallet; replies to a per-contribution address can be spammed by anyone holding the public key; lightwalletd sees your IP (Tor is on the roadmap); the choir's own spends are public (full viewing key).
 Content filter: renderer may skip flagged txids (open list in repo) but never reorders/edits others; chain data remains.
+Copy rule: never imply the secret itself stays hidden (its content is public to every key holder); what stays private is the link between sender and secret. "No one will ever know it was you" is forbidden; "it does not ask your name" is fine (the protocol needs no identity).
 Handling rules (decided 21 Oct): the choir UFVK is published deliberately (README + the Séance reveal) but never appears in code, tests, logs or commits. Reply addresses are never persisted outside the wallet DB: `score.json` carries only `has_reply`; the Whisper Back button re-reads the address from the wallet DB when pressed.
 
 ## 7. Scope rules for the build (from the critical review)
