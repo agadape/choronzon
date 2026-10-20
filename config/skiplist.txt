@@ -1,0 +1,4 @@
+# Flagged offerings: the reference renderer skips these txids. They stay on chain and are listed in
+# score.json under "skipped" with reason "flagged"; nothing else is reordered or edited.
+# One txid per line in explorer (display) byte order; put the reason after "#". Example:
+# 0000000000000000000000000000000000000000000000000000000000000000  # reason
