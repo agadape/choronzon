@@ -20,6 +20,7 @@ height(){ bin/devtool-aegis wallet -w "wallets/test/$1" balance 2>&1 | grep -oE 
 render(){ python3 spikes/g6_render.py "wallets/test/$1" "$2"; }
 
 echo "[protocol unit tests]"; python3 spikes/wb_protocol.py >/dev/null && ok "wb_protocol self-tests" || bad "wb_protocol self-tests"
+echo "[product tests]"; T=$(python3 -m pytest 2>&1 | tail -1); [[ "$T" == *passed* && "$T" != *failed* ]] && ok "pytest: $T" || bad "pytest: $T"
 echo "[codec2 / tts]"
 [ -x bin/c2enc ] && [ -x bin/c2dec ] && ok "codec2 pinned (bin/c2dec)" || bad "pinned codec2 missing (run scripts/setup.sh)"
 command -v espeak-ng >/dev/null && ok "espeak-ng" || bad "espeak-ng"

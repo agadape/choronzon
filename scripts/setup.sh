@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-shot environment setup for Ghost Choir (Linux / WSL / macOS with Homebrew).
+# One-shot environment setup for this repo (Linux / WSL / macOS with Homebrew).
 # Builds the NU7-patched zcash-devtool into bin/devtool-aegis and a pinned Codec2 into bin/c2{enc,dec}.
 # Idempotent. ~10–15 min on first run.
 set -euo pipefail

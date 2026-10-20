@@ -100,7 +100,8 @@ On stage, everyone in the room can see who just walked up to the kiosk. That is 
 - **Two versioned hashes.** `score_hash` covers chain data only and does not depend on any decoder. `render_hash` = `score_hash` + PCM from the pinned decoder + composer version; this is what two laptops compare.
 - **Pinned decoder.** Codec2 tag `1.2.0` (commit `06d4c11e`), built from source, static, `-ffp-contract=off`. The renderer never uses a system copy.
 - **No float drift, no randomness.** Mixing uses integer arithmetic; there is no RNG and no `Math.random()`.
-- **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`spikes/g6_render.py`).
+- **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`spikes/g6_render.py`). The product renderer reproduces that value and, at the same height, `score_hash` (`score/1`) `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a`; its `score.json` is byte-identical from the view-only and the full-key wallet.
+- **Decoder fingerprint.** The renderer decodes three fixed Codec2 vectors and reports the hash of the result, so a `render_hash` mismatch between two machines can be traced to the decoder build while `score_hash` still agrees.
 
 ## Memo protocol v1
 
@@ -150,13 +151,12 @@ Every claim above is backed by a real testnet transaction. Txids are in explorer
 ## Status
 
 Research and on-chain spikes: done (13–20 Oct 2026). Product build: in progress (21–28 Oct).
-This repository is being assembled from the build workspace; until the import lands it holds this README and the brand config.
 
 Vertical slice, which must run before any milestone:
 
-- [ ] Protocol package + tests (every malformed-memo case)
-- [ ] Renderer daemon on a view-only wallet: `score.json`, `score_hash`, skip log
-- [ ] Offline composer: pinned decoder, integer mix, `render_hash`
+- [x] Protocol package + tests (every malformed-memo case)
+- [x] Renderer daemon on a view-only wallet: `score.json`, `score_hash`, skip log
+- [ ] Offline composer: pinned decoder, integer mix, `render_hash` (today `render_hash` uses a placeholder composer, `concat/0`: decoded audio concatenated, no mix, no TTS yet)
 - [ ] Kiosk: text → local TTS → Codec2 → shielded send from an ephemeral wallet
 - [ ] Creature (Canvas 2D) + playback of the mixed buffer
 - [ ] Gate: a live offering → chain → renderer → sound + creature → a second laptop prints the same hash
@@ -168,19 +168,35 @@ Milestones, each of which may be dropped without breaking the demo: the god's ow
 ```bash
 ./scripts/setup.sh   # system deps, Rust, NU7-patched zcash-devtool → bin/devtool-aegis, pinned Codec2 → bin/c2dec (~15 min)
 ./scripts/smoke.sh   # protocol tests, lightwalletd reachability, G6 regression, view-only vs full-key health check
+python3 -m pytest    # protocol + renderer tests; the chain regression tests run only when wallets/ is present
+
+python3 -m renderer once   --wallet wallets/test/V --as-of 4522002   # one render -> out/score.json + out/render_hash
+python3 -m renderer daemon --wallet wallets/test/V                    # sync -> enhance -> render, every 30 s
 ```
 
 - Ubuntu 24.04, native or WSL. In WSL, work inside the Linux filesystem, not under `/mnt/c`.
 - Wallets are testnet-only and are never committed (`wallets/`, `*.age` are git-ignored).
+- The renderer refuses a wallet that holds a spending key: it runs from the public viewing key only.
 - lightwalletd: `testnet.zec.rocks:443`.
+
+### Repository layout
+
+| Path | What |
+|---|---|
+| `protocol/` | Memo wire format v1: binary memos, phone envelope, readable phone replies, reply-address checksum (+ tests) |
+| `renderer/` | View-only renderer and daemon: canonical score, `score_hash`, `render_hash`, pinned-decoder wrapper (+ tests) |
+| `kiosk/`, `web/` | Sender kiosk and listener page with the creature (in progress) |
+| `config/` | `brand.json` (name and copy), `skiplist.txt` (flagged offerings: still on chain, never sung) |
+| `scripts/` | `setup.sh`, `smoke.sh`, `gen_readme.py` |
+| `spikes/`, `SPIKE_LOG.md`, `docs/`, `ai/`, `radio/` | Research and on-chain evidence from 13–20 Oct, kept as it was |
 
 ## Naming
 
-The name, tagline, one-liner and kiosk line live only in `config/brand.json`. This README is generated from `docs/README.template.md`:
+The name, tagline, one-liner and kiosk line live only in `config/brand.json`. This README is generated from `docs/README.template.md`, and the `name` in `package.json` / `package-lock.json` from the brand's `slug`:
 
 ```bash
-python3 scripts/gen_readme.py          # regenerate README.md
-python3 scripts/gen_readme.py --check  # fail if README.md is stale or the template hardcodes the name
+python3 scripts/gen_readme.py          # regenerate README.md and the package name
+python3 scripts/gen_readme.py --check  # fail if any generated file is stale or the template hardcodes the name
 ```
 
 ## Acknowledgements

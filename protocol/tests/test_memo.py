@@ -1,4 +1,4 @@
-"""Binary v1 memo tests. Covers the mandatory list in docs/ghost-choir-refined.md section 5a."""
+"""Binary v1 memo tests. Covers every case in the concept doc's mandatory protocol test list (section 5a)."""
 import itertools
 import struct
 import zlib
