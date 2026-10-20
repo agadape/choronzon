@@ -192,4 +192,4 @@ python3 scripts/gen_readme.py --check  # fail if README.md is stale or the templ
 
 ## License
 
-Released under the [MIT License](LICENSE). Third-party tools used by the setup scripts (zcash-devtool, the Aegis Gate patch, Codec2, espeak-ng) keep their own licenses.
+Released under the [MIT License](LICENSE). Third-party work (the Aegis Gate NU7 patch, zcash-devtool, librustzcash, Codec2, espeak-ng) keeps its own license: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
