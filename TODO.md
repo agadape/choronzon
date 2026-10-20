@@ -19,12 +19,12 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [x] Risk accepted: single lightwalletd (`testnet.zec.rocks`). Mitigation: wallet DBs synced before the demo, seed contributions pre-sent, demo video as backup; look for an alternative testnet lightwalletd only if time allows (≤30 min)
 
 ## Day 2 (21 Oct) — repo + protocol + renderer daemon  [~12 h]
-- [ ] **?** Create product repo layout: `protocol/`, `renderer/`, `kiosk/`, `web/`, `scripts/`, `README.md`, `.env.example`, keep `spikes/` as smoke tests
-- [ ] **A** Port `spikes/wb_protocol.py` → `protocol/` with tests from §5a of the concept doc (empty/max payload, lost byte, bad len, dup/missing/out-of-order chunks, CRC, unknown version/codec, envelope, mangled)
-- [ ] **A** Add human-readable phone reply format `GC1R:<contrib_id>:<text>` (Zingo shows memos as text)
-- [ ] **A** Renderer daemon from `spikes/g6_render.py`: loop `sync → enhance → render → write score.json + render_hash`; view-only wallet only; log every skip with reason
-- [ ] **A** Canonical order `(mined_height, tx_index, action_index)`; `as_of_height` explicit; skip-list file for flagged txids
-- [ ] **C** Write README skeleton with the privacy wording from `CLAUDE.md` §6 verbatim + "your own wallet remembers" + "block order ≠ send order"
+- [x] **?** Create product repo layout: `protocol/`, `renderer/`, `kiosk/`, `web/`, `scripts/`, `README.md`, `.env.example`, keep `spikes/` as smoke tests (`01de678`)
+- [x] **A** Port `spikes/wb_protocol.py` → `protocol/` with tests from §5a of the concept doc (empty/max payload, lost byte, bad len, dup/missing/out-of-order chunks, CRC, unknown version/codec, envelope, mangled) (`f28567a`; also fixes the zero-trim bug, adds reply-address checksum)
+- [x] **A** Add human-readable phone reply format `GC1R:<contrib_id>:<text>` (Zingo shows memos as text) (`f28567a`, decimal contrib_id)
+- [x] **A** Renderer daemon from `spikes/g6_render.py`: loop `sync → enhance → render → write score.json + render_hash`; view-only wallet only; log every skip with reason (`1ca2655`; G6 reproduced, V == B byte-identical)
+- [x] **A** Canonical order `(mined_height, tx_index, action_index)`; `as_of_height` explicit; skip-list file for flagged txids (`config/skiplist.txt`)
+- [x] **C** Write README skeleton with the privacy wording from `CLAUDE.md` §6 verbatim + "your own wallet remembers" + "block order ≠ send order" (merged template `145e283`, updated `45481f7`; generated from `config/brand.json`)
 
 ## Day 3 (22 Oct) — offline composer  [~12 h]
 - [ ] **B** Pin decoder: `c2dec` version recorded; decode 700C/1200/1300 → PCM 8 kHz int16

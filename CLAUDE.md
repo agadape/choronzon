@@ -105,15 +105,18 @@ Handling rules (decided 21 Oct): the choir UFVK is published deliberately (READM
 - `scripts/smoke.sh` has two chain checks: **regression** (`spikes/g6_render.py` at the fixed height 4522002 must give `c46dd5de…`, 7 accepted) and **health** (current height; V and B must agree). `as_of` is inside every hash, so a render at the current height never equals the G6 value.
 - Editing files from Windows over `\\wsl.localhost\…` resets the exec bit; `chmod +x` scripts afterwards (`git diff --summary` shows mode changes).
 
-## 9. Next (day 2 →) — full checklist in `TODO.md`
+## 9. Next (day 3 →) — full checklist in `TODO.md`
 
-1. Create the product repo layout (`protocol/`, `renderer/`, `kiosk/`, `web/`), port `spikes/wb_protocol.py` (+tests) and `spikes/g6_render.py` (make it a daemon: sync → enhance → render → hash).
+1. ~~Repo layout, `protocol/`, renderer daemon, README~~ — done on Day 2 (see TODO.md). Use them:
+   `python3 -m pytest` (95 tests; chain regression needs `wallets/`), `python3 -m renderer once --wallet wallets/test/V --as-of 4522002` (→ `out/score.json` + `out/render_hash`; anchors: g6 `c46dd5de…`, score/1 `41530793…`), `python3 -m renderer daemon --wallet wallets/test/V`.
+   The renderer's composer is a placeholder (`COMPOSER_VERSION = "concat/0"` in `renderer/render.py`); Day 3 replaces it and bumps the version (update `RENDER_HASH` in `renderer/tests/test_chain_regression.py` then).
 2. Offline composer: contributions → one deterministic PCM buffer (pinned `c2dec`, integer mixing, per-`contrib_id` pan/pitch).
 3. Kiosk: text → espeak-ng (upgrade: Piper) → Codec2 700C → `pay` from an ephemeral wallet funded from the pool.
 4. God 2D on Canvas.
 5. Then milestones: Whisper Back button (ZIP-321 URI/QR), phone contributions (envelope), conductor voice, Séance reveal moment.
-6. README with §6 verbatim; demo video; submit by 28 Oct (sealed until judging). Open decisions: final name; A/B/C roles.
+6. README is generated (`python3 scripts/gen_readme.py`; edit `docs/README.template.md`, never `README.md`); demo video; submit by 28 Oct (sealed until judging). Open decision: A/B/C roles.
 
 ## 10. Repo map (also: `docs/evidence-index.md` = claim → txid → log; `scripts/setup.sh` builds everything; `scripts/smoke.sh` verifies it)
 
-`spikes/` S1–S13 scripts (+`wb_protocol.py`, `wb_harness.sh`, `g6_render.py`, `s7_near_intents.mjs`, `s1_lightd.mjs`), `radio/` Codec2 voice experiment (S12), `topeng-spike/` (rejected idea, stylometry test), `ai/` reports + `phone-test/` QR + Zingo screenshot, `docs/` concept v3 + critical review, `logs/` raw evidence, `tools/socks2connect.mjs` (sandbox only), `scripts/` (setup, smoke, NU7 patch), `SPIKE_LOG.md` the source of truth for "what works".
+Product: `protocol/` (wire format v1, envelope, `GC1R`, address checksum + tests), `renderer/` (wallet reader, score, hashes, pinned decoder, G6 legacy, CLI/daemon + tests), `kiosk/` + `web/` (Day 4–5), `config/` (`brand.json`, `skiplist.txt`), `scripts/` (`setup.sh`, `smoke.sh`, `gen_readme.py`, `tests/`), `docs/README.template.md`, `docs/lore.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`. GitHub: private `agadape/<slug from brand.json>` (its README/license history is merged into this repo; nothing from here pushed yet).
+Evidence: `spikes/` S1–S13 scripts (+`wb_protocol.py`, `wb_harness.sh`, `g6_render.py`, `s7_near_intents.mjs`, `s1_lightd.mjs`), `radio/` Codec2 voice experiment (S12), `topeng-spike/` (rejected idea, stylometry test), `ai/` reports + `phone-test/` QR + Zingo screenshot, `docs/` concept v3 + critical review, `logs/` raw evidence, `tools/socks2connect.mjs` (sandbox only), `scripts/` (setup, smoke, NU7 patch), `SPIKE_LOG.md` the source of truth for "what works".
