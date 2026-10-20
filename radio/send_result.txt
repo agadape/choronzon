@@ -1,0 +1,4 @@
+      Fee:   0.00020000 TAZ
+Continue? [y/n]: Sending transaction...
+576ff3939156f5d29c8ed3754016a425eb16aa5d6989002b7ae5a166076775b0
+T0=1792399911

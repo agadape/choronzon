@@ -1,0 +1,5 @@
+authors=10 chance=10% train=2653 test=588 chunk=150w
+BASELINE attacker accuracy on raw held-out chunks: 94.0%
+sample=30 raw acc=96.7%  ->  after qwen2.5:3b rewrite acc=76.7%
+speed: 5.8 tok/s, avg 28.1s per message
+predicted label distribution after rewrite: [(np.str_('wilde'), 6), (np.str_('twain'), 5), (np.str_('shelley'), 4), (np.str_('austen'), 3), (np.str_('melville'), 3), (np.str_('stoker'), 3), (np.str_('carroll'), 2), (np.str_('doyle'), 2), (np.str_('dickens'), 1), (np.str_('london'), 1)]
