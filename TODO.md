@@ -66,7 +66,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 ## Day 9 (28 Oct) — submit
 - [ ] **all** Re-run `spikes/` smoke tests against the final environment
 - [ ] **C** Repo public (or made public on the 28th), license, submission form on thezecathon.com, shielded payout address ready
-- [ ] **C** Test clone-and-run on a fresh machine with a fresh wallet
+- [x] **C** Test clone-and-run on a fresh machine with a fresh wallet (21 Oct, : clean clone,  9 m 34 s, pytest 121 passed / 2 skipped,  from the key alone in 50 s -> same render_hash as wallet V at 4525294; a second physical laptop is still worth doing before the show)
 
 ## Post-hackathon (not now)
 - [ ] Grant proposal (ZCG / zkSNARKs holder season) · Zcon installation email · Tor for lightwalletd · Piper TTS
