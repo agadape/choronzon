@@ -34,10 +34,28 @@ EXPLORER = "https://testnet.zcashexplorer.app/transactions/"
 
 
 def voice() -> Voice:
-    v = Voice(Decoder(), cache_dir=REPO / "out" / "cache")
+    # no TTS cache on the kiosk: a cache would keep the ghost voice of every secret sent from this machine
+    v = Voice(Decoder(), cache_dir=None)
     if not v.available():
         sys.exit("espeak-ng and sox are required (scripts/setup.sh)")
     return v
+
+
+def read_text(a) -> str:
+    """The secret: from the argument, or from stdin / an interactive prompt when the argument is '-' or absent.
+
+    Prefer stdin or the prompt: a secret given on the command line lands in the shell history and in `ps`.
+    """
+    if a.text and a.text != "-":
+        return a.text
+    if sys.stdin.isatty():
+        text = input("your secret (one line, Enter to finish): ")
+    else:
+        text = sys.stdin.read()
+    text = text.strip()
+    if not text:
+        sys.exit("nothing to send")
+    return text
 
 
 def describe(offering) -> str:
@@ -50,7 +68,7 @@ def describe(offering) -> str:
 
 def cmd_preview(a) -> None:
     v = voice()
-    o = make_offering(a.text, v, None)
+    o = make_offering(read_text(a), v, None)
     print(describe(o))
     if a.wav:
         import wave
@@ -75,6 +93,7 @@ def confirm(a) -> None:
 def cmd_offer(a) -> None:
     choir = Choir.load()
     v = voice()
+    text = read_text(a)
     confirm(a)
     if a.from_wallet:
         wallet_dir = Path(a.from_wallet)
@@ -85,7 +104,7 @@ def cmd_offer(a) -> None:
         print(f"sending from the named wallet {wallet_dir.name} (not an ephemeral session wallet: "
               f"its database keeps what it sent)")
         reply = w.generate_address() if a.reply else None
-        o = make_offering(a.text, v, reply)
+        o = make_offering(text, v, reply)
         print(describe(o))
         w.sync()
         txid = w.pay(payment_uri(choir, o.memos))
@@ -93,7 +112,7 @@ def cmd_offer(a) -> None:
         s = Session.current()
         if not s or not s.status()["ready"]:
             sys.exit("no ready session: python3 -m kiosk session open")
-        o, txid = s.offer(a.text, v, choir, a.reply)
+        o, txid = s.offer(text, v, choir, a.reply)
         print(describe(o))
     print(f"sent. txid {txid}\n{EXPLORER}{txid}\n(the explorer shows only that a shielded transaction exists)")
 
@@ -107,7 +126,7 @@ def cmd_qr(a) -> None:
     choir = Choir.load()
     if a.reply and not protocol.is_unified_address(a.reply):
         sys.exit("reply address does not parse as a unified address")
-    o = make_offering(a.text, voice() if a.voice else None, a.reply, as_text=not a.voice, phone=True)
+    o = make_offering(read_text(a), voice() if a.voice else None, a.reply, as_text=not a.voice, phone=True)
     uri = payment_uri(choir, o.memos)
     print(describe(o) + f"; ASCII envelope, URI {len(uri)} chars")
     if a.png:
@@ -127,7 +146,7 @@ def cmd_speak(a) -> None:
     v = voice()
     wallet_dir = Path(a.from_wallet)
     w = Devtool(wallet_dir, wallet_dir.with_suffix(".age"))
-    o = make_offering(a.text, v, None, conductor=True)
+    o = make_offering(read_text(a), v, None, conductor=True)
     print(describe(o))
     w.sync()
     if a.forge:
@@ -202,21 +221,21 @@ def main(argv=None) -> None:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
     s = sub.add_parser("preview")
-    s.add_argument("text")
+    s.add_argument("text", nargs="?", help="the secret; omit or - to type it at a prompt / pipe it on stdin")
     s.add_argument("--wav")
     s = sub.add_parser("offer")
-    s.add_argument("text")
+    s.add_argument("text", nargs="?", help="the secret; omit or - to type it at a prompt / pipe it on stdin")
     s.add_argument("--reply", action="store_true", help="embed a fresh one-time reply address")
     s.add_argument("--from", dest="from_wallet", help="send from this wallet dir instead of the session wallet")
     s.add_argument("--yes", action="store_true", help="skip the SEND prompt (scripts, seeding)")
     s = sub.add_parser("qr", help="phone offering: ZIP-321 QR with the ASCII envelope")
-    s.add_argument("text")
+    s.add_argument("text", nargs="?", help="the secret; omit or - to type it at a prompt / pipe it on stdin")
     s.add_argument("--reply", help="the contributor's own reply address (a fresh one from their wallet)")
     s.add_argument("--voice", action="store_true", help="send the ghost voice instead of text (must fit the QR)")
     s.add_argument("--png", help="write the QR as PNG to this path (default: ASCII in the terminal)")
     s.add_argument("--show-uri", action="store_true")
     s = sub.add_parser("speak", help="a line in the god's own voice (from the choir wallet)")
-    s.add_argument("text")
+    s.add_argument("text", nargs="?", help="the secret; omit or - to type it at a prompt / pipe it on stdin")
     s.add_argument("--from", dest="from_wallet", required=True, help="the choir wallet dir (or an outsider with --forge)")
     s.add_argument("--forge", action="store_true", help="demo: send a conductor memo from a wallet that is not the god")
     s = sub.add_parser("reveal", help="the Eye opens: publish the choir's full viewing key (irrevocable)")

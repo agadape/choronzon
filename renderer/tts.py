@@ -45,13 +45,19 @@ class Voice:
     def frames(self, text: str) -> bytes:
         """Codec2 700C frames for `text` (what a kiosk would have sent)."""
         raw = text.encode("utf-8")[:MAX_TEXT_BYTES].decode("utf-8", "ignore")
+        # one line: control characters become spaces (espeak reads newlines differently on stdin vs argv)
+        raw = "".join(" " if ch < " " or ch == "\x7f" else ch for ch in raw)
         key = hashlib.sha256(f"{ESPEAK_VERSION}|{VOICE}|{SPEED}|{PITCH}|".encode() + raw.encode()).hexdigest()
         cached = self.cache_dir / f"{key}.c2" if self.cache_dir else None
         if cached and cached.exists():
             return cached.read_bytes()
         with tempfile.TemporaryDirectory() as tmp:
             wav, pcm, c2 = Path(tmp, "v.wav"), Path(tmp, "v.raw"), Path(tmp, "v.c2")
-            self._run([self.espeak, "-v", VOICE, "-s", str(SPEED), "-p", str(PITCH), "-w", str(wav), "--", raw])
+            # text goes in on stdin, never on the command line (argv is visible to every process on the machine).
+            # The trailing newline matters: without it espeak-ng renders the last clause differently from argv
+            # input (checked 21 Oct, 1.51); with it, stdin and argv give byte-identical audio.
+            self._run([self.espeak, "-v", VOICE, "-s", str(SPEED), "-p", str(PITCH), "-w", str(wav), "--stdin"],
+                      stdin=raw + "\n")
             self._run([self.sox, "-D", str(wav), "-r", str(Decoder.sample_rate), "-c", "1", "-b", "16", "-e", "signed",
                        str(pcm)])
             self._run([str(self.decoder.path.with_name("c2enc")), "700C", str(pcm), str(c2)])
@@ -69,7 +75,8 @@ class Voice:
         return hashlib.sha256(self.speak(_FINGERPRINT_SENTENCE)).hexdigest()
 
     @staticmethod
-    def _run(cmd: list[str]) -> None:
-        done = subprocess.run(cmd, capture_output=True, timeout=120)
+    def _run(cmd: list[str], stdin: str | None = None) -> None:
+        done = subprocess.run(cmd, input=stdin.encode("utf-8") if stdin is not None else None,
+                              capture_output=True, timeout=120)
         if done.returncode != 0:
             raise TTSError(f"{Path(cmd[0]).name} failed with exit code {done.returncode}")
