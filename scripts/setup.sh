@@ -44,7 +44,9 @@ echo "== 4/6 zcash-devtool @5a26ee8 + NU7 patch =="
 if [ ! -x bin/devtool-aegis ]; then
   mkdir -p vendor bin
   [ -d vendor/devtool-aegis ] || git clone -q https://github.com/zcash/zcash-devtool vendor/devtool-aegis
-  (cd vendor/devtool-aegis && git checkout -q 5a26ee8 && git apply --check ../../scripts/patches/zcash-devtool-nu7.patch 2>/dev/null && git apply ../../scripts/patches/zcash-devtool-nu7.patch || echo "(patch already applied)")
+  (cd vendor/devtool-aegis && git checkout -q 5a26ee8 && \
+    if git apply --reverse --check ../../scripts/patches/zcash-devtool-nu7.patch 2>/dev/null; then echo "(patch already applied)"; \
+    else git apply ../../scripts/patches/zcash-devtool-nu7.patch || { echo "!! the NU7 patch did not apply: a stock devtool cannot broadcast on NU7 testnet"; exit 1; }; fi) || exit 1
   (cd vendor/devtool-aegis && cargo build --release)
   cp vendor/devtool-aegis/target/release/zcash-devtool bin/devtool-aegis
 fi

@@ -11,6 +11,7 @@ python3 -m kiosk session open --notes 8              # ephemeral wallet: fund fr
 python3 -m kiosk offer "text" [--reply]              # send from the session wallet (prompts; --yes for scripts)
 python3 -m kiosk inbox                               # whispers that returned to this session's wallet
 python3 -m kiosk session close                       # wipe the wallet, its identity and the sent secrets
+python3 -m kiosk pool wallets/test/L --notes 3        # a named spending wallet: make sure it holds N spendable notes
 python3 -m kiosk offer "text" --from wallets/test/A  # operator / seeding: a named wallet, labelled as such
 python3 -m kiosk qr "text" [--reply <ua>] --png qr.png   # phone offering: ZIP-321 QR with the ASCII envelope
 python3 -m kiosk speak "text" --from wallets/test/B  # the god's own voice: a conductor line the choir pays to itself
@@ -25,3 +26,6 @@ python3 -m kiosk reveal --from wallets/test/B [--to key.txt]  # the Eye opens: p
 - The kiosk prints txids (display order) and byte counts only; never an address, never the text.
 - Note pool: `session open --notes N` splits the funding into N × 0.002 TAZ so offerings can go out back-to-back
   (a rejected broadcast locks one note for ~40 blocks, not the whole balance). `session status` shows notes left.
+  The same rule holds for any named wallet that must send back-to-back (the demo listener): `pool <wallet> --notes N`
+  counts its spendable notes the way the wallet does (depth, pending spends, expiry), waits for locked funds and
+  splits them when there are too few. `scripts/demo.sh` runs it in preflight (found by rehearsal #4).

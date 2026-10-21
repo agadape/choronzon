@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,6 +30,9 @@ INBOUND_CONFIRMATIONS = 10      # funds from another wallet are spendable after 
 OWN_CONFIRMATIONS = 3           # the wallet's own change / self-send outputs after 3
 NOTE_ZAT = 200_000              # 0.002 TAZ per pool note: one offering (<= 3 outputs + fee) with room to spare
 FEE_RESERVE_ZAT = 100_000
+# one devtool process on the session wallet at a time: a double-submitted web form would otherwise run two `pay`
+# on one sqlite wallet (locked database, or one note locked for ~40 blocks)
+_LOCK = threading.RLock()
 
 
 @dataclass(frozen=True)
@@ -47,7 +51,8 @@ class Session:
         return json.loads(self.state_file.read_text()) if self.state_file.exists() else {}
 
     def _save(self, **changes) -> None:
-        self.state_file.write_text(json.dumps({**self.state(), **changes}, indent=1) + "\n")
+        with _LOCK:
+            self.state_file.write_text(json.dumps({**self.state(), **changes}, indent=1) + "\n")
 
     @classmethod
     def current(cls) -> "Session | None":
@@ -96,13 +101,15 @@ class Session:
     # --- offerings -----------------------------------------------------------------------------------------------
 
     def offer(self, text: str, voice: Voice, choir: Choir, want_reply: bool) -> tuple[Offering, str]:
-        reply = self.wallet.generate_address() if want_reply else None
-        offering = make_offering(text, voice, reply)
-        # sync first: a transaction built from a stale chain tip gets an expiry height that has already passed and
-        # is rejected at broadcast ("must not be mined at a block Height greater than its expiry"; rehearsal #1)
-        self.wallet.sync()
-        txid = self.wallet.pay(payment_uri(choir, offering.memos))
-        self._save(offerings=self.state().get("offerings", []) + [{"contrib_id": offering.contrib_id, "txid": txid}])
+        with _LOCK:
+            reply = self.wallet.generate_address() if want_reply else None
+            offering = make_offering(text, voice, reply)
+            # sync first: a transaction built from a stale chain tip gets an expiry height that has already passed
+            # and is rejected at broadcast ("must not be mined at a block Height greater than its expiry"; rehearsal #1)
+            self.wallet.sync()
+            txid = self.wallet.pay(payment_uri(choir, offering.memos))
+            self._save(offerings=self.state().get("offerings", []) +
+                       [{"contrib_id": offering.contrib_id, "txid": txid}])
         return offering, txid
 
     def status(self) -> dict:
@@ -135,6 +142,77 @@ def _split_uri(address: str, notes: int) -> str:
     parts = [f"address{'' if i == 0 else f'.{i}'}={address}&amount{'' if i == 0 else f'.{i}'}={amount}"
              for i in range(notes)]
     return "zcash:?" + "&".join(parts)
+
+
+def spendable_note_values(db_path: Path, tip: int, min_zat: int = NOTE_ZAT // 2) -> list[int]:
+    """Values of the notes of at least `min_zat` this wallet could spend now, by the wallet's own rule (ZIP 315).
+
+    This devtool build never sets `transactions.trust_status`, so the wallet treats every transaction as
+    untrusted: only notes received at the internal (change) key scope get the 3-confirmation rule; a self-send
+    to the wallet's own external address needs 10 like any inbound note (rehearsal #5). A note spent by a
+    pending transaction stays locked until that transaction's expiry height passes (failure drill 5). The wallet
+    also gates on its note-commitment-tree checkpoints, which this query cannot see: callers cross-check the
+    sum against the wallet's own spendable balance (`ensure_pool`).
+    """
+    import sqlite3
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        rows = con.execute(
+            """select n.value from ironwood_received_notes n
+               join transactions t on t.id_tx = n.transaction_id
+               where n.value >= :min and t.mined_height is not null
+                 and t.mined_height <= :tip - (case n.recipient_key_scope when 1 then :own else :inbound end) + 1
+                 and not exists (select 1 from ironwood_received_note_spends s
+                                 join transactions t2 on t2.id_tx = s.transaction_id
+                                 where s.ironwood_received_note_id = n.id
+                                   and (t2.mined_height is not null or coalesce(t2.expiry_height, 0) = 0
+                                        or t2.expiry_height >= :tip))""",
+            {"min": min_zat, "tip": tip, "own": OWN_CONFIRMATIONS, "inbound": INBOUND_CONFIRMATIONS}).fetchall()
+        return [int(v) for (v,) in rows]
+    finally:
+        con.close()
+
+
+def spendable_notes(db_path: Path, tip: int, min_zat: int = NOTE_ZAT // 2) -> int:
+    return len(spendable_note_values(db_path, tip, min_zat))
+
+
+def _pool_state(wallet: Devtool) -> tuple[int, bool]:
+    """(notes the query counts, whether the wallet itself agrees they are all spendable)."""
+    values = spendable_note_values(wallet.wallet_dir / "data.sqlite", wallet.height())
+    return len(values), wallet.spendable_zat() >= sum(values)
+
+
+def ensure_pool(wallet: Devtool, notes: int, log=print, wait_minutes: int = 30) -> int:
+    """Make sure a spending wallet holds at least `notes` spendable notes; split its funds if it does not.
+
+    Used by the rehearsal for the listener wallet and usable for the operator's pool wallet. If the funds are
+    locked by a pending transaction (a failed broadcast), waits for its expiry, then splits. Returns the count.
+    """
+    budget = notes * NOTE_ZAT + FEE_RESERVE_ZAT
+    deadline = time.time() + wait_minutes * 60
+    while True:
+        wallet.sync()
+        have, agreed = _pool_state(wallet)
+        if have >= notes and agreed:
+            return have
+        if have < notes and wallet.spendable_zat() >= budget:
+            break
+        if time.time() > deadline:
+            raise DevtoolError(f"{wallet.wallet_dir.name} has {have} spendable notes (need {notes}) and "
+                               f"{wallet.spendable_zat()} zat spendable (need {budget}); top it up")
+        log(f"{wallet.wallet_dir.name}: {have} spendable notes, funds locked or pending; waiting (~1 min)")
+        time.sleep(60)
+    log(f"{wallet.wallet_dir.name}: {have} spendable notes, splitting into {notes} of {NOTE_ZAT} zat")
+    wallet.pay(_split_uri(wallet.default_address(), notes))
+    log(f"waiting for ~{OWN_CONFIRMATIONS} confirmations (~{OWN_CONFIRMATIONS * 35 // 60 + 1} min)")
+    for _ in range(120):
+        wallet.sync()
+        have, agreed = _pool_state(wallet)
+        if have >= notes and agreed:
+            return have
+        time.sleep(20)
+    raise DevtoolError("the split did not become spendable in time")
 
 
 def _received_memos(db_path: Path) -> list[bytes]:

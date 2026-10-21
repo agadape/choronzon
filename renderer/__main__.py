@@ -87,19 +87,22 @@ def cmd_daemon(args) -> None:
     log.info("daemon start wallet=%s interval=%ss out=%s", args.wallet, args.interval, args.out)
     while True:
         try:
-            sync_and_enhance(args.devtool, args.wallet, args.server)
-        except Exception as e:  # network hiccups must not stop the daemon; render what is already synced
-            log.warning("%s; rendering what is already synced", e)
-        as_of, skiplist = db.scanned_height(), load_skiplist(args.skiplist)
-        if (as_of, skiplist) != last:
             try:
-                result = rnd.render(db, as_of, decoder, skiplist, voice)
-            except NotReady as e:
-                log.info("waiting: %s", e)
-            else:
-                rnd.write_outputs(result, args.out)
-                _log_result(result, seen)
-                last = (as_of, skiplist)
+                sync_and_enhance(args.devtool, args.wallet, args.server)
+            except Exception as e:  # network hiccups must not stop the daemon; render what is already synced
+                log.warning("%s; rendering what is already synced", e)
+            as_of, skiplist = db.scanned_height(), load_skiplist(args.skiplist)
+            if (as_of, skiplist) != last:
+                try:
+                    result = rnd.render(db, as_of, decoder, skiplist, voice)
+                except NotReady as e:
+                    log.info("waiting: %s", e)
+                else:
+                    rnd.write_outputs(result, args.out)
+                    _log_result(result, seen)
+                    last = (as_of, skiplist)
+        except Exception:  # a bad skiplist line, a locked sqlite, a hung subprocess: log it, keep the last render
+            log.exception("render loop failed; retrying after the interval")
         time.sleep(args.interval)
 
 
@@ -112,11 +115,14 @@ def cmd_whisper(args) -> None:
         sys.exit("that offering carries no (valid) reply address")
     uri = whisper.reply_uri(target, args.text, phone=args.phone)
     if args.send_from:
-        from kiosk.devtool import Devtool
+        from kiosk.devtool import Devtool, DevtoolError
         wallet_dir = Path(args.send_from)
         w = Devtool(wallet_dir, wallet_dir.with_suffix(".age"), server=args.server)
-        w.sync()
-        txid = w.pay(uri)
+        try:
+            w.sync()
+            txid = w.pay(uri)
+        except DevtoolError as e:      # sanitized by the wrapper: exit code + last line, never an address
+            sys.exit(f"cannot send the whisper from {wallet_dir.name}: {e}")
         print(f"whisper sent directly to the offering's reply address. txid {txid}")
         print("(the choir's key holders cannot see this transaction)")
     else:

@@ -17,6 +17,12 @@ _UA = re.compile(r"\b(?:zu|tu|u)(?:test)?1[0-9a-z]{60,}\b")
 _TXID = re.compile(r"^[0-9a-f]{64}$", re.M)
 _HEIGHT = re.compile(r"Height: (\d+)")
 _SPENDABLE = re.compile(r"ironwood_balance: Balance \{\s*spendable_value: Zatoshis\(\s*(\d+)")
+_MEMO = re.compile(r"memo(\.\d+)?=[^&\s\"']*")
+
+
+def sanitize(line: str) -> str:
+    """An error line with every address and every memo value removed (a parse error could echo the whole URI)."""
+    return _MEMO.sub(r"memo\1=<memo>", _UA.sub("<address>", line))
 
 
 class DevtoolError(RuntimeError):
@@ -36,7 +42,7 @@ class Devtool:
                               input=stdin, capture_output=True, text=True, timeout=timeout)
         if done.returncode != 0:
             tail = (done.stderr.strip().splitlines() or done.stdout.strip().splitlines() or [""])[-1]
-            raise DevtoolError(f"devtool {args[0]} exit {done.returncode}: {_UA.sub('<address>', tail)[:200]}")
+            raise DevtoolError(f"devtool {args[0]} exit {done.returncode}: {sanitize(tail)[:200]}")
         return done.stdout + done.stderr
 
     def _spend_args(self) -> list[str]:

@@ -9,6 +9,7 @@ A fingerprint (decoded PCM of a fixed sentence) is reported next to the decoder 
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 import subprocess
 import tempfile
@@ -17,7 +18,7 @@ from pathlib import Path
 
 import protocol
 
-from .decoder import Decoder
+from .decoder import _ENV, Decoder
 
 ESPEAK_VERSION = "1.51"          # Ubuntu 24.04 package 1.51+dfsg-12build1
 SOX_VERSION = "14.4.2"
@@ -64,7 +65,10 @@ class Voice:
             frames = c2.read_bytes()
         if cached:
             cached.parent.mkdir(parents=True, exist_ok=True)
-            cached.write_bytes(frames)
+            fd, tmp = tempfile.mkstemp(dir=cached.parent, prefix=".c2.", suffix=".tmp")
+            with os.fdopen(fd, "wb") as f:
+                f.write(frames)
+            os.replace(tmp, cached)        # atomic: a reader never sees a half-written cache entry
         return frames
 
     def speak(self, text: str) -> bytes:
@@ -76,7 +80,10 @@ class Voice:
 
     @staticmethod
     def _run(cmd: list[str], stdin: str | None = None) -> None:
-        done = subprocess.run(cmd, input=stdin.encode("utf-8") if stdin is not None else None,
-                              capture_output=True, timeout=120)
+        try:
+            done = subprocess.run(cmd, input=stdin.encode("utf-8") if stdin is not None else None,
+                                  capture_output=True, timeout=120, env=_ENV)
+        except (subprocess.TimeoutExpired, OSError) as e:    # hung or missing tool: silence for this offering
+            raise TTSError(f"{Path(cmd[0]).name} failed: {type(e).__name__}") from e
         if done.returncode != 0:
             raise TTSError(f"{Path(cmd[0]).name} failed with exit code {done.returncode}")

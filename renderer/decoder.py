@@ -7,6 +7,7 @@ their score_hash still matches, and the fingerprint says why.
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -20,6 +21,8 @@ _VECTORS = REPO / "renderer" / "testdata"
 # sha256 over decoded PCM of vector_700C.c2 || vector_1200.c2 || vector_1300.c2 with the pinned build
 # (same value from Ubuntu 24.04's codec2 1.2.0-2build1 package, checked 20 Oct)
 EXPECTED_FINGERPRINT = "1e18d05b100938cacb64a3316a358c208c1b08110d6e8c2deb2306cd6b333979"
+# a fixed environment for every subprocess: locale or PATH surprises must not change the audio
+_ENV = {"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "LC_ALL": "C.UTF-8", "LANG": "C.UTF-8"}
 
 
 class DecodeError(RuntimeError):
@@ -41,7 +44,11 @@ class Decoder:
         with tempfile.TemporaryDirectory() as tmp:
             src, dst = Path(tmp, "in.c2"), Path(tmp, "out.raw")
             src.write_bytes(frames)
-            done = subprocess.run([str(self.path), mode, str(src), str(dst)], capture_output=True, timeout=60)
+            try:
+                done = subprocess.run([str(self.path), mode, str(src), str(dst)], capture_output=True, timeout=60,
+                                      env=_ENV)
+            except (subprocess.TimeoutExpired, OSError) as e:    # hung or missing decoder: silence, not a crash
+                raise DecodeError(f"c2dec {mode} failed: {type(e).__name__}") from e
             if done.returncode != 0 or not dst.exists():
                 raise DecodeError(f"c2dec {mode} failed with exit code {done.returncode}")
             return dst.read_bytes()

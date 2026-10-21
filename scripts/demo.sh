@@ -10,6 +10,7 @@
 #   3 heard      the public-key renderer sees it (latency measured)
 #   4 whisper    listener L whispers back directly; the session inbox receives it
 #   5 god/forge  the choir wallet speaks a conductor line; wallet A sends a forgery; renderer accepts one, refuses one
+# Preflight also makes sure the listener wallet L holds a pool of notes (one locked note must not silence it).
 #   6 summon     a Watcher built from the published key alone prints the same hashes
 # Logs: logs/demo_<timestamp>.log (txids, heights, hashes and timings only).
 set -uo pipefail
@@ -26,6 +27,25 @@ fail=0
 mark(){ TIMES+=("$1=$(( $(date +%s) - T_START ))s"); }
 step(){ printf "\n== %s  (t+%ss)\n" "$*" "$(( $(date +%s) - T_START ))"; }
 die(){ echo "!! $*"; fail=1; }
+speak_retry(){ # $1 text (bash argument, not a process argv), rest: kiosk speak args; one retry on a transient error
+  local out attempt
+  for attempt in 1 2; do
+    out=$(printf '%s' "$1" | python3 -m kiosk speak - "${@:2}" 2>&1) && { echo "$out"; return 0; }
+    echo "   speak attempt $attempt failed: $(echo "$out" | grep -E "^devtool|Error|refusing|not the choir" | tail -1 | cut -c1-200)" >&2
+    [ $attempt = 1 ] && sleep 30
+  done
+  return 1
+}
+whisper_retry(){ # $1 offering txid; one retry on a transient error (the listener pool has a spare note)
+  local out attempt
+  for attempt in 1 2; do
+    out=$(python3 -m renderer whisper "$1" --wallet $V --text "you are not alone. (rehearsal)" --send-from $L 2>&1) \
+      && { echo "$out" | grep -E "^whisper sent|^\(the choir"; return 0; }
+    echo "   whisper attempt $attempt failed: $(echo "$out" | tail -1 | cut -c1-200)" >&2
+    [ $attempt = 1 ] && sleep 30
+  done
+  return 1
+}
 hashes(){ python3 -m renderer once --wallet "$1" --as-of "${2:-tip}" --out "${3:-out}" ${4:-} 2>/dev/null \
           | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["as_of_height"], d["offerings"], d["skipped"], d["render_hash"])'; }
 wait_seen(){ # $1 txid, $2 pattern (offering|skip), $3 max seconds -> renders V repeatedly until the tx shows up
@@ -42,6 +62,7 @@ step "preflight"
 python3 -m kiosk session status | python3 -c 'import json,sys; s=json.load(sys.stdin); assert s.get("ready") and (s.get("notes_left") or 0)>=1, s; print("   session ready, notes left", s["notes_left"])' || die "no ready kiosk session (python3 -m kiosk session open)"
 for W in $B $A $L; do bin/devtool-aegis wallet -w $W sync -s zecrocks >/dev/null 2>&1 || die "sync $W failed"; done
 [ -x bin/c2dec ] || die "pinned codec2 missing"
+python3 -m kiosk pool $L --notes 3 2>&1 | sed "s/^/   /" ; [ "${PIPESTATUS[0]}" = 0 ] || die "listener pool (python3 -m kiosk pool $L)"
 [ $fail = 0 ] || { echo "preflight failed"; exit 1; }
 mark preflight
 
@@ -62,21 +83,20 @@ mark heard
 
 step "4 whisper: L replies directly; the session inbox receives it"
 if [ -n "$OFFER_TX" ]; then
-  python3 -m renderer whisper "$OFFER_TX" --wallet $V --text "you are not alone. (rehearsal)" --send-from $L 2>&1 | grep -E "txid|cannot" || die "whisper failed"
-  t0=$(date +%s); ok=0
-  for i in $(seq 1 28); do python3 -m kiosk inbox 2>/dev/null | grep -q "a whisper returned for your offering ${OFFER_TX:0:12}" && { ok=1; break; }; sleep 15; done
-  [ $ok = 1 ] && echo "   inbox received the whisper after $(( $(date +%s) - t0 ))s" || die "whisper not received within 7 min"
+  if whisper_retry "$OFFER_TX"; then
+    t0=$(date +%s); ok=0
+    for i in $(seq 1 28); do python3 -m kiosk inbox 2>/dev/null | grep -q "a whisper returned for your offering ${OFFER_TX:0:12}" && { ok=1; break; }; sleep 15; done
+    [ $ok = 1 ] && echo "   inbox received the whisper after $(( $(date +%s) - t0 ))s" || die "whisper not received within 7 min"
+  else die "whisper failed twice"; fi
 fi
 mark whisper
 
 step "5 the god speaks; a forgery is refused"
-GOD_OUT=$(printf 'we are many. we forget nothing. (rehearsal)' | python3 -m kiosk speak - --from $B 2>&1)
-FORGE_OUT=$(printf 'i am the god. (rehearsal forgery)' | python3 -m kiosk speak - --from $A --forge 2>&1)
+GOD_OUT=$(speak_retry 'we are many. we forget nothing. (rehearsal)' --from $B)
+FORGE_OUT=$(speak_retry 'i am the god. (rehearsal forgery)' --from $A --forge)
 GOD_TX=$(echo "$GOD_OUT" | grep -oE "txid [0-9a-f]{64}" | cut -d' ' -f2)
 FORGE_TX=$(echo "$FORGE_OUT" | grep -oE "txid [0-9a-f]{64}" | cut -d' ' -f2)
 echo "   god ${GOD_TX:-FAILED}  forgery ${FORGE_TX:-FAILED}"
-[ -n "$GOD_TX" ] || echo "   speak error: $(echo "$GOD_OUT" | grep -E "^devtool|Error|refusing|not the choir" | tail -1)"
-[ -n "$FORGE_TX" ] || echo "   forge error: $(echo "$FORGE_OUT" | grep -E "^devtool|Error" | tail -1)"
 [ -n "$GOD_TX" ] && { wait_seen "$GOD_TX" offering 420 || die "conductor line not seen"; } || die "speak failed"
 [ -n "$FORGE_TX" ] && { wait_seen "$FORGE_TX" skip 420 | tee /tmp/demo_forge.txt; grep -q "forged-conductor" /tmp/demo_forge.txt || die "forgery was not refused as forged-conductor"; } || die "forge send failed"
 mark god

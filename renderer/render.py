@@ -72,15 +72,26 @@ def render(db: WalletDB, as_of: int, decoder: Decoder, skiplist: frozenset[str] 
 
 
 def _atomic_write(path: Path, data: bytes) -> None:
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(data)
-    os.replace(tmp, path)
+    """Write-then-rename with a unique temp name: a daemon and a `renderer once` on the same out/ cannot collide."""
+    import tempfile
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def write_outputs(result: RenderResult, out_dir: str | Path) -> None:
     """out/score.json (score, timeline, hashes; no memo content, no addresses), out/render_hash, out/mix.wav."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    _atomic_write(out / "score.json", (json.dumps(result.to_json(), indent=1, sort_keys=True) + "\n").encode())
-    _atomic_write(out / "render_hash", (result.render_hash + "\n").encode())
+    # audio first: the web page polls score.json and must never pair a new score with the previous mix
     _atomic_write(out / "mix.wav", result.mix.wav())
+    _atomic_write(out / "render_hash", (result.render_hash + "\n").encode())
+    _atomic_write(out / "score.json", (json.dumps(result.to_json(), indent=1, sort_keys=True) + "\n").encode())
