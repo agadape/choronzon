@@ -19,3 +19,35 @@ every txid here returned "Transaction Not Found"). The evidence is our own synce
 | 8 | Stale chain tip → transaction expired before broadcast | found by rehearsal #1 (`scripts/demo.sh`): the kiosk session paid without syncing first; the wallet built the tx with an expiry height already behind the chain (`transaction must not be mined at a block Height(4525333) greater than its expiry`) | Rejected at broadcast; because the expiry was already past, no note stayed locked (6 notes spendable right after a sync). **Fixed:** `Session.offer` syncs before `pay`; the rehearsal script catches this class of error without faking a result | fixed |
 | 7 | Listener wallet runs dry | wallet L after several replies: `have 0` spendable while its change waits for 3 confirmations | `renderer whisper --send-from` fails with the sanitized insufficient-balance error; the QR/URI path still works with any other wallet | OK (keep the demo listener funded with several notes) |
 | 9 | Listener's only note locked by a failed broadcast | rehearsal #4 (`scripts/demo.sh`, 21 Oct): `renderer whisper --send-from L` built tx `1357d115…` (expiry 4,525,567), the broadcast failed, the wallet kept it as unmined and L's single 0.00934 TAZ note was its input | The whisper step failed, then waited 7 min for a reply that could not come; the run was reported FAIL (nothing faked). The Python traceback hid the sanitized cause because the script only grepped for `txid`. **Fixed:** `renderer whisper` now exits with `cannot send the whisper from L: …`; the script prints that line; and preflight runs `python3 -m kiosk pool wallets/test/L --notes 3`, which counts spendable notes the way the wallet does (depth, pending spends, expiry), waits for locked funds and splits them. Drill 7's advice is now enforced by the script | fixed |
+
+## Rehearsal runs (`scripts/demo.sh`, 21 Oct 2026, testnet)
+
+Every run sends real transactions: one offering with a reply address from the ephemeral session wallet, one direct
+whisper from L, one conductor line from the choir wallet B, one forgery from A, and ends with a Watcher built from
+the published key alone. `TIMES` is the script's own line: the second at which each step finished, counted from the
+start of the run. Logs: `logs/demo_<timestamp>.log` (git-ignored; txids, heights, hashes, timings only).
+
+| run | start (UTC) | commit | TIMES (s from start) | total | result |
+|---|---|---|---|---|---|
+| 1 | 11:01 | 761d6d4 | preflight=6 evoke=7 offer=13 heard=13 whisper=13 god=121 summon=154 | 154 s | FAIL, step 2: the session wallet paid from a stale tip, the transaction expired before broadcast (drill 8); fixed: `Session.offer` syncs first |
+| 2 | 11:04 | 761d6d4 | preflight=6 evoke=7 offer=16 heard=242 whisper=466 god=528 summon=568 | 568 s | FAIL, step 5: the choir wallet had 0 spendable zat (change pending); fixed: B topped up with 0.005 TAZ from A (`1fd5848d…`, block 4,525,497) |
+| 3 | 12:12 | 761d6d4 | preflight=14 evoke=15 offer=30 heard=72 whisper=208 god=377 summon=445 | 445 s | PASS |
+| 4 | 12:20 | 761d6d4 | preflight=16 evoke=18 offer=46 heard=143 whisper=858 god=1006 summon=1057 | 1057 s | FAIL, step 4: L's only note was locked by a failed broadcast (drill 9); fixed: listener pool in preflight, whisper errors reported |
+| 5 | 12:44 | (uncommitted) | preflight=15 evoke=16 offer=31 heard=120 whisper=836 god=1784 summon=1840 | 1840 s | FAIL, steps 4+5: the pool count said 4 notes, the wallet said 0 spendable (split outputs to an external address need 10 confirmations, not 3); the conductor line hit a lightwalletd TLS reset; the forgery took 35 blocks to be mined. Fixed: pool count by key scope + wallet cross-check, one retry per send, no reply wait after a failed send |
+| 6 | 13:22 | 4374796 | preflight=20 evoke=21 offer=34 heard=161 whisper=237 god=361 summon=415 | 415 s | PASS |
+| 7 | 13:29 | 4374796 | preflight=15 evoke=16 offer=28 heard=170 whisper=218 god=345 summon=406 | 406 s | PASS |
+| 8 | 13:36 | 4374796 | preflight=16 evoke=18 offer=30 heard=96 whisper=147 god=353 summon=412 | 412 s | FAIL, step 4: both whisper attempts (30 s apart) hit the lightwalletd TLS reset; each failed attempt had built a transaction, so two notes of L stayed locked until expiry (~18 min). The conductor line and the forgery went through 50 s later. Fixed: four attempts with pauses of 20/40/60 s; the pools absorb the locked notes |
+| 9 | 13:44 | 4374796 + retry patch | preflight=8307 evoke=8308 offer=8317 heard=8394 whisper=8512 god=8590 summon=8629 | 8629 s (demo itself 322 s) | PASS. Preflight waited 2 h 18 min: `kiosk pool` held the run until L's two notes locked by run 8 were released at expiry, and every wallet sync took ~25 min while lightwalletd was slow (five iterations). Once the pool was back to 4 notes the demo ran in 322 s with no retry |
+
+What the green runs say about the live demo:
+
+- **The two block waits dominate.** Of a 7-minute run, roughly 2 min is "offer heard" (the offering has to be mined
+  and the public-key wallet synced + enhanced) and 1–2 min is "whisper received" (the reply has to be mined and the
+  session wallet synced). Everything else is seconds. In the live demo those two waits must be covered by narration
+  (the lore, the privacy model, the Eye) and not by silence; the explorer cannot be used as a stopgap because it
+  may follow another fork (see the note at the top of this file).
+- Testnet is uneven: a block every ~35 s on average, but a transaction was once mined 35 blocks after broadcast
+  (run 5) and lightwalletd closed a TLS connection mid-send. The script retries one send once; the pre-sent
+  offerings in the demo script are the fallback if the live one is late, and they are labelled as pre-sent.
+- Each run consumes one note of the session wallet, one of L, one of B and one of A; `session status` and
+  `kiosk pool` say how many are left before the show.

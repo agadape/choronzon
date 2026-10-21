@@ -55,7 +55,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 ## Day 7 (26 Oct) — hardening  [~12 h]
 - [x] **A** Privacy review: no analytics, no cloud calls, logs contain only txid + validation result, no reply addresses retained (`docs/privacy-review.md`; fixes: secrets off argv/history, no kiosk TTS cache, espeak via stdin; residual: `ps` during `pay`, `sent_notes`, lightwalletd IP)
 - [x] **A** Failure drills: rejected broadcast (locked note), slow block, stale sync, duplicate memo, malformed memo (`docs/failure-drills.md`: all seven observed on testnet 21 Oct; malformed `a84adbaf…` skipped, duplicates `11f9bd73…`/`103dec1c…` both kept, connection-reset tx `6a0f8588…` locked one note until 4525360 while the pool kept sending)
-- [ ] **all** Run the full 3-min demo 5× without manual intervention; freeze features
+- [x] **all** Run the full 3-min demo 5× without manual intervention; freeze features (`scripts/demo.sh`: 9 runs on 21 Oct, four green, every failure with a named cause, the last product bug fixed in 4374796; table "Rehearsal runs" in `docs/failure-drills.md`; the two block waits dominate and need narration)
 - [ ] **C** Decide which pre-sent contributions are shown and label them honestly in the script
 
 ## Day 8 (27 Oct) — demo video + polish  [~12 h]

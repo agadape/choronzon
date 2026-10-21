@@ -27,22 +27,26 @@ fail=0
 mark(){ TIMES+=("$1=$(( $(date +%s) - T_START ))s"); }
 step(){ printf "\n== %s  (t+%ss)\n" "$*" "$(( $(date +%s) - T_START ))"; }
 die(){ echo "!! $*"; fail=1; }
-speak_retry(){ # $1 text (bash argument, not a process argv), rest: kiosk speak args; one retry on a transient error
+# lightwalletd (testnet.zec.rocks) drops a TLS connection now and then ("peer closed connection without sending
+# TLS close_notify", rehearsals 5 and 8: twice within 30 s, fine 50 s later). Sends are retried with a growing
+# pause; the note pools (session, L, B, A) make a retry safe even when the failed attempt locked a note.
+ATTEMPTS=4; PAUSES=(20 40 60)
+speak_retry(){ # $1 text (bash argument, not a process argv), rest: kiosk speak args
   local out attempt
-  for attempt in 1 2; do
+  for attempt in $(seq 1 $ATTEMPTS); do
     out=$(printf '%s' "$1" | python3 -m kiosk speak - "${@:2}" 2>&1) && { echo "$out"; return 0; }
     echo "   speak attempt $attempt failed: $(echo "$out" | grep -E "^devtool|Error|refusing|not the choir" | tail -1 | cut -c1-200)" >&2
-    [ $attempt = 1 ] && sleep 30
+    [ $attempt -lt $ATTEMPTS ] && sleep "${PAUSES[$((attempt-1))]}"
   done
   return 1
 }
-whisper_retry(){ # $1 offering txid; one retry on a transient error (the listener pool has a spare note)
+whisper_retry(){ # $1 offering txid (the listener pool has spare notes)
   local out attempt
-  for attempt in 1 2; do
+  for attempt in $(seq 1 $ATTEMPTS); do
     out=$(python3 -m renderer whisper "$1" --wallet $V --text "you are not alone. (rehearsal)" --send-from $L 2>&1) \
       && { echo "$out" | grep -E "^whisper sent|^\(the choir"; return 0; }
     echo "   whisper attempt $attempt failed: $(echo "$out" | tail -1 | cut -c1-200)" >&2
-    [ $attempt = 1 ] && sleep 30
+    [ $attempt -lt $ATTEMPTS ] && sleep "${PAUSES[$((attempt-1))]}"
   done
   return 1
 }
@@ -87,7 +91,7 @@ if [ -n "$OFFER_TX" ]; then
     t0=$(date +%s); ok=0
     for i in $(seq 1 28); do python3 -m kiosk inbox 2>/dev/null | grep -q "a whisper returned for your offering ${OFFER_TX:0:12}" && { ok=1; break; }; sleep 15; done
     [ $ok = 1 ] && echo "   inbox received the whisper after $(( $(date +%s) - t0 ))s" || die "whisper not received within 7 min"
-  else die "whisper failed twice"; fi
+  else die "whisper failed $ATTEMPTS times"; fi
 fi
 mark whisper
 
