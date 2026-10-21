@@ -76,13 +76,25 @@ def test_overlap_rule_and_total_length():
 def test_pitch_layers_from_contrib_id():
     src = list(range(0, 3200, 2))  # 1600 samples
     dec = StubDecoder({b"f": src})
-    for layer, (num, den) in enumerate(composer.PITCH_LAYERS):
+    for layer in range(composer.OFFERING_PITCH_LAYERS):
+        num, den = composer.PITCH_LAYERS[layer]
         cid = 8 | (layer << 8)
         mix = composer.compose([offering(1, data=b"f", cid=cid)], dec, None)
         p = mix.placed[0]
         assert p.pitch_layer == layer and p.samples == 1600 * den // num
         gain_left = composer.PAN_STEPS - p.pan
         assert samples(mix)[2 * 10] == src[10 * num // den] * gain_left // composer.PAN_STEPS
+
+
+def test_conductor_voice_is_centered_and_deep():
+    src = list(range(0, 3200, 2))
+    dec = StubDecoder({b"f": src})
+    o = Offering(f"{1:064x}", 10, 1, 0, 0xDEADBEEF, protocol.CODEC_C2_700C, b"f", 1, False, False, (), True)
+    mix = composer.compose([o], dec, None)
+    p = mix.placed[0]
+    assert (p.pan, p.pitch_layer, p.conductor) == (composer.PAN_STEPS // 2, composer.CONDUCTOR_PITCH, True)
+    assert p.samples == 1600 * 4 // 3 and p.to_json()["conductor"] is True
+    assert "conductor" not in composer.compose([offering(2, data=b"f", cid=8)], dec, None).placed[0].to_json()
 
 
 def test_text_offering_uses_the_voice_and_failures_become_silence():

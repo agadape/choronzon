@@ -124,6 +124,23 @@ def test_every_skip_has_a_reason_code(tmp_path):
         txid(4): REASON_FLAGGED, txid(5): REASON_UNSUPPORTED_POOL, txid(6): "not-protocol"}
 
 
+def conductor_memo(text: bytes, cid: int = 9) -> bytes:
+    return protocol.encode_conductor(text, protocol.CODEC_TEXT, cid)[1][0]
+
+
+def test_conductor_lines_are_authenticated_by_own_spend(tmp_path):
+    """S13: the god's voice = kind 3 on outputs that spent the choir's own notes; the same memo inbound is a forgery."""
+    w = make_wallet(tmp_path, [(txid(1), 10, 1, 0, conductor_memo(b"we are many"), 1),   # own spend -> the god
+                               (txid(2), 10, 2, 0, conductor_memo(b"i am the god"), 0),   # inbound -> NOT THE GOD
+                               (txid(3), 10, 3, 0, offering(b"plain"), 1),                # own spend, kind 1 -> skip
+                               (txid(4), 10, 4, 0, offering(b"plain"), 0)])               # ordinary offering
+    s = score_of(w)
+    assert [(o.txid, o.conductor, o.data) for o in s.offerings] == [(txid(1), True, b"we are many"),
+                                                                     (txid(4), False, b"plain")]
+    assert {sk.txid: sk.reason for sk in s.skipped} == {txid(2): "forged-conductor", txid(3): REASON_OWN_SPEND}
+    assert s.offerings[0].to_json()["conductor"] is True and "conductor" not in s.offerings[1].to_json()
+
+
 def test_contrib_id_collision_across_txs_keeps_both(tmp_path):
     w = make_wallet(tmp_path, [(txid(1), 10, 1, 0, offering(b"one", cid=42), 0),
                                (txid(2), 10, 2, 0, offering(b"two", cid=42), 0)])
@@ -221,7 +238,7 @@ def test_outputs_are_deterministic_and_hold_no_content_or_addresses(tmp_path):
     assert b"my secret words" not in one and REPLY.encode() not in one and b"zutest" not in one
     doc = json.loads(one)
     assert doc["score"]["offerings"][0]["has_reply"] is True
-    assert doc["render"]["timeline"][0]["tx"] == txid(1) and doc["render"]["composer"] == "choir/1"
+    assert doc["render"]["timeline"][0]["tx"] == txid(1) and doc["render"]["composer"] == "choir/2"
     assert (tmp_path / "o1" / "render_hash").read_text().strip() == doc["render_hash"]
 
 

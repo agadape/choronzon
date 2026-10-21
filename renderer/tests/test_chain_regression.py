@@ -18,8 +18,9 @@ G6_HEIGHT = 4522002
 G6_HASH = "c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4"
 # score/1 at G6_HEIGHT, first computed 20 Oct; V and B agreed byte-for-byte
 SCORE_HASH = "415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a"
-# render/1 with composer choir/1 (pinned codec2 1.2.0 + espeak-ng 1.51 voice), 21 Oct; mix.wav identical from V and B
-RENDER_HASH = "4b72400946b68f2e7547d4422408a7a2a552196de99f93073b860825972dc136"
+# render/1 with composer choir/2 (pinned codec2 1.2.0 + espeak-ng 1.51 voice), 21 Oct; mix.wav identical from V and B
+# (choir/1 gave 4b724009...; the version string is part of the hash, the mix at this height is unchanged)
+RENDER_HASH = "9b6c1b9d3b61830b82848179e323276cb95b43cd90558c99e740d78addba2bc0"
 
 needs_decoder = pytest.mark.skipif(not DEFAULT_C2DEC.exists(), reason="bin/c2dec missing (scripts/setup.sh)")
 needs_wallets = pytest.mark.skipif(not (V / "data.sqlite").exists() or not (B / "data.sqlite").exists(),

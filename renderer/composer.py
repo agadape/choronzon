@@ -20,11 +20,13 @@ from .decoder import DecodeError, Decoder
 from .score import Offering
 from .tts import TTSError, Voice
 
-COMPOSER_VERSION = "choir/1"
+COMPOSER_VERSION = "choir/2"
 SAMPLE_RATE = Decoder.sample_rate
 CHANNELS = 2
 PAN_STEPS = 16                      # pan index 0..16: 0 = hard left, 16 = hard right
-PITCH_LAYERS = ((1, 1), (15, 16), (17, 16))   # (num, den): output index i reads input index i*num//den
+PITCH_LAYERS = ((1, 1), (15, 16), (17, 16), (3, 4))   # (num, den): output index i reads input index i*num//den
+CONDUCTOR_PITCH = 3                 # the god's own voice: deeper (3/4), always centered, never a random layer
+OFFERING_PITCH_LAYERS = 3           # offerings only use layers 0..2
 OVERLAP_NUM, OVERLAP_DEN = 5, 8     # next voice starts at 5/8 of the previous one
 MIN_GAP = SAMPLE_RATE // 2          # but never sooner than 0.5 s after the previous start
 MAX_VOICE = 20 * SAMPLE_RATE        # 20 s per offering, hard cap
@@ -41,11 +43,15 @@ class Placed:
     energy: int         # mean |sample|, 0..32767
     zero_crossings: int # per second, a rough pitch/brightness measure
     silent: bool        # decode/TTS failed: placed as silence so the timeline stays stable
+    conductor: bool = False
 
     def to_json(self) -> dict:
-        return {"tx": self.txid, "contrib_id": self.contrib_id, "start": self.start, "samples": self.samples,
-                "pan": self.pan, "pitch_layer": self.pitch_layer, "energy": self.energy,
-                "zero_crossings": self.zero_crossings, "silent": self.silent}
+        d = {"tx": self.txid, "contrib_id": self.contrib_id, "start": self.start, "samples": self.samples,
+             "pan": self.pan, "pitch_layer": self.pitch_layer, "energy": self.energy,
+             "zero_crossings": self.zero_crossings, "silent": self.silent}
+        if self.conductor:
+            d["conductor"] = True
+        return d
 
 
 @dataclass(frozen=True)
@@ -110,8 +116,10 @@ def compose(offerings: list[Offering] | tuple[Offering, ...], decoder: Decoder, 
     placed, failures, voices = [], [], []
     start = 0
     for n, o in enumerate(offerings):
-        pan = o.contrib_id % (PAN_STEPS + 1)
-        layer = (o.contrib_id >> 8) % len(PITCH_LAYERS)
+        if o.conductor:
+            pan, layer = PAN_STEPS // 2, CONDUCTOR_PITCH
+        else:
+            pan, layer = o.contrib_id % (PAN_STEPS + 1), (o.contrib_id >> 8) % OFFERING_PITCH_LAYERS
         try:
             mono = _pitch(voice_for(o, decoder, voice), layer)
             silent = False
@@ -122,7 +130,7 @@ def compose(offerings: list[Offering] | tuple[Offering, ...], decoder: Decoder, 
             prev = placed[-1]
             start = prev.start + max(prev.samples * OVERLAP_NUM // OVERLAP_DEN, MIN_GAP)
         energy, zc = features(mono)
-        placed.append(Placed(o.txid, o.contrib_id, start, len(mono), pan, layer, energy, zc, silent))
+        placed.append(Placed(o.txid, o.contrib_id, start, len(mono), pan, layer, energy, zc, silent, o.conductor))
         voices.append(mono)
     total = max((p.start + p.samples for p in placed), default=0)
     left, right = [0] * total, [0] * total

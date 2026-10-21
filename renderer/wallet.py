@@ -17,6 +17,7 @@ PRIORITY_SCANNED = 10  # zcash_client_sqlite ScanPriority: 0 Ignored, 10 Scanned
 _NOTE_TABLES = (("ironwood_received_notes", "action_index", "ironwood"),
                 ("orchard_received_notes", "action_index", "orchard"),
                 ("sapling_received_notes", "output_index", "sapling"))
+_POOL_IDS = {"sapling": 2, "orchard": 3, "ironwood": 4}   # sent_notes.output_pool (zcash_client_sqlite PoolType)
 
 
 class NotReady(RuntimeError):
@@ -68,8 +69,14 @@ class WalletDB:
         for table, index_col, pool in _NOTE_TABLES:
             if table not in tables:
                 continue
+            # A spend-key wallet stores the memo of its OWN outputs in sent_notes, not in received_notes (where it
+            # is NULL); a view-only wallet decrypts them into received_notes. Fall back so both read the same bytes.
+            memo_expr = "n.memo"
+            if "sent_notes" in tables:
+                memo_expr = (f"coalesce(n.memo, (select s.memo from sent_notes s where s.transaction_id = t.id_tx "
+                             f"and s.output_index = n.{index_col} and s.output_pool = {_POOL_IDS[pool]} limit 1))")
             rows = self._query(f"""
-                select hex(t.txid), t.mined_height, t.tx_index, n.{index_col}, n.memo, n.is_change
+                select hex(t.txid), t.mined_height, t.tx_index, n.{index_col}, {memo_expr}, n.is_change
                 from {table} n join transactions t on t.id_tx = n.transaction_id
                 where t.mined_height is not null and t.mined_height <= ?
                 order by t.mined_height, t.tx_index, n.{index_col}""", (as_of,))

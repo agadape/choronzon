@@ -40,6 +40,8 @@ VERSION = 1
 
 KIND_CONTRIBUTION = 1
 KIND_REPLY = 2
+KIND_CONDUCTOR = 3   # the god's own voice: same body as a contribution, valid only on the choir wallet's own spends
+KINDS = frozenset({KIND_CONTRIBUTION, KIND_REPLY, KIND_CONDUCTOR})
 
 CODEC_C2_700C = 1
 CODEC_C2_1200 = 2
@@ -88,6 +90,7 @@ class Contribution:
     data: bytes
     reply_addr: str | None       # only set when the embedded address passes its checksum
     reply_present: bool          # a reply block was embedded (reply_len > 0), valid or not
+    kind: int = KIND_CONTRIBUTION  # KIND_CONTRIBUTION, or KIND_CONDUCTOR (authenticity is decided by the renderer)
 
     @property
     def reply_addr_invalid(self) -> bool:
@@ -115,7 +118,7 @@ def parse_memo(memo: bytes) -> tuple[Header, bytes]:
     _, _, version, cid, kind, seq, total, length = _HEADER.unpack_from(memo)
     if version != VERSION:
         raise ProtocolError(ProtocolError.BAD_VERSION, str(version))
-    if kind not in (KIND_CONTRIBUTION, KIND_REPLY) or not 0 < total <= MAX_CHUNKS or seq >= total:
+    if kind not in KINDS or not 0 < total <= MAX_CHUNKS or seq >= total:
         raise ProtocolError(ProtocolError.BAD_HEADER, f"kind={kind} seq={seq} total={total}")
     if length > MAX_BODY:
         raise ProtocolError(ProtocolError.BAD_LEN, str(length))
@@ -131,8 +134,10 @@ def new_contrib_id() -> int:
 
 
 def encode_contribution(data: bytes, codec: int, reply_addr: str | None = None, contrib_id: int | None = None,
-                        *, body_cap: int = MAX_BODY) -> tuple[int, list[bytes]]:
+                        *, body_cap: int = MAX_BODY, kind: int = KIND_CONTRIBUTION) -> tuple[int, list[bytes]]:
     """Split one contribution into 1..3 memos (each <= 512 bytes; the wallet zero-pads them)."""
+    if kind not in (KIND_CONTRIBUTION, KIND_CONDUCTOR):
+        raise ProtocolError(ProtocolError.WRONG_KIND, str(kind))
     if codec not in KNOWN_CODECS:
         raise ProtocolError(ProtocolError.UNKNOWN_CODEC, str(codec))
     reply = (reply_addr or "").encode("ascii")
@@ -146,19 +151,24 @@ def encode_contribution(data: bytes, codec: int, reply_addr: str | None = None, 
     chunks = [body[i:i + body_cap] for i in range(0, len(body), body_cap)]
     if len(chunks) > MAX_CHUNKS:
         raise ProtocolError(ProtocolError.TOO_LONG, f"needs {len(chunks)} memos, max {MAX_CHUNKS}")
-    return cid, [_header(cid, KIND_CONTRIBUTION, i, len(chunks), len(c)) + c for i, c in enumerate(chunks)]
+    return cid, [_header(cid, kind, i, len(chunks), len(c)) + c for i, c in enumerate(chunks)]
+
+
+def encode_conductor(data: bytes, codec: int, contrib_id: int | None = None) -> tuple[int, list[bytes]]:
+    """A line in the god's own voice: sent by the choir wallet to itself. No reply address."""
+    return encode_contribution(data, codec, None, contrib_id, kind=KIND_CONDUCTOR)
 
 
 def decode_contribution(memos: Iterable[bytes]) -> Contribution:
-    """Reassemble one contribution from its memos (any order). Raises ProtocolError with a reason code."""
+    """Reassemble one contribution (or conductor line) from its memos (any order). Raises ProtocolError."""
     parts: dict[int, bytes] = {}
     first: Header | None = None
     for memo in memos:
         header, body = parse_memo(memo)
-        if header.kind != KIND_CONTRIBUTION:
+        if header.kind not in (KIND_CONTRIBUTION, KIND_CONDUCTOR):
             raise ProtocolError(ProtocolError.WRONG_KIND, str(header.kind))
         first = first or header
-        if (header.contrib_id, header.total) != (first.contrib_id, first.total):
+        if (header.contrib_id, header.total, header.kind) != (first.contrib_id, first.total, first.kind):
             raise ProtocolError(ProtocolError.MIXED_CHUNKS)
         if header.seq in parts:
             raise ProtocolError(ProtocolError.DUPLICATE_CHUNK, str(header.seq))
@@ -184,7 +194,7 @@ def decode_contribution(memos: Iterable[bytes]) -> Contribution:
     if reply_len:
         candidate = rest[len(stream) + 1:].decode("ascii", "replace")
         reply_addr = candidate if address.is_unified_address(candidate) else None
-    return Contribution(first.contrib_id, stream[0], stream[1:], reply_addr, reply_len > 0)
+    return Contribution(first.contrib_id, stream[0], stream[1:], reply_addr, reply_len > 0, first.kind)
 
 
 def encode_reply(contrib_id: int, data: bytes, codec: int = CODEC_TEXT) -> bytes:

@@ -64,10 +64,11 @@ def payment_uri(choir: Choir, memos: tuple[bytes, ...] | list[bytes]) -> str:
 
 
 def make_offering(text: str, voice: Voice, reply_addr: str | None = None, contrib_id: int | None = None,
-                  as_text: bool = False) -> Offering:
+                  as_text: bool = False, conductor: bool = False) -> Offering:
     if as_text:   # phone-style text offering (voiced by the renderer); kept for tests and seeds
         codec, frames = protocol.CODEC_TEXT, text.encode("utf-8")
     else:
         codec, frames = protocol.CODEC_C2_700C, voice.frames(text)
-    cid, memos = protocol.encode_contribution(frames, codec, reply_addr, contrib_id)
+    kind = protocol.KIND_CONDUCTOR if conductor else protocol.KIND_CONTRIBUTION
+    cid, memos = protocol.encode_contribution(frames, codec, reply_addr, contrib_id, kind=kind)
     return Offering(cid, codec, frames, tuple(m.rstrip(b"\0") for m in memos), reply_addr is not None)

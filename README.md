@@ -101,9 +101,9 @@ On stage, everyone in the room can see who just walked up to the kiosk. That is 
 
 - **Two versioned hashes.** `score_hash` covers chain data only and does not depend on any decoder. `render_hash` = `score_hash` + PCM from the pinned decoder + composer version; this is what two laptops compare.
 - **Pinned decoder.** Codec2 tag `1.2.0` (commit `06d4c11e`), built from source, static, `-ffp-contract=off`. The renderer never uses a system copy.
-- **No float drift, no randomness.** Mixing uses integer arithmetic; there is no RNG and no `Math.random()`. Composer `choir/1`: each voice starts when the previous one is 5/8 through; pan (17 steps) and pitch layer (1, 15/16, 17/16 by integer resampling) come from `contrib_id`; voices sum in int32 and clip to int16 stereo at 8 kHz.
+- **No float drift, no randomness.** Mixing uses integer arithmetic; there is no RNG and no `Math.random()`. Composer `choir/2`: each voice starts when the previous one is 5/8 through; pan (17 steps) and pitch layer (1, 15/16, 17/16 by integer resampling) come from `contrib_id`; the god's own lines are centered with a deeper layer (3/4); voices sum in int32 and clip to int16 stereo at 8 kHz.
 - **Pinned voice.** Text offerings are spoken by espeak-ng 1.51 (voice `en`, speed 130, pitch 30), resampled by sox **without dither** (`-D`; sox's default dither is random noise), then sent through Codec2 700C and the pinned decoder, so every voice in the mix is the same ghost. Its fingerprint is reported next to the decoder's.
-- **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`spikes/g6_render.py`). The product renderer reproduces that value and, at the same height, `score_hash` (`score/1`) `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a` and `render_hash` (`render/1`, composer `choir/1`) `4b72400946b68f2e7547d4422408a7a2a552196de99f93073b860825972dc136`; `score.json` and `mix.wav` are byte-identical from the view-only and the full-key wallet.
+- **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`spikes/g6_render.py`). The product renderer reproduces that value and, at the same height, `score_hash` (`score/1`) `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a` and `render_hash` (`render/1`, composer `choir/2`) `9b6c1b9d3b61830b82848179e323276cb95b43cd90558c99e740d78addba2bc0`; `score.json` and `mix.wav` are byte-identical from the view-only and the full-key wallet.
 - **Decoder fingerprint.** The renderer decodes three fixed Codec2 vectors and reports the hash of the result, so a `render_hash` mismatch between two machines can be traced to the decoder build while `score_hash` still agrees.
 
 ## Memo protocol v1
@@ -116,7 +116,7 @@ One offering = one transaction with 1–3 outputs to the god's address, one 512-
 | 1 | 1 | `'G'` magic |
 | 2 | 1 | version = 1 |
 | 3 | 4 | `contrib_id`: random u32, not derived from any key or identity |
-| 7 | 1 | kind: 1 = offering chunk, 2 = reply |
+| 7 | 1 | kind: 1 = offering chunk, 2 = reply, 3 = conductor line (the god's own voice; same body as an offering, authentic only when the transaction spent the choir wallet's own notes) |
 | 8 | 1 | `seq` |
 | 9 | 1 | `total` (≤ 3) |
 | 10 | 2 | `len` of the body in this memo (big-endian) |
@@ -168,7 +168,7 @@ Vertical slice, which must run before any milestone:
 Milestones, each of which may be dropped without breaking the demo:
 
 - [x] Whisper Back: click a limb on the listener page (or `python3 -m renderer whisper <txid>`) → ZIP-321 request / QR to the offering's reply address, read from the wallet database on demand; `python3 -m kiosk inbox` shows whispers that returned
-- [ ] the god's own voice (authenticated conductor lines, a forged voice shown as rejected)
+- [x] the god's own voice: `python3 -m kiosk speak "…" --from <choir wallet>` sends a conductor line (`kind=3`) the choir wallet pays to itself; the renderer accepts it only on outputs that spent the choir's own notes and skips the same memo from anyone else as `forged-conductor` (live: [`d6bcb9f7…`](https://testnet.zcashexplorer.app/transactions/d6bcb9f7f6a704de2dbc928f42e6e2bfa03f20132b4430a95ad3f4a90b3e59a5) accepted, [`b126b3c7…`](https://testnet.zcashexplorer.app/transactions/b126b3c781feaffc40d490716cb8a9d306576730cdccf34d353f47a5b8517312) rejected, block 4,525,280)
 - [ ] phone offerings (QR with the ASCII envelope)
 - [ ] Codec2 in the browser
 - [ ] the Séance: a session where the viewing key stays sealed until the end and is then revealed

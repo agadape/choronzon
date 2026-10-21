@@ -3,6 +3,8 @@
   python3 -m kiosk preview "text" [--wav out.wav]        speak it locally, show memo sizes; nothing is sent
   python3 -m kiosk offer "text" [--reply] [--yes]        send from the open session wallet
   python3 -m kiosk offer "text" --from wallets/test/A    send from a named wallet (operator / seeding; labelled)
+  python3 -m kiosk speak "text" --from wallets/test/B        the god's own voice (choir wallet self-send, kind=3)
+  python3 -m kiosk speak "text" --from wallets/test/A --forge demo forgery: renderers show NOT THE GOD
   python3 -m kiosk session open [--notes 8] [--pool wallets/test/A]
   python3 -m kiosk session status | close
   python3 -m kiosk inbox                                 whispers that returned to this session's wallet
@@ -91,6 +93,26 @@ def cmd_offer(a) -> None:
     print(f"sent. txid {txid}\n{EXPLORER}{txid}\n(the explorer shows only that a shielded transaction exists)")
 
 
+def cmd_speak(a) -> None:
+    """A line in the god's own voice: a kind=3 memo the choir wallet sends to itself (S13 authenticity)."""
+    choir = Choir.load()
+    v = voice()
+    wallet_dir = Path(a.from_wallet)
+    w = Devtool(wallet_dir, wallet_dir.with_suffix(".age"))
+    o = make_offering(a.text, v, None, conductor=True)
+    print(describe(o))
+    w.sync()
+    if a.forge:
+        print(f"FORGERY TEST: sending a conductor-kind memo from the outside wallet {wallet_dir.name}; "
+              f"every renderer must reject it as NOT THE GOD")
+    else:
+        if w.default_address() != choir.address:
+            sys.exit(f"{wallet_dir.name} is not the choir wallet; use --forge to send a deliberate forgery")
+        print("the god speaks: the choir wallet spends its own notes to itself")
+    txid = w.pay(payment_uri(choir, o.memos))
+    print(f"sent. txid {txid}\n{EXPLORER}{txid}")
+
+
 def cmd_session(a) -> None:
     if a.action == "open":
         pool_dir = Path(a.pool)
@@ -134,6 +156,10 @@ def main(argv=None) -> None:
     s.add_argument("--reply", action="store_true", help="embed a fresh one-time reply address")
     s.add_argument("--from", dest="from_wallet", help="send from this wallet dir instead of the session wallet")
     s.add_argument("--yes", action="store_true", help="skip the SEND prompt (scripts, seeding)")
+    s = sub.add_parser("speak", help="a line in the god's own voice (from the choir wallet)")
+    s.add_argument("text")
+    s.add_argument("--from", dest="from_wallet", required=True, help="the choir wallet dir (or an outsider with --forge)")
+    s.add_argument("--forge", action="store_true", help="demo: send a conductor memo from a wallet that is not the god")
     s = sub.add_parser("session")
     s.add_argument("action", choices=["open", "status", "close"])
     s.add_argument("--notes", type=int, default=8)
@@ -141,7 +167,8 @@ def main(argv=None) -> None:
     sub.add_parser("inbox")
     a = p.parse_args(argv)
     try:
-        {"preview": cmd_preview, "offer": cmd_offer, "session": cmd_session, "inbox": cmd_inbox}[a.command](a)
+        {"preview": cmd_preview, "offer": cmd_offer, "speak": cmd_speak, "session": cmd_session,
+         "inbox": cmd_inbox}[a.command](a)
     except DevtoolError as e:
         sys.exit(str(e))
 

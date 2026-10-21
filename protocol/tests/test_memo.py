@@ -198,7 +198,20 @@ def test_wrong_kind():
     _, (contrib,) = wire.encode_contribution(b"hi", wire.CODEC_TEXT, None, CID)
     assert code_of(wire.decode_contribution, [reply]) == PE.WRONG_KIND
     assert code_of(wire.decode_reply, contrib) == PE.WRONG_KIND
-    assert code_of(wire.parse_memo, with_header(contrib, kind=3)) == PE.BAD_HEADER
+    assert code_of(wire.parse_memo, with_header(contrib, kind=4)) == PE.BAD_HEADER
+
+
+def test_conductor_lines_share_the_contribution_body():
+    cid, memos = wire.encode_conductor(b"we are many", wire.CODEC_TEXT, CID)
+    c = wire.decode_contribution([trim(m) for m in memos])
+    assert (c.kind, c.data, c.reply_addr, c.reply_present) == (wire.KIND_CONDUCTOR, b"we are many", None, False)
+    # kinds must not mix inside one contribution
+    _, (plain,) = wire.encode_contribution(b"x", wire.CODEC_TEXT, None, CID)
+    assert code_of(wire.decode_contribution, [with_header(memos[0], total=2), with_header(plain, seq=1, total=2)]) \
+        == PE.MIXED_CHUNKS
+    with pytest.raises(PE) as e:
+        wire.encode_contribution(b"x", wire.CODEC_TEXT, None, CID, kind=wire.KIND_REPLY)
+    assert e.value.code == PE.WRONG_KIND
 
 
 # --- reply address integrity (not covered by the CRC in v1) -------------------------------------------------------

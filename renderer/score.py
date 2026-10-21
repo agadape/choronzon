@@ -16,7 +16,8 @@ from .wallet import Candidate, NotReady
 
 SCORE_FORMAT = "score/1"
 REASON_FLAGGED = "flagged"                  # on the open skip-list: still on chain, never sung
-REASON_OWN_SPEND = "choir-own-spend"        # the choir wallet spent its own notes: conductor channel, not an offering
+REASON_OWN_SPEND = "choir-own-spend"        # the choir wallet spent its own notes without a conductor line
+REASON_FORGED = "forged-conductor"          # a conductor line that did NOT spend the choir's own notes: NOT THE GOD
 REASON_UNSUPPORTED_POOL = "unsupported-pool"
 
 _TXID = re.compile(r"^[0-9a-f]{64}$")
@@ -35,11 +36,15 @@ class Offering:
     has_reply: bool                # a reply address that passes its checksum is embedded (the address is not kept)
     reply_invalid: bool
     raw_memos: tuple[bytes, ...]   # every memo of the tx, zero-padded to 512 = the on-chain plaintext
+    conductor: bool = False        # the god's own voice: a kind=3 line that spent the choir wallet's own notes (S13)
 
     def to_json(self) -> dict:
-        return {"tx": self.txid, "height": self.height, "tx_index": self.tx_index, "action_index": self.action_index,
-                "contrib_id": self.contrib_id, "codec": self.codec, "bytes": len(self.data),
-                "memos": self.memo_count, "has_reply": self.has_reply}
+        d = {"tx": self.txid, "height": self.height, "tx_index": self.tx_index, "action_index": self.action_index,
+             "contrib_id": self.contrib_id, "codec": self.codec, "bytes": len(self.data),
+             "memos": self.memo_count, "has_reply": self.has_reply}
+        if self.conductor:   # key only present for conductor lines: score JSON of older heights is unchanged
+            d["conductor"] = True
+        return d
 
 
 @dataclass(frozen=True)
@@ -91,22 +96,34 @@ def build_score(candidates: list[Candidate], as_of: int, skiplist: frozenset[str
         if c.height > as_of:
             continue
         reason = (REASON_FLAGGED if c.txid in skiplist else
-                  REASON_UNSUPPORTED_POOL if c.pool != "ironwood" else
-                  REASON_OWN_SPEND if c.own_spend else None)
+                  REASON_UNSUPPORTED_POOL if c.pool != "ironwood" else None)
         if reason is None and any(m is None for m in c.memos):
-            pending.append(c.txid)
-            continue
+            if c.own_spend:          # a self-send whose memo this wallet cannot read: never a conductor line here
+                reason = REASON_OWN_SPEND
+            else:
+                pending.append(c.txid)
+                continue
         if reason is None:
             try:
                 d = protocol.decode_contribution([protocol.normalize_memo(m) for m in c.memos if not _is_empty(m)])
             except ProtocolError as e:
+                d = None
                 reason = e.code
+            # Authenticity (S13): the god's voice is a kind=3 line on outputs flagged is_change, i.e. the tx spent
+            # the choir wallet's own notes, which only the spend key can do. Everything else is not the god.
+            if d is not None and c.own_spend and d.kind != protocol.KIND_CONDUCTOR:
+                reason = REASON_OWN_SPEND
+            elif d is not None and not c.own_spend and d.kind == protocol.KIND_CONDUCTOR:
+                reason = REASON_FORGED
+            elif reason and c.own_spend:
+                reason = REASON_OWN_SPEND   # funding / split self-sends carry no v1 memo at all
         if reason:
             skipped.append(Skipped(c.txid, c.height, c.tx_index, reason))
             continue
         offerings.append(Offering(c.txid, c.height, c.tx_index, c.action_index, d.contrib_id, d.codec, d.data,
                                   len(c.memos), d.reply_addr is not None, d.reply_addr_invalid,
-                                  tuple(m.ljust(protocol.MEMO_SIZE, b"\0") for m in c.memos)))
+                                  tuple(m.ljust(protocol.MEMO_SIZE, b"\0") for m in c.memos),
+                                  d.kind == protocol.KIND_CONDUCTOR))
     if pending:
         raise NotReady(f"{len(pending)} tx at or below {as_of} have no memo yet (run enhance)")
     return Score(as_of, tuple(offerings), tuple(skipped))
