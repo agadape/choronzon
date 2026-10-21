@@ -205,7 +205,7 @@ python3 -m renderer whisper <txid> --wallet wallets/test/V            # reply re
 | `config/choir.json` | The god's public address and the fixed offering amount (never its viewing key) |
 | `config/` | `brand.json` (name and copy), `skiplist.txt` (flagged offerings: still on chain, never sung) |
 | `scripts/` | `setup.sh`, `smoke.sh`, `demo.sh` (end-to-end rehearsal), `gen_readme.py` |
-| `docs/` | This template, [lore](docs/lore.md), [demo script](docs/demo-script.md), [fresh clone](docs/fresh-clone.md), [evidence index](docs/evidence-index.md), [privacy review](docs/privacy-review.md), [failure drills](docs/failure-drills.md), [submission checklist](docs/submission-checklist.md), concept and critical review |
+| `docs/` | This template, [lore](docs/lore.md), [demo script](docs/demo-script.md), [fresh clone](docs/fresh-clone.md), [evidence index](docs/evidence-index.md), [privacy review](docs/privacy-review.md), [failure drills](docs/failure-drills.md), [network fallback](docs/network-fallback.md), [visual direction](docs/visual-direction.md), [submission checklist](docs/submission-checklist.md), concept and critical review |
 | `spikes/`, `SPIKE_LOG.md`, `ai/`, `radio/` | Research and on-chain evidence from 13–20 Oct, kept as it was |
 
 ## Evidence (Zcash testnet, NU7)
@@ -240,7 +240,7 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 - The sending wallet remembers: `sent_notes` holds the memo and the destination. The kiosk wallet is wiped after the session for that reason; a phone user's own wallet keeps what they sent.
 - While a transaction is built, the memo sits on the wallet tool's command line for a few seconds, visible to other local processes on the kiosk. Fixing this needs a change in the wallet tool, not done in the hackathon window.
 - TTS and Codec2 use a temporary directory per call, deleted on return; a hardened kiosk points `TMPDIR` at a tmpfs.
-- lightwalletd sees the kiosk's and every renderer's IP and which transactions were fetched. Tor mode exists in the wallet tool and is off by default.
+- lightwalletd sees the kiosk's and every renderer's IP and which transactions were fetched. The wallet tool's Tor mode works against the same server (sync in ~7 s) and is off by default. On 21 Oct `testnet.zec.rocks` was the only public lightwalletd on the NU7 testnet chain, so there is no second server to fall back to ([docs/network-fallback.md](docs/network-fallback.md)).
 - Reply addresses sit in the memo, so every key holder can write to them. The kiosk shows whispers; it does not trust them.
 - Everything a Watcher renders is public, forever; the order inside a block is the miner's, not the sender's. The kiosk says so before every send.
 - On stage the room sees who walked up to the kiosk. That is theatre; a random send delay for public deployments is on the roadmap.
