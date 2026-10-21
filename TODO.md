@@ -48,7 +48,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 ## Day 6 (25 Oct) — milestones (each may be dropped)  [~12 h]
 - [x] **M1 A** Conductor voice: self-send detection (S13) → "the god speaks" layer; forged voice shown as rejected (protocol `kind=3`, `renderer/score.py` conductor vs `forged-conductor`, composer `choir/2`; `python3 -m kiosk speak`; live 21 Oct: god `d6bcb9f7…` accepted, forgery `b126b3c7…` rejected, block 4525280; web "NOT THE GOD" visual still open)
 - [x] **M2 A/C** Whisper Back: "whisper back" button → ZIP-321 URI/QR to the reply address; reply inbox view for demo wallet (`renderer/whisper.py`, `python3 -m renderer whisper`, web limb click → QR, `kiosk inbox`; live loop 21 Oct: offering `8d02a6b0…` from the ephemeral wallet → L's reply `143f91ee…` → inbox matched in ~80 s, V sees 0)
-- [ ] **M3 C** Phone contributions: QR with ASCII envelope; test on Zingo again
+- [x] **M3 C** Phone contributions: QR with ASCII envelope (`python3 -m kiosk qr "text" [--reply ua] [--png]`; envelope path proven end-to-end with the product code by paying the QR's URI from wallet L: `ebc5bcad…`). Still to do: scan the same QR with Zingo on a real phone (user)
 - [ ] **M4 B** Codec2 in browser (`@uimaxbai/ffmpeg-core-codec2` or skip)
 - [ ] **M5 C** Séance format: viewing key hidden during session, revealed at the end as the climax
 

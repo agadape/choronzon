@@ -169,7 +169,7 @@ Milestones, each of which may be dropped without breaking the demo:
 
 - [x] Whisper Back: click a limb on the listener page (or `python3 -m renderer whisper <txid>`) → ZIP-321 request / QR to the offering's reply address, read from the wallet database on demand; `python3 -m kiosk inbox` shows whispers that returned
 - [x] the god's own voice: `python3 -m kiosk speak "…" --from <choir wallet>` sends a conductor line (`kind=3`) the choir wallet pays to itself; the renderer accepts it only on outputs that spent the choir's own notes and skips the same memo from anyone else as `forged-conductor` (live: [`d6bcb9f7…`](https://testnet.zcashexplorer.app/transactions/d6bcb9f7f6a704de2dbc928f42e6e2bfa03f20132b4430a95ad3f4a90b3e59a5) accepted, [`b126b3c7…`](https://testnet.zcashexplorer.app/transactions/b126b3c781feaffc40d490716cb8a9d306576730cdccf34d353f47a5b8517312) rejected, block 4,525,280)
-- [ ] phone offerings (QR with the ASCII envelope)
+- [x] phone offerings: `python3 -m kiosk qr "text" [--reply <your address>] --png qr.png` makes a ZIP-321 QR whose memo is the ASCII envelope, so a mobile wallet sends it intact; the same request paid from a laptop wallet landed as [`ebc5bcad…`](https://testnet.zcashexplorer.app/transactions/ebc5bcadf47feb1d7f1fcd0558c91c3f43ef9be99101365b1341ac1427b114cc) and was voiced by the renderer
 - [ ] Codec2 in the browser
 - [ ] the Séance: a session where the viewing key stays sealed until the end and is then revealed
 

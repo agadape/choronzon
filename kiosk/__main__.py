@@ -3,6 +3,7 @@
   python3 -m kiosk preview "text" [--wav out.wav]        speak it locally, show memo sizes; nothing is sent
   python3 -m kiosk offer "text" [--reply] [--yes]        send from the open session wallet
   python3 -m kiosk offer "text" --from wallets/test/A    send from a named wallet (operator / seeding; labelled)
+  python3 -m kiosk qr "text" [--reply <ua>] [--png qr.png]    phone offering: ZIP-321 QR (ASCII envelope) for Zingo etc.
   python3 -m kiosk speak "text" --from wallets/test/B        the god's own voice (choir wallet self-send, kind=3)
   python3 -m kiosk speak "text" --from wallets/test/A --forge demo forgery: renderers show NOT THE GOD
   python3 -m kiosk session open [--notes 8] [--pool wallets/test/A]
@@ -18,6 +19,7 @@ import json
 import sys
 from pathlib import Path
 
+import protocol
 from renderer.decoder import Decoder
 from renderer.tts import Voice
 
@@ -38,7 +40,9 @@ def voice() -> Voice:
 
 
 def describe(offering) -> str:
-    return (f"ghost voice: {offering.seconds:.1f} s, {len(offering.frames)} bytes -> {len(offering.memos)} memo(s) "
+    what = (f"ghost voice: {offering.seconds:.1f} s, {len(offering.frames)} bytes"
+            if offering.codec != protocol.CODEC_TEXT else f"text: {len(offering.frames)} bytes (voiced by every renderer)")
+    return (f"{what} -> {len(offering.memos)} memo(s) "
             f"[{', '.join(str(len(m)) for m in offering.memos)} bytes], contrib_id {offering.contrib_id}, "
             f"reply address {'embedded' if offering.has_reply else 'none'}")
 
@@ -91,6 +95,29 @@ def cmd_offer(a) -> None:
         o, txid = s.offer(a.text, v, choir, a.reply)
         print(describe(o))
     print(f"sent. txid {txid}\n{EXPLORER}{txid}\n(the explorer shows only that a shielded transaction exists)")
+
+
+def cmd_qr(a) -> None:
+    """Phone offering: a ZIP-321 request with the ASCII envelope, as a QR code for the contributor's own wallet.
+
+    Default is a text offering (voiced by the renderer): short, one memo, a scannable QR. --voice sends the ghost
+    voice instead when it fits. The phone's wallet keeps what it sent; the kiosk keeps nothing.
+    """
+    choir = Choir.load()
+    if a.reply and not protocol.is_unified_address(a.reply):
+        sys.exit("reply address does not parse as a unified address")
+    o = make_offering(a.text, voice() if a.voice else None, a.reply, as_text=not a.voice, phone=True)
+    uri = payment_uri(choir, o.memos)
+    print(describe(o) + f"; ASCII envelope, URI {len(uri)} chars")
+    if a.png:
+        from renderer.whisper import qr_png
+        qr_png(uri, a.png)
+        print(f"wrote {a.png}: scan it with a testnet wallet (Zingo!) and send; the kiosk stores nothing")
+    else:
+        from renderer.whisper import qr_ascii
+        print(qr_ascii(uri))
+    if a.show_uri:
+        print(uri)
 
 
 def cmd_speak(a) -> None:
@@ -156,6 +183,12 @@ def main(argv=None) -> None:
     s.add_argument("--reply", action="store_true", help="embed a fresh one-time reply address")
     s.add_argument("--from", dest="from_wallet", help="send from this wallet dir instead of the session wallet")
     s.add_argument("--yes", action="store_true", help="skip the SEND prompt (scripts, seeding)")
+    s = sub.add_parser("qr", help="phone offering: ZIP-321 QR with the ASCII envelope")
+    s.add_argument("text")
+    s.add_argument("--reply", help="the contributor's own reply address (a fresh one from their wallet)")
+    s.add_argument("--voice", action="store_true", help="send the ghost voice instead of text (must fit the QR)")
+    s.add_argument("--png", help="write the QR as PNG to this path (default: ASCII in the terminal)")
+    s.add_argument("--show-uri", action="store_true")
     s = sub.add_parser("speak", help="a line in the god's own voice (from the choir wallet)")
     s.add_argument("text")
     s.add_argument("--from", dest="from_wallet", required=True, help="the choir wallet dir (or an outsider with --forge)")
@@ -167,7 +200,7 @@ def main(argv=None) -> None:
     sub.add_parser("inbox")
     a = p.parse_args(argv)
     try:
-        {"preview": cmd_preview, "offer": cmd_offer, "speak": cmd_speak, "session": cmd_session,
+        {"preview": cmd_preview, "offer": cmd_offer, "qr": cmd_qr, "speak": cmd_speak, "session": cmd_session,
          "inbox": cmd_inbox}[a.command](a)
     except DevtoolError as e:
         sys.exit(str(e))

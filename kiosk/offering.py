@@ -64,11 +64,15 @@ def payment_uri(choir: Choir, memos: tuple[bytes, ...] | list[bytes]) -> str:
 
 
 def make_offering(text: str, voice: Voice, reply_addr: str | None = None, contrib_id: int | None = None,
-                  as_text: bool = False, conductor: bool = False) -> Offering:
-    if as_text:   # phone-style text offering (voiced by the renderer); kept for tests and seeds
+                  as_text: bool = False, conductor: bool = False, phone: bool = False) -> Offering:
+    """`phone`: wrap each memo in the ASCII envelope (GC1: + base64url) so a mobile wallet sends it intact."""
+    if as_text:   # text offering, voiced by the renderer (the phone path's default: short, one memo)
         codec, frames = protocol.CODEC_TEXT, text.encode("utf-8")
     else:
         codec, frames = protocol.CODEC_C2_700C, voice.frames(text)
     kind = protocol.KIND_CONDUCTOR if conductor else protocol.KIND_CONTRIBUTION
-    cid, memos = protocol.encode_contribution(frames, codec, reply_addr, contrib_id, kind=kind)
+    if phone:
+        cid, memos = protocol.encode_contribution_ascii(frames, codec, reply_addr, contrib_id)
+    else:
+        cid, memos = protocol.encode_contribution(frames, codec, reply_addr, contrib_id, kind=kind)
     return Offering(cid, codec, frames, tuple(m.rstrip(b"\0") for m in memos), reply_addr is not None)

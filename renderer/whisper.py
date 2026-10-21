@@ -67,6 +67,11 @@ def qr_ascii(data: str) -> str:
     return buf.getvalue()
 
 
+def qr_png(data: str, path: str) -> None:
+    import qrcode
+    qrcode.make(data, border=2).save(path)
+
+
 def qr_svg(data: str) -> str:
     import qrcode
     from qrcode.image.svg import SvgPathImage

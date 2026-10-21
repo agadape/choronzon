@@ -61,6 +61,18 @@ def test_multi_memo_uri_indexes_and_fixed_amounts():
     assert protocol.decode_contribution(memos).reply_addr == CHOIR_ADDR
 
 
+def test_phone_offering_is_all_ascii_and_decodes_through_normalize():
+    o = offering.make_offering("typed on a phone", StubVoice(), CHOIR_ADDR, contrib_id=5, as_text=True, phone=True)
+    assert len(o.memos) == 1 and o.memos[0].startswith(b"GC1:") and all(b < 0x80 for b in o.memos[0])
+    q = parse_uri(offering.payment_uri(CHOIR, o.memos))
+    import base64
+    memo = base64.urlsafe_b64decode(q["memo"] + "=" * (-len(q["memo"]) % 4))
+    mangled = memo.decode("latin-1").encode("utf-8")   # a wallet that re-encodes as UTF-8 changes nothing: ASCII
+    assert mangled == memo
+    c = protocol.decode_contribution([protocol.normalize_memo(memo)])
+    assert (c.contrib_id, c.codec, c.data, c.reply_addr) == (5, protocol.CODEC_TEXT, b"typed on a phone", CHOIR_ADDR)
+
+
 def test_text_mode_for_seeds():
     o = offering.make_offering("typed", StubVoice(), None, as_text=True)
     assert o.codec == protocol.CODEC_TEXT and o.frames == b"typed" and o.seconds == 0.0
