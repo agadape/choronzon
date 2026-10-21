@@ -32,6 +32,29 @@ Scope: the product code (`protocol/`, `renderer/`, `kiosk/`, `web/`), its output
    against the chain regression at 4,522,002; the voice fingerprint is unchanged).
 4. Control characters in text are mapped to spaces before TTS so stdin and argv inputs stay equivalent.
 
+## Second pass (read-only code review, 21 Oct evening)
+
+An independent review of the product code found **one DQ-class bug**, fixed the same evening (`9a61d6e`):
+
+- `python3 -m web` served `/out/<path>` without confining the path: `/out//etc/hostname` and `/out/../wallets/…`
+  returned any readable file, including the kiosk session wallet's `data.sqlite` (whose `sent_notes` hold the
+  secrets sent from it) and `.age` identities, and the default bind was `0.0.0.0`. Now every path is decoded,
+  resolved and confined to `web/` or `out/` (404 otherwise, verified with absolute, `..` and `%2e%2e` forms), the
+  default bind is `127.0.0.1`, `Access-Control-Allow-Origin: *` is sent only for `out/score.json`, `out/mix.wav`
+  and `out/render_hash`, kiosk POSTs need `Content-Type: application/json` and a same-host `Origin`, `/eye` is 404
+  until the operator opens it from loopback, and remote `score.json` fields on the apparition page are validated
+  and rendered as text. Tests in `web/tests/`.
+- Operational consequence: the kiosk session wallet that existed while the server was LAN-reachable is closed after
+  the rehearsals and a fresh one is opened before the show.
+- The reviewer also confirmed, with the SDK source, that `is_change` is set only for transactions that spent the
+  account's own notes (`zcash_client_backend` `scanning.rs`), so a conductor line cannot be spoofed by paying the
+  choir's internal address from outside: the S13 claim has a code basis.
+- Protocol: the reply-block split search can mis-split a memo only with probability about 2⁻³³ per message, and
+  only the sender's own message; no cross-message effect. Renderer and composer: no float, RNG, locale or byte-order
+  dependence found.
+- Robustness items (not privacy): output write order, daemon resilience, offer locking, CLI EOF, terminal escape
+  sequences in `inbox`, `setup.sh` patch check. Tracked with the rehearsals work.
+
 ## Known residual exposure (say it, do not hide it)
 
 - **The sending wallet remembers.** `sent_notes` holds the plaintext memo and the destination; the kiosk wallet is
