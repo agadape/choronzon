@@ -24,3 +24,38 @@ Negative results worth citing in the README's honesty section:
 - NEAR Intents ZEC deposit address is **transparent** (`t1Pq7Ja4…`), S7c — why we stayed inside the shielded pool.
 - Local 3B-LLM style rewriting leaves 76.7% attribution accuracy (TOPENG, S14) — why we do **not** claim content anonymity.
 - Phone wallets treat ZIP-321 memos as text (T3) — why the phone path uses the ASCII envelope.
+
+## Product build (21 Oct 2026)
+
+Same network, same explorer URL scheme. **Explorer status on 21 Oct:** `testnet.zcashexplorer.app` answered
+"Transaction Not Found" for every txid checked (`91621cb4…`, `143f91ee…`, `9ecb9c7e…`, and the older `22b168c9…`,
+`3b67fb1b…`, `a71ccb5d…`), and its block 4,487,269 (hash `0141cdbb…`, dated 21 Oct 12:12 UTC) is not the block
+4,487,269 that `testnet.zec.rocks` serves (hash `00002a1f…`, 11 Oct): the explorer follows a different testnet chain.
+The links below are kept for when it is back on the NU7 chain; until then the proof that a shielded transaction exists is
+the public-key wallet V (`list-tx` after `sync`) and the renderer log. Pre-show check: `…/blocks/4525215` must show hash
+`000026af4552065fbbbd94b5c9a0be7914fc402733c53c6f464921b9817b72ac`.
+
+| Claim | Txid | Block | What it proves | Local evidence |
+|---|---|---|---|---|
+| First kiosk offering: text → local ghost voice → Codec2 → v1 memos → `wallet pay`; heard by the public-key renderer ~100 s after sending | `91621cb429bd0345f740fb678a38005bb6bc38fdfdea61fd82894755666f7e54` | 4,525,215 | the product's send path end to end | `kiosk/README.md`, TODO Day 4, README "Status" |
+| **Whisper Back with the product code:** offering with a one-time reply address from the **ephemeral kiosk session wallet** | `8d02a6b0c1ab00c178ae4e99f0f5c432754307b74ac89ba6ded3d0f4d5b5a10a` | 4,525,242 | the kiosk embeds a reply address; `score.json` carries only `has_reply` | `kiosk/README.md`, TODO M2, `docs/privacy-review.md` |
+| **Whisper Back:** direct shielded reply from listener L, matched by `contrib_id` in `kiosk inbox` ~80 s later; V sees 0 of it | `143f91eef5430c271eb1be58f8a029e742cf9a1758b7574276841dabca902dbd` | ~4,525,245 | replies travel directly between two wallets, never through us | `renderer/whisper.py`, TODO M2 |
+| Conductor line (protocol `kind=3`) paid by the god's wallet B to itself → accepted as the god's own voice | `d6bcb9f7f6a704de2dbc928f42e6e2bfa03f20132b4430a95ad3f4a90b3e59a5` | 4,525,280 | authenticity from the full viewing key alone (`is_change`) | TODO M1, `renderer/score.py` |
+| The same `kind=3` memo sent from outside wallet A → skipped `forged-conductor` (NOT THE GOD) | `b126b3c781feaffc40d490716cb8a9d306576730cdccf34d353f47a5b8517312` | 4,525,280 | the god's voice cannot be forged; the tx stays on chain, listed under `skipped` | TODO M1, `out/score.json` |
+| Phone path with the product code: `kiosk qr` URI (`GC1:` ASCII envelope) paid from L as a phone stand-in → accepted and voiced | `ebc5bcadf47feb1d7f1fcd0558c91c3f43ef9be99101365b1341ac1427b114cc` | 4,525,294 | envelope round-trip end to end (real Zingo scan still pending) | TODO M3, `kiosk/README.md` |
+| Failure drill 3: v1 memo with a flipped CRC → `skip … reason=crc-mismatch`, offering count unchanged | `a84adbaf35cf3688b02db9e5f23c654e0e684e785a24dde41fb75a836443dcd8` | 4,525,319 | malformed data never stops the render | `docs/failure-drills.md` #3 |
+| Failure drill 4: identical memo (`contrib_id` 777) paid twice from A → both kept as separate offerings; the one sent second renders first | `11f9bd7384c7b304d29ab8c7c41c9ff5bbb5bc0db39a5f7494fd1a2842f1c4d1` · `103dec1cbd777f8ef036c1e2799cc6b4a6b4149b8562ebba33f558157e16122d` | 4,525,321 | unique key = txid; **miner order inside a block, not send order** | `docs/failure-drills.md` #4 |
+| Rehearsal 1 (`scripts/demo.sh`): god line heard 86 s after sending; forgery refused 7 s after that | god `db90b287e60895dc18c1aa1805f6f27cbe6e78a4f00b8d78ed2396b78b854eb2` · forgery `87f8a141dca92fce2c1754cc985d2997e64073f0714aef3476feff35eb6a9f15` | 4,525,337 | the beat runs unattended; the run also found drill 8 (expired tx, fixed: session syncs before `pay`) | `logs/demo_20261021T110109Z.log`, `docs/failure-drills.md` #8 |
+| Rehearsal 2: live offering with reply address from the session wallet, heard after 226 s | `fb1d3bb635ff4151c523edc68ad6a1c634aade1ea5ac5353236a81d2e2392838` | 4,525,350 | the measured "40–230 s" the demo script plans around | `logs/demo_20261021T110459Z.log` |
+| Rehearsal 2: L's whisper to that offering, received by `kiosk inbox` 216 s after sending | `9ecb9c7eea329a888747e4b76d66b5357553092d33e76ffa2b48fbbdc1c3ae6f` | — (height not logged; between 4,525,351 and ~4,525,360) | the "80–220 s" whisper latency | same log |
+| Rehearsal 2: forgery from A refused 47 s after it was seen (the god line failed to send in this run: B's note was not yet spendable) | `7f0231af5e9c116c8d718ad529c5f657ae2cd44da7f196aff5509a9368bb0988` | 4,525,371 | refusal path again; keep B funded with spendable notes | same log |
+
+Hash anchors (the regression in `renderer/tests/test_chain_regression.py` pins the first two; `as_of` is inside every hash):
+
+| Anchor | Height | Value | What it proves | Local evidence |
+|---|---|---|---|---|
+| `score/1` | 4,522,002 | `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a` | chain-only score, decoder-independent | `scripts/smoke.sh`, pytest |
+| `render/1` (composer `choir/2`) | 4,522,002 | `9b6c1b9d3b61830b82848179e323276cb95b43cd90558c99e740d78addba2bc0` | score + pinned-decoder PCM + composer version | same |
+| Watcher from the key alone (`renderer summon`, fresh wallet, 28 s) == V | 4,525,294 | `8540a0a57d6f80d409d4ed5948789f64e524fc08252a15ea3bd904dd58fa1af5` | the second-laptop proof without a second laptop | TODO Day 5 gate |
+| Rehearsal 1 summon == V (14 offerings, 7 skipped), `mix.wav` byte-identical | 4,525,338 | `7dc6f42ac61c13b6f6017fb2f934858a9d73cb7f6e748dc88e2b08438427081e` | same, unattended | `logs/demo_20261021T110109Z.log` |
+| Rehearsal 2 summon == V (15 offerings, 8 skipped), `mix.wav` byte-identical | 4,525,371 | `bb2cf2dcb69bc7decaa454c7dada7055069ec6e53068092e5b76fe3be6c72cc9` | same | `logs/demo_20261021T110459Z.log` |
