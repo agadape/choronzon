@@ -34,10 +34,10 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [ ] **C** Collect 10–15 seed "secrets" (original, safe to publish) and pre-send them so the god is never empty
 
 ## Day 4 (23 Oct) — kiosk (sender)  [~12 h]
-- [ ] **A** Kiosk CLI/web: text → TTS → Codec2 → chunk → `pay` from an **ephemeral** wallet funded from the pool; wipe wallet dir after session; never store raw recordings
-- [ ] **A** Note pool script: split N×0.002 from the funding wallet; monitor spendable count
-- [ ] **A** Optional reply address per contribution (`generate-address`), stored nowhere after sending
-- [ ] **C** Kiosk UI copy: 3-layer privacy statement shown **before** send; content warning (names/places identify you)
+- [x] **A** Kiosk CLI: text → TTS → Codec2 → chunk → `pay` from an **ephemeral** wallet funded from the pool; wipe wallet dir after session; never store raw recordings (`python3 -m kiosk`; live tx `91621cb4…` @4525215 from wallet A; web UI = Day 5/6)
+- [x] **A** Note pool script: split N×0.002 from the funding wallet; monitor spendable count (`kiosk session open --notes N` / `session status`)
+- [x] **A** Optional reply address per contribution (`generate-address`), stored nowhere after sending (`kiosk offer --reply`; only `contrib_id → txid` kept in the session's `state.json` for `inbox`)
+- [x] **C** Kiosk UI copy: 3-layer privacy statement shown **before** send; content warning (names/places identify you) (`kiosk/copy.py`, §6 wording, tested)
 - [ ] **C** Run the 10-person test from the critical review §9 (real secret vs joke; "still want to send?" after permanence warning)
 
 ## Day 5 (24 Oct) — God visual + vertical slice complete  [~12 h]

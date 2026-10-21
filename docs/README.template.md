@@ -158,7 +158,7 @@ Vertical slice, which must run before any milestone:
 - [x] Protocol package + tests (every malformed-memo case)
 - [x] Renderer daemon on a view-only wallet: `score.json`, `score_hash`, skip log
 - [x] Offline composer: pinned decoder, local voice for text offerings, integer mix, `render_hash` + `mix.wav`
-- [ ] Kiosk: text → local TTS → Codec2 → shielded send from an ephemeral wallet
+- [x] Kiosk: text → local TTS → Codec2 → shielded send from an ephemeral wallet (`python3 -m kiosk`; first live kiosk offering: [`91621cb4…`](https://testnet.zcashexplorer.app/transactions/91621cb429bd0345f740fb678a38005bb6bc38fdfdea61fd82894755666f7e54), block 4,525,215, heard by the public-key renderer ~100 s after sending)
 - [ ] Creature (Canvas 2D) + playback of the mixed buffer
 - [ ] Gate: a live offering → chain → renderer → sound + creature → a second laptop prints the same hash
 
@@ -186,7 +186,9 @@ python3 -m renderer daemon --wallet wallets/test/V                    # sync -> 
 |---|---|
 | `protocol/` | Memo wire format v1: binary memos, phone envelope, readable phone replies, reply-address checksum (+ tests) |
 | `renderer/` | View-only renderer and daemon: canonical score, `score_hash`, `render_hash`, pinned-decoder wrapper (+ tests) |
-| `kiosk/`, `web/` | Sender kiosk and listener page with the creature (in progress) |
+| `kiosk/` | Sender kiosk CLI: preview, ephemeral session wallet + note pool, offer, inbox (+ tests) |
+| `web/` | Listener page with the creature (in progress) |
+| `config/choir.json` | The god's public address and the fixed offering amount (never its viewing key) |
 | `config/` | `brand.json` (name and copy), `skiplist.txt` (flagged offerings: still on chain, never sung) |
 | `scripts/` | `setup.sh`, `smoke.sh`, `gen_readme.py` |
 | `spikes/`, `SPIKE_LOG.md`, `docs/`, `ai/`, `radio/` | Research and on-chain evidence from 13–20 Oct, kept as it was |
