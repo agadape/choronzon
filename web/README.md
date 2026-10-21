@@ -16,3 +16,16 @@ python3 -m web --port 8765                            # http://localhost:8765/ (
 - The page shows `render_hash` and `score_hash` so two laptops can be compared on screen, and whether the decoder and
   voice match the pinned builds. It polls `out/score.json` every 5 s and regrows when the hash changes.
 - The server exposes only `web/`, `config/brand.json` and the `out/` directory; paths outside are refused.
+
+## Demo pages
+
+- **Séance** `http://localhost:8765/?seance`: the body grows, but the hashes stay sealed. "open the eye" (or the
+  `E` key) runs a thin aperture across the body over 6 s, then shows THE EYE IS OPEN with the published key if the
+  server was started with `--key-file KEY --birthday H` (the file written by `kiosk reveal --to KEY`; served at
+  `/eye`). Without a key file the page reveals the hashes only.
+- **Two evocations** `http://localhost:8765/apparition.html?right=http://<other-laptop>:8765/out/score.json`:
+  left = this machine's score, right = the other machine's (its server sends `Access-Control-Allow-Origin: *`).
+  Both bodies are grown from their own `score.json`; the real `render_hash` values are compared, revealed in
+  synchronised blocks, and on a match thin lines join the corresponding chambers, the divider fades and the page
+  goes still: TWO EVOCATIONS. ONE GOD. A mismatch stops at the first differing block in the anomaly colour.
+  Without `?right=` it compares the page with itself and says so.

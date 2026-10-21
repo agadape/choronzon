@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>two evocations</title>
+<style>
+  :root { color-scheme: dark; --void: #171916; --bone: #E4DFD0; --ash: #777F79; --anomaly: #FF6338; }
+  html, body { margin: 0; height: 100%; background: var(--void); color: var(--bone);
+               font: 14px/1.45 ui-monospace, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+  #stage { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+  .side { position: relative; display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
+  .side canvas { width: 100%; height: 100%; display: block; }
+  .side header, .side footer { padding: 14px 18px; display: grid; gap: 4px; }
+  .k { color: var(--ash); letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
+  .src { color: var(--ash); font-size: 11px; word-break: break-all; }
+  .hash { word-break: break-all; letter-spacing: 0.06em; font-size: 13px; }
+  .hash span { color: var(--ash); transition: color 0.4s; }
+  .hash span.lit { color: var(--bone); }
+  .hash span.bad { color: var(--anomaly); }
+  #lines { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; }
+  #divider { position: fixed; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--ash); opacity: 0.6;
+             transition: opacity 2s; }
+  #verdict { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 10px 22px;
+             background: var(--void); letter-spacing: 0.3em; font-size: 15px; opacity: 0; transition: opacity 2s;
+             white-space: nowrap; }
+  #verdict.on { opacity: 1; }
+  #verdict.bad { color: var(--anomaly); }
+  h1 { margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.12em; }
+  #name { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="side" id="left">
+    <header><span class="k">this machine</span><span class="src" id="left_src"></span></header>
+    <canvas id="left_canvas"></canvas>
+    <footer><span class="k">render_hash</span><div class="hash" id="left_hash">waiting for an evocation</div></footer>
+  </div>
+  <div class="side" id="right">
+    <header><span class="k">the other machine, from the key alone</span><span class="src" id="right_src"></span></header>
+    <canvas id="right_canvas"></canvas>
+    <footer><span class="k">render_hash</span><div class="hash" id="right_hash">waiting for an evocation</div></footer>
+  </div>
+</div>
+<div id="divider"></div>
+<canvas id="lines"></canvas>
+<div id="verdict"></div>
+<script>
+  for (const f of ["creature.js", "apparition.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
+</script>
+</body>
+</html>

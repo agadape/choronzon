@@ -147,12 +147,36 @@ function draw(ctx, body, t, W, H, opts = {}) {
   if (!isFinite(scale) || scale <= 0) scale = dpr;
   const ox = W / 2 - ((minX + maxX) / 2) * scale, oy = (top + bottom) / 2 - ((minY + maxY) / 2) * scale;
   const X = (x) => ox + x * scale, Y = (y) => oy + y * scale;
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
-  const sec = t >= 0 ? t / 8000 : 0;
-
-  // --- the central membrane: nearly nothing before the first offering, a continuous body after -----------------
   const alive = body.count > 0;
   const sp = spine, w0 = alive ? w0b : 12;
+  body.scale = scale;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const sec = t >= 0 ? t / 8000 : 0;
+  // the Eye opens: a thin aperture widens across the body (opts.aperture 0..1); outside it the body is only a trace
+  ctx.save();
+  if (opts.aperture !== undefined && opts.aperture < 1) {
+    const cy = (top + bottom) / 2, half = Math.max(2 * dpr, (bottom - top) * 0.6 * opts.aperture);
+    // the sealed body, barely there: drawBody manages its own alpha, so dim it through the colours instead
+    const dim = { ...T, bone: "#2c2e2a", ash: "#232522" };
+    drawBody(ctx, body, t, W, H, dim, dpr, X, Y, w0, sp, sec, { ...opts, forgedAge: () => 99 });
+    ctx.beginPath(); ctx.rect(0, cy - half, W, 2 * half); ctx.clip();
+    ctx.fillStyle = T.void; ctx.fillRect(0, cy - half, W, 2 * half);
+    drawBody(ctx, body, t, W, H, T, dpr, X, Y, w0, sp, sec, opts);
+    ctx.restore();
+    ctx.strokeStyle = T.bone; ctx.globalAlpha = 0.5; ctx.lineWidth = 1 * dpr;
+    ctx.beginPath(); ctx.moveTo(0, cy - half); ctx.lineTo(W, cy - half); ctx.moveTo(0, cy + half); ctx.lineTo(W, cy + half); ctx.stroke();
+    ctx.globalAlpha = 1;
+    body.forgedScreen = null;
+    return;
+  }
+  ctx.restore();
+  drawBody(ctx, body, t, W, H, T, dpr, X, Y, w0, sp, sec, opts);
+}
+
+function drawBody(ctx, body, t, W, H, T, dpr, X, Y, w0, sp, sec, opts) {
+  const alive = body.count > 0;
+
+  // --- the central membrane: nearly nothing before the first offering, a continuous body after -----------------
   const root = [];
   for (let i = 0; i < 2 * K; i++) {
     const th = (i / (2 * K)) * TAU;

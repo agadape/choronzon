@@ -29,6 +29,20 @@
   #qr svg { width: 280px; height: 280px; background: var(--bone); display: block; }
   #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--anomaly);
                  letter-spacing: 0.3em; font-size: 12px; pointer-events: none; }
+  /* séance: hashes and key stay sealed until the Eye opens */
+  .sealed .hash { color: var(--ash); letter-spacing: 0.3em; }
+  #open_eye { display: none; border-color: var(--bone); }
+  .sealed #open_eye { display: inline-block; }
+  #eye { position: fixed; inset: 0; display: none; place-items: center; background: var(--void); z-index: 5; }
+  #eye.on { display: grid; }
+  #eye .panel { max-width: 720px; padding: 32px; display: grid; gap: 18px; }
+  #eye h2 { margin: 0; font-weight: 500; letter-spacing: 0.3em; font-size: 20px; }
+  #eye p { margin: 0; color: var(--bone); line-height: 1.6; }
+  #eye .k { color: var(--ash); }
+  #eye_key { word-break: break-all; font-size: 12px; color: var(--bone); border: 1px solid var(--ash); padding: 12px; }
+  #eye_qr svg { width: 220px; height: 220px; background: var(--bone); display: block; }
+  #eye .row { align-items: start; }
+  #eye .irrevocable { color: var(--anomaly); letter-spacing: 0.2em; }
 </style>
 </head>
 <body>
@@ -41,6 +55,7 @@
 <footer>
   <div class="row">
     <button id="play">evoke</button>
+    <button id="open_eye">open the eye</button>
     <span id="status">loading</span>
     <span><span class="k">offerings</span> <span id="offerings">0</span></span>
     <span><span class="k">height</span> <span id="height">—</span></span>
@@ -57,6 +72,25 @@
   </div>
   <div style="color: var(--ash)">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</div>
 </footer>
+<section id="eye">
+  <div class="panel">
+    <h2>THE EYE IS OPEN.</h2>
+    <p>The viewing key is public.</p>
+    <p>Every offering accessible through this key can now be heard by its holders. The link between a sender and
+       their secret is not disclosed by this act alone.</p>
+    <p class="irrevocable">This cannot be undone.</p>
+    <div class="row">
+      <div id="eye_qr"></div>
+      <div>
+        <div class="k">full viewing key <span id="eye_birthday"></span></div>
+        <div id="eye_key">not published on this server (start it with --key-file after `kiosk reveal --to`)</div>
+      </div>
+    </div>
+    <div><span class="k">render_hash</span> <span id="eye_render_hash" class="hash"></span></div>
+    <div class="k">a Watcher evokes the god with this key alone: python3 -m renderer summon --key-file KEY --birthday H</div>
+    <div><button id="eye_close">return to the body</button></div>
+  </div>
+</section>
 <aside id="whisper">
   <div id="qr"></div>
   <div id="whisper_uri" class="hash"></div>

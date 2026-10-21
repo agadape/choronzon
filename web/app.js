@@ -8,6 +8,12 @@ let body = { chambers: [], conductors: [], forged: [], silenced: [], spine: 70, 
 let buffer = null, pendingWav = null;
 const firstSeen = {};            // tx -> performance.now() when this page first drew it (arrival animation only)
 let forgedSeen = null;
+// séance mode (?seance): the hashes and the key stay sealed until the operator opens the Eye
+const SEANCE = new URLSearchParams(location.search).has("seance");
+let eyeOpenedAt = null;          // performance.now() when the aperture started; null = not started
+let eyeOpen = !SEANCE;           // hashes (and the key) show only once the aperture has crossed the whole body
+if (SEANCE) document.body.classList.add("sealed");
+const seal = (s) => (eyeOpen ? s : "sealed until the eye opens");
 
 async function fetchJSON(url) {
   const r = await fetch(url, { cache: "no-store" });
@@ -38,10 +44,11 @@ async function loadScore() {
   $("height").textContent = doc.score.as_of_height.toLocaleString("en-US");
   $("skipped").textContent = doc.score.skipped.filter((s) => s.reason === "flagged").length;
   $("refused").textContent = forged.length;
-  $("render_hash").textContent = doc.render_hash;
-  $("score_hash").textContent = doc.score_hash;
-  $("pins").textContent = (doc.render.decoder.matches_pin && doc.render.voice.matches_pin)
-    ? "decoder and voice match the pinned builds" : "WARNING: decoder or voice differs from the pinned build";
+  $("render_hash").textContent = seal(doc.render_hash);
+  $("score_hash").textContent = seal(doc.score_hash);
+  $("eye_render_hash").textContent = doc.render_hash;
+  $("pins").textContent = seal((doc.render.decoder.matches_pin && doc.render.voice.matches_pin)
+    ? "decoder and voice match the pinned builds" : "WARNING: decoder or voice differs from the pinned build");
   $("status").textContent = `evoked at height ${doc.score.as_of_height}`;
   const r = await fetch("out/mix.wav", { cache: "no-store" });
   const ab = await r.arrayBuffer();
@@ -79,10 +86,12 @@ function frame() {
   // the body lives in the band between the header and the footer, so the hashes stay readable
   const top = document.querySelector("header").getBoundingClientRect().bottom + 8;
   const bottom = document.querySelector("footer").getBoundingClientRect().top - 8;
+  const aperture = eyeOpenedAt === null ? undefined : Math.min(1, (now - eyeOpenedAt) / 6000);
   Creature.draw(c.getContext("2d"), body, t, W, H, {
     age: (tx) => (tx in firstSeen ? (now - firstSeen[tx]) / 1000 : 99),
     forgedAge: () => (forgedSeen === null ? null : forgedSeen < 0 ? 99 : (now - forgedSeen) / 1000),
     safe: [top * devicePixelRatio, Math.max(top + 80, bottom) * devicePixelRatio],
+    aperture: aperture === undefined ? undefined : aperture * aperture * (3 - 2 * aperture),   // ease in-out
   });
   const f = body.forgedScreen;
   $("not_the_god").style.display = f ? "block" : "none";
@@ -113,6 +122,31 @@ $("creature").addEventListener("click", (ev) => {
   if (best) whisper(best.tx);
 });
 $("whisper_close").addEventListener("click", () => { $("qr").innerHTML = ""; $("whisper_status").textContent = ""; $("whisper_uri").textContent = ""; });
+
+// the Eye opens (séance): aperture across the body, then the key (if this server publishes one) and the hashes
+async function openEye() {
+  if (eyeOpenedAt !== null) return;
+  eyeOpenedAt = performance.now();
+  stop();
+  $("open_eye").style.display = "none";
+  let eye = null;
+  try { const r = await fetch("eye", { cache: "no-store" }); if (r.ok) eye = await r.json(); } catch (e) { /* none */ }
+  setTimeout(() => {
+    eyeOpen = true;
+    document.body.classList.remove("sealed");
+    currentHash = null;                 // re-render the footer unsealed on the next poll
+    loadScore();
+    if (eye) {
+      $("eye_key").textContent = eye.key;
+      $("eye_qr").innerHTML = eye.qr_svg;
+      $("eye_birthday").textContent = eye.birthday ? `· birthday height ${eye.birthday}` : "";
+    }
+    $("eye").classList.add("on");
+  }, 6500);
+}
+$("open_eye").addEventListener("click", openEye);
+$("eye_close").addEventListener("click", () => $("eye").classList.remove("on"));
+document.addEventListener("keydown", (ev) => { if (ev.key === "e" && SEANCE) openEye(); });
 
 $("play").addEventListener("click", () => (playing ? (stop(), $("play").textContent = "evoke") : play()));
 loadBrand().then(loadScore);
