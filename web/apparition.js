@@ -24,13 +24,21 @@ async function load(name) {
     const r = await fetch(SRC[name], { cache: "no-store" });
     if (!r.ok) throw new Error(r.status);
     const doc = await r.json();
+    // the right-hand score.json comes from another machine: validate before anything touches the DOM
+    if (!/^[0-9a-f]{64}$/.test(doc.render_hash) || !Array.isArray(doc.render?.timeline) ||
+        !Array.isArray(doc.score?.offerings) || !Array.isArray(doc.score?.skipped)) throw new Error("not a score.json");
     if (s.doc && s.doc.render_hash === doc.render_hash) return;
     s.doc = doc;
     s.body = Creature.grow(doc.render.timeline, doc.score.offerings, doc.score.skipped);
-    s.hashEl.innerHTML = blocks(doc.render_hash).map((b) => `<span>${b}</span>`).join(" ");
+    s.hashEl.textContent = "";
+    for (const b of blocks(doc.render_hash)) {
+      const span = document.createElement("span");
+      span.textContent = b;
+      s.hashEl.append(span, " ");
+    }
     verdict = null; lit = 0;
   } catch (e) {
-    s.hashEl.textContent = `waiting for an evocation (${SRC[name]}: ${e.message})`;
+    s.hashEl.textContent = `waiting for an evocation (${e.message})`;
   }
 }
 const blocks = (h) => h.match(/.{1,8}/g) || [];

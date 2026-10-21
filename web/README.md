@@ -15,7 +15,13 @@ python3 -m web --port 8765                            # http://localhost:8765/ (
 - While the mix plays, the limb whose voice is sounding (from `start`/`samples` in the timeline) brightens and pulses.
 - The page shows `render_hash` and `score_hash` so two laptops can be compared on screen, and whether the decoder and
   voice match the pinned builds. It polls `out/score.json` every 5 s and regrows when the hash changes.
-- The server exposes only `web/`, `config/brand.json` and the `out/` directory; paths outside are refused.
+- The server exposes only `web/`, `config/brand.json` and the `out/` directory; every path is decoded, resolved
+  and confined to its directory (`..`, absolute and percent-encoded escapes are 404), and nothing is listed.
+- It binds to **127.0.0.1 by default**. `--bind 0.0.0.0` only when a second laptop must read this machine's
+  `out/score.json` + `out/mix.wav` (the only files sent with `Access-Control-Allow-Origin: *`).
+- POSTs (`/kiosk/*`, `/eye/open`) require `Content-Type: application/json`, a small JSON object, and an `Origin`
+  header (when the browser sends one) that names this server, so another tab cannot trigger a send.
+- `web/tests/test_server.py` pins these properties (confinement, CORS scope, kiosk gating, Eye gating).
 
 ## Kiosk page (`--kiosk`, loopback only)
 
@@ -34,8 +40,10 @@ fork; the proof is `wallet -w wallets/test/V list-tx`) and "the god will hear it
 
 - **Séance** `http://localhost:8765/?seance`: the body grows, but the hashes stay sealed. "open the eye" (or the
   `E` key) runs a thin aperture across the body over 6 s, then shows THE EYE IS OPEN with the published key if the
-  server was started with `--key-file KEY --birthday H` (the file written by `kiosk reveal --to KEY`; served at
-  `/eye`). Without a key file the page reveals the hashes only.
+  server was started with `--key-file KEY --birthday H` (the file written by `kiosk reveal --to KEY`). The key is
+  served at `GET /eye` only after `POST /eye/open`, which the page sends when the button is pressed and which the
+  server accepts from its own machine only; before that `/eye` is 404 even with `--key-file`, and it never closes
+  again while the server runs. Without a key file the page reveals the hashes only.
 - **Two evocations** `http://localhost:8765/apparition.html?right=http://<other-laptop>:8765/out/score.json`:
   left = this machine's score, right = the other machine's (its server sends `Access-Control-Allow-Origin: *`).
   Both bodies are grown from their own `score.json`; the real `render_hash` values are compared, revealed in

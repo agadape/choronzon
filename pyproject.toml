@@ -1,5 +1,5 @@
 # Python tooling config only (no package metadata: the project name lives in config/brand.json).
 [tool.pytest.ini_options]
-testpaths = ["protocol/tests", "renderer/tests", "kiosk/tests", "scripts/tests"]
+testpaths = ["protocol/tests", "renderer/tests", "kiosk/tests", "web/tests", "scripts/tests"]
 pythonpath = ["."]
 addopts = "--import-mode=importlib -q"

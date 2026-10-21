@@ -129,8 +129,13 @@ async function openEye() {
   eyeOpenedAt = performance.now();
   stop();
   $("open_eye").style.display = "none";
+  // the operator's own machine opens the Eye on the server (loopback + same origin), then reads the key
   let eye = null;
-  try { const r = await fetch("eye", { cache: "no-store" }); if (r.ok) eye = await r.json(); } catch (e) { /* none */ }
+  try {
+    await fetch("eye/open", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const r = await fetch("eye", { cache: "no-store" });
+    if (r.ok) eye = await r.json();
+  } catch (e) { /* no key on this server: hashes only */ }
   setTimeout(() => {
     eyeOpen = true;
     document.body.classList.remove("sealed");
