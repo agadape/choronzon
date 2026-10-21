@@ -71,6 +71,33 @@ function frame() {
   requestAnimationFrame(frame);
 }
 
+// Whisper Back: click a limb -> ask the server for that offering's reply request (read from the wallet DB on demand)
+let hasReply = {};
+const origLoad = loadScore;
+async function whisper(txid) {
+  const text = $("whisper_text").value.trim() || "you are not alone.";
+  const r = await fetch(`whisper/${txid}?text=${encodeURIComponent(text)}`);
+  if (!r.ok) { $("whisper_status").textContent = "this offering asked for no whisper"; $("qr").innerHTML = ""; return; }
+  const w = await r.json();
+  $("whisper_status").textContent = `scan with your wallet to whisper back to offering ${txid.slice(0, 12)}… (the choir never sees it)`;
+  $("qr").innerHTML = w.qr_svg;
+  $("whisper_uri").textContent = w.uri;
+}
+
+$("creature").addEventListener("click", (ev) => {
+  if (!body.limbs.length) return;
+  const c = $("creature"), r = c.getBoundingClientRect();
+  const x = (ev.clientX - r.left) * devicePixelRatio, y = (ev.clientY - r.top) * devicePixelRatio;
+  let best = null, bestD = 40 * devicePixelRatio;
+  for (const l of body.limbs) {
+    if (l.sx1 === undefined) continue;
+    const d = Math.hypot(l.sx1 - x, l.sy1 - y);
+    if (d < bestD) { best = l; bestD = d; }
+  }
+  if (best) whisper(best.tx);
+});
+$("whisper_close").addEventListener("click", () => { $("qr").innerHTML = ""; $("whisper_status").textContent = ""; $("whisper_uri").textContent = ""; });
+
 $("play").addEventListener("click", () => (playing ? (stop(), $("play").textContent = "evoke") : play()));
 loadBrand().then(loadScore);
 setInterval(loadScore, 5000);

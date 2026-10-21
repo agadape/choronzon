@@ -69,6 +69,7 @@ function draw(ctx, body, t, W, H) {
     const pulse = singing ? 1 + 0.35 * Math.sin((t - l.start) / 8000 * TAU * 2) : 1;
     const x0 = ox + l.x0 * scale, y0 = oy + l.y0 * scale;
     const x1 = ox + l.x1 * scale * breath, y1 = oy + l.y1 * scale * breath;
+    l.sx1 = x1; l.sy1 = y1;   // screen position of the tip, for click hit-testing (Whisper Back)
     const cx = (x0 + x1) / 2 + Math.cos(l.angle + TAU / 4) * l.curl * l.length * scale * 0.5;
     const cy = (y0 + y1) / 2 + Math.sin(l.angle + TAU / 4) * l.curl * l.length * scale * 0.5;
     ctx.strokeStyle = l.silent ? "#3a3340" : `hsl(${l.hue} ${singing ? 80 : 35}% ${singing ? 62 : 38}%)`;

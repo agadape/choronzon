@@ -2,6 +2,7 @@
 
   python3 -m renderer once   --wallet wallets/test/V [--as-of N|tip] [--sync] [--out DIR]
   python3 -m renderer daemon --wallet wallets/test/V [--interval 30] [--out DIR]
+  python3 -m renderer whisper <txid> --wallet wallets/test/V [--text ...] [--phone] [--send-from wallets/test/L]
 
 `daemon` loops sync -> enhance -> render at the scanned height -> write out/score.json + out/render_hash.
 Only a view-only wallet is accepted (the public viewing key); --allow-spend-key exists for the V-vs-B check.
@@ -101,11 +102,34 @@ def cmd_daemon(args) -> None:
         time.sleep(args.interval)
 
 
+def cmd_whisper(args) -> None:
+    """Whisper back to one offering: print (or send) a direct shielded reply to its embedded address."""
+    from . import whisper
+    db = _open_wallet(args)
+    target = whisper.find_target(db, args.txid)
+    if target is None:
+        sys.exit("that offering carries no (valid) reply address")
+    uri = whisper.reply_uri(target, args.text, phone=args.phone)
+    if args.send_from:
+        from kiosk.devtool import Devtool
+        wallet_dir = Path(args.send_from)
+        w = Devtool(wallet_dir, wallet_dir.with_suffix(".age"), server=args.server)
+        w.sync()
+        txid = w.pay(uri)
+        print(f"whisper sent directly to the offering's reply address. txid {txid}")
+        print("(the choir's key holders cannot see this transaction)")
+    else:
+        print(f"reply to contrib_id {target.contrib_id} of offering {target.txid[:12]}…")
+        print("pay this with any wallet that understands the address (the reply never passes through the choir):")
+        print(uri)
+        print(whisper.qr_ascii(uri))
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="python3 -m renderer", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
-    for name in ("once", "daemon"):
+    for name in ("once", "daemon", "whisper"):
         s = sub.add_parser(name)
         s.add_argument("--wallet", required=True, help="wallet directory (view-only)")
         s.add_argument("--out", default=str(REPO / "out"), help="output directory ('' = don't write, once only)")
@@ -117,10 +141,15 @@ def main(argv: list[str] | None = None) -> None:
     sub.choices["once"].add_argument("--as-of", default="tip", help="block height, or 'tip' = scanned height")
     sub.choices["once"].add_argument("--sync", action="store_true", help="sync + enhance before rendering")
     sub.choices["daemon"].add_argument("--interval", type=float, default=30.0, help="seconds between loops")
+    w = sub.choices["whisper"]
+    w.add_argument("txid", help="the offering to answer (display order)")
+    w.add_argument("--text", default="you are not alone.", help="the whisper (text)")
+    w.add_argument("--phone", action="store_true", help="readable GC1R memo for a phone wallet")
+    w.add_argument("--send-from", help="send the reply now from this wallet dir (its .age identity next to it)")
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", stream=sys.stderr)
     try:
-        (cmd_once if args.command == "once" else cmd_daemon)(args)
+        {"once": cmd_once, "daemon": cmd_daemon, "whisper": cmd_whisper}[args.command](args)
     except KeyboardInterrupt:
         log.info("stopped")
 

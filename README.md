@@ -137,6 +137,7 @@ Every claim above is backed by a real testnet transaction. Txids are in explorer
 | The god's own voice vs a forgery, told apart with the viewing key only | [`08993bf2…`](https://testnet.zcashexplorer.app/transactions/08993bf234970b6b88bddbfb3c47164c2d32623ff5a8858008a8cc02b3d637a9) (authentic) · [`d869107b…`](https://testnet.zcashexplorer.app/transactions/d869107b32dbf6f8b236173b45010375b20b8221eee6a380e5b51a1e0ed59dfa) (forged) | 4,518,121 |
 | Whisper Back: an offering carrying a one-time reply address | [`a71ccb5d…`](https://testnet.zcashexplorer.app/transactions/a71ccb5dea838c143bbe3ab831262d719e70d83601a890f9c621c73e9070a299) | ~4,521,736 |
 | Whisper Back: direct shielded reply, matched by `contrib_id`; the public-key reader sees none of it | [`680a334a…`](https://testnet.zcashexplorer.app/transactions/680a334a81ab5c2f472b5c0cf4ce9926f5903a69146699394bbe29194c35735f) | 4,521,741 |
+| Same loop with the product code: an offering with a reply address from the **ephemeral kiosk wallet**, a reply from a listener wallet, received by `kiosk inbox` in ~80 s; the public-key wallet sees 0 of the reply | offering [`8d02a6b0…`](https://testnet.zcashexplorer.app/transactions/8d02a6b0c1ab00c178ae4e99f0f5c432754307b74ac89ba6ded3d0f4d5b5a10a) · reply [`143f91ee…`](https://testnet.zcashexplorer.app/transactions/143f91eef5430c271eb1be58f8a029e742cf9a1758b7574276841dabca902dbd) | 4,525,242 / ~4,525,245 |
 | A phone wallet (Zingo!, testnet) pays a Revision-2 shielded-only address | [`be4be03c…`](https://testnet.zcashexplorer.app/transactions/be4be03c35cd88c8e65b0b5739c0cde5135f329cc42d65fc1193f9a1511ee7e7) | 4,521,933 |
 | A phone offering arrives with its binary memo UTF-8-mangled, and is still recovered | [`501ac80d…`](https://testnet.zcashexplorer.app/transactions/501ac80d65ac63076e5541a2c631d2c9fb0d3e419234a067fa4910a2c96a7290) | 4,521,945 |
 | Five offerings in 32 seconds from a note pool, all mined in one block | [`3b67fb1b…`](https://testnet.zcashexplorer.app/transactions/3b67fb1b4142bde060a915beb7346da9ecb6465207467b66c981c5375a69e46c) · [`88881b5f…`](https://testnet.zcashexplorer.app/transactions/88881b5ff4082d7b033b745d57cb385acc202e04dea52500d450abd79763ee16) · [`5cdb1c0b…`](https://testnet.zcashexplorer.app/transactions/5cdb1c0b72c2c3041c7452db1ec14bb3604e1c91407cd5f5149e762b91ba425d) (audio) · [`2aa0f87d…`](https://testnet.zcashexplorer.app/transactions/2aa0f87d04a5d785eb62a5b121317a7ae8cdc594795c17fde2884bce177624ed) · [`8194a322…`](https://testnet.zcashexplorer.app/transactions/8194a322369d3a4ebcb7516629f90dc3ec27098a24ba4976777357bcdc56f290) | 4,522,002 |
@@ -162,7 +163,13 @@ Vertical slice, which must run before any milestone:
 - [x] Creature (Canvas 2D) + playback of the mixed buffer (`python3 -m web`)
 - [ ] Gate: a live offering → chain → renderer → sound + creature → a second laptop prints the same hash
 
-Milestones, each of which may be dropped without breaking the demo: the god's own voice (authenticated conductor lines), the Whisper Back button (ZIP-321 link / QR), phone offerings, Codec2 in the browser, and the Séance: a session where the viewing key stays sealed until the end and is then revealed.
+Milestones, each of which may be dropped without breaking the demo:
+
+- [x] Whisper Back: click a limb on the listener page (or `python3 -m renderer whisper <txid>`) → ZIP-321 request / QR to the offering's reply address, read from the wallet database on demand; `python3 -m kiosk inbox` shows whispers that returned
+- [ ] the god's own voice (authenticated conductor lines, a forged voice shown as rejected)
+- [ ] phone offerings (QR with the ASCII envelope)
+- [ ] Codec2 in the browser
+- [ ] the Séance: a session where the viewing key stays sealed until the end and is then revealed
 
 ## Run it (Linux or WSL, testnet only)
 

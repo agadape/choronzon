@@ -21,6 +21,11 @@
            padding: 6px 14px; cursor: pointer; letter-spacing: 0.08em; }
   button:hover { border-color: var(--accent); color: var(--accent); }
   #pins { color: var(--dim); }
+  input { font: inherit; background: transparent; color: var(--fg); border: 1px solid var(--dim); padding: 4px 8px;
+          width: 22em; }
+  #whisper { position: fixed; top: 60px; right: 16px; width: 280px; display: grid; gap: 8px; font-size: 11px; }
+  #whisper:has(#qr:empty) { display: none; }
+  #qr svg { width: 280px; height: 280px; background: #fff; display: block; }
 </style>
 </head>
 <body>
@@ -40,8 +45,18 @@
   <div><span class="k">render_hash</span> <span id="render_hash" class="hash">—</span></div>
   <div><span class="k">score_hash</span> <span id="score_hash" class="hash">—</span></div>
   <div id="pins"></div>
+  <div class="row">
+    <span class="k">whisper back: click a limb</span>
+    <input id="whisper_text" placeholder="you are not alone." maxlength="400">
+    <span id="whisper_status"></span>
+  </div>
   <div class="k">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</div>
 </footer>
+<aside id="whisper">
+  <div id="qr"></div>
+  <div id="whisper_uri" class="hash"></div>
+  <button id="whisper_close">close</button>
+</aside>
 <script src="creature.js"></script>
 <script src="app.js"></script>
 </body>
