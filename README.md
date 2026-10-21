@@ -191,6 +191,7 @@ python3 -m renderer summon --key-file KEY --birthday 4502962 --wallet wallets/wa
 ```
 
 - Ubuntu 24.04, native or WSL. In WSL, work inside the Linux filesystem, not under `/mnt/c`.
+- Fresh machine? [docs/fresh-clone.md](docs/fresh-clone.md) is the judge's path: clone, build, evoke the god from the published key alone, with measured times.
 - Wallets are testnet-only and are never committed (`wallets/`, `*.age` are git-ignored).
 - The renderer refuses a wallet that holds a spending key: it runs from the public viewing key only.
 - lightwalletd: `testnet.zec.rocks:443`.

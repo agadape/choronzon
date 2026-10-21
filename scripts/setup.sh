@@ -33,7 +33,7 @@ pip install --break-system-packages -q "qrcode[pil]" 2>/dev/null || pip3 install
 echo "== 3/6 codec2 @$CODEC2_TAG (pinned, built from source) =="
 if [ ! -x bin/c2dec ] || [ ! -x bin/c2enc ]; then
   mkdir -p vendor bin
-  [ -d vendor/codec2 ] || git clone -q --depth 1 --branch "$CODEC2_TAG" https://github.com/drowe67/codec2 vendor/codec2
+  [ -d vendor/codec2 ] || git -c advice.detachedHead=false clone -q --depth 1 --branch "$CODEC2_TAG" https://github.com/drowe67/codec2 vendor/codec2
   [ "$(git -C vendor/codec2 rev-parse HEAD)" = "$CODEC2_COMMIT" ] || { echo "!! vendor/codec2 is not at $CODEC2_COMMIT"; exit 1; }
   cmake -S vendor/codec2 -B vendor/codec2/build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
         -DUNITTEST=OFF -DCMAKE_C_FLAGS="-ffp-contract=off" >/dev/null
