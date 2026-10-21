@@ -145,6 +145,8 @@ Every claim above is backed by a real testnet transaction. Txids are in explorer
 | Five offerings in 32 seconds from a note pool, all mined in one block | [`3b67fb1b…`](https://testnet.zcashexplorer.app/transactions/3b67fb1b4142bde060a915beb7346da9ecb6465207467b66c981c5375a69e46c) · [`88881b5f…`](https://testnet.zcashexplorer.app/transactions/88881b5ff4082d7b033b745d57cb385acc202e04dea52500d450abd79763ee16) · [`5cdb1c0b…`](https://testnet.zcashexplorer.app/transactions/5cdb1c0b72c2c3041c7452db1ec14bb3604e1c91407cd5f5149e762b91ba425d) (audio) · [`2aa0f87d…`](https://testnet.zcashexplorer.app/transactions/2aa0f87d04a5d785eb62a5b121317a7ae8cdc594795c17fde2884bce177624ed) · [`8194a322…`](https://testnet.zcashexplorer.app/transactions/8194a322369d3a4ebcb7516629f90dc3ec27098a24ba4976777357bcdc56f290) | 4,522,002 |
 | Two independently synced wallets print the same render hash, including decoded audio | `c46dd5de…` (see Determinism) | 4,522,002 |
 
+Hardening on 21 Oct: [`docs/privacy-review.md`](docs/privacy-review.md) (what every component writes, what was fixed, what remains exposed) and [`docs/failure-drills.md`](docs/failure-drills.md) (unreachable lightwalletd, overspend, a malformed memo, a duplicate memo, a failed broadcast that locked a note, all provoked or observed on testnet).
+
 ### What did not work, and how it shaped the design
 
 - Stock `zcash-devtool` and released crates **cannot broadcast on NU7 testnet** (`incorrect consensus branch id`); we use a patched build.

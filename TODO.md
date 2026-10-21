@@ -53,8 +53,8 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [x] **M5 C** Séance format: viewing key hidden during session, revealed at the end as the climax (`python3 -m kiosk reveal --from wallets/test/B` prints the UFVK + QR on purpose, nothing written unless `--to`; `python3 -m renderer summon --key-file K --birthday H --wallet DIR` = a new Watcher from the key alone → same hashes. Web séance mode (hashes/key hidden until reveal) belongs to `web/`, open)
 
 ## Day 7 (26 Oct) — hardening  [~12 h]
-- [ ] **A** Privacy review: no analytics, no cloud calls, logs contain only txid + validation result, no reply addresses retained
-- [ ] **A** Failure drills: rejected broadcast (locked note), slow block, stale sync, duplicate memo, malformed memo
+- [x] **A** Privacy review: no analytics, no cloud calls, logs contain only txid + validation result, no reply addresses retained (`docs/privacy-review.md`; fixes: secrets off argv/history, no kiosk TTS cache, espeak via stdin; residual: `ps` during `pay`, `sent_notes`, lightwalletd IP)
+- [x] **A** Failure drills: rejected broadcast (locked note), slow block, stale sync, duplicate memo, malformed memo (`docs/failure-drills.md`: all seven observed on testnet 21 Oct; malformed `a84adbaf…` skipped, duplicates `11f9bd73…`/`103dec1c…` both kept, connection-reset tx `6a0f8588…` locked one note until 4525360 while the pool kept sending)
 - [ ] **all** Run the full 3-min demo 5× without manual intervention; freeze features
 - [ ] **C** Decide which pre-sent contributions are shown and label them honestly in the script
 
