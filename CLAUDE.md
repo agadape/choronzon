@@ -97,7 +97,8 @@ Handling rules (decided 21 Oct): the choir UFVK is published deliberately (READM
 - Stock devtool / released crates fail on NU7 testnet with `incorrect consensus branch id`; use the patched build. Mainnet (NU6.3) could use stock, untested (G5).
 - Memos are NOT in compact blocks: run `enhance` before reading memos.
 - A rejected broadcast locks the note until expiry (~40 blocks ≈ 20 min). Keep the note pool.
-- Own-account outputs are flagged `is_change=1` and are trusted (spendable after 3 confs); inbound from others needs 10.
+- Own-account outputs are flagged `is_change=1`, but only **internal-scope change** is spendable after 3 confs; a self-send to the wallet's own *external* address (what a note-pool split does) needs **10 confs** in this devtool build (it never sets `trust_status`). Inbound from others needs 10. `kiosk pool` counts by `recipient_key_scope` for that reason (rehearsal #5, 21 Oct).
+- `testnet.zec.rocks` occasionally resets TLS mid-`pay` ("peer closed connection without sending TLS close_notify"); the tx was already built, so its input note is locked until expiry (~40 blocks) even though nothing was broadcast. Keep a note pool on every sending wallet (A, L, the session) and retry sends (`scripts/demo.sh` retries 4× with 20/40/60 s pauses).
 - Patched SDK prints Revision-2 UAs (`zu…` shielded-only, `tu…` with transparent). Zingo accepts them; the faucet doesn't.
 - ZIP-302: binary memos start with `0xFF` (we used `0xF5` once; it is legacy/ambiguous).
 - Wallet DB txids are byte-reversed vs explorers/Zingo.
