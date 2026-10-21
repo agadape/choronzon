@@ -9,8 +9,8 @@ const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const SRC = { left: q.get("left") || "out/score.json", right: q.get("right") || "out/score.json" };
 const sides = {
-  left: { doc: null, body: null, canvas: $("left_canvas"), hashEl: $("left_hash") },
-  right: { doc: null, body: null, canvas: $("right_canvas"), hashEl: $("right_hash") },
+  left: { doc: null, body: null, canvas: $("left_canvas"), hashEl: $("left_hash"), nameEl: $("left_name") },
+  right: { doc: null, body: null, canvas: $("right_canvas"), hashEl: $("right_hash"), nameEl: $("right_name") },
 };
 let verdict = null, verdictAt = 0, lit = 0;
 $("left_src").textContent = SRC.left;
@@ -36,6 +36,7 @@ async function load(name) {
       span.textContent = b;
       s.hashEl.append(span, " ");
     }
+    s.nameEl.textContent = "";                              // the name appears with the verdict, not before
     verdict = null; lit = 0;
   } catch (e) {
     s.hashEl.textContent = `waiting for an evocation (${e.message})`;
@@ -69,6 +70,12 @@ function frame() {
       const same = lb[i].textContent === (rb[i] && rb[i].textContent);
       lb[i].className = same ? "lit" : "bad"; if (rb[i]) rb[i].className = same ? "lit" : "bad";
       if (!same) break;
+    }
+    if (n >= 8) {   // the true names: identical on a match, visibly different (and anomaly-coloured) otherwise
+      for (const s of Object.values(sides)) {
+        s.nameEl.textContent = `it is now called ${trueName(s.doc.render_hash)}`;
+        s.nameEl.className = verdict === "same" ? "name" : "name bad";
+      }
     }
     if (verdict === "same" && n >= 8) {
       // thin lines between corresponding chambers: the same anatomy, evoked twice

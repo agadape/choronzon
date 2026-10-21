@@ -23,6 +23,11 @@ python3 -m web --port 8765                            # http://localhost:8765/ (
   header (when the browser sends one) that names this server, so another tab cannot trigger a send.
 - `web/tests/test_server.py` pins these properties (confinement, CORS scope, kiosk gating, Eye gating).
 
+- **The true name** (`name.js`): a pure function of `render_hash` (hash bytes index fixed syllable tables: 3–4
+  syllables, one apostrophe, uppercase). Shown as "it is now called …" under the hash on the listener page (after
+  the Eye opens in a séance), in the Eye panel and on both sides of the apparition page, where a hash mismatch
+  gives two visibly different names. `web/tests/test_name.py` holds a Python port and fixed vectors.
+
 ## Kiosk page (`--kiosk`, loopback only)
 
 `python3 -m web --port 8765 --kiosk` adds `http://127.0.0.1:8765/kiosk.html`: a judge types the secret on a

@@ -47,6 +47,9 @@ async function loadScore() {
   $("render_hash").textContent = seal(doc.render_hash);
   $("score_hash").textContent = seal(doc.score_hash);
   $("eye_render_hash").textContent = doc.render_hash;
+  const name = trueName(doc.render_hash);                  // the god's true name: a pure function of the hash
+  $("true_name").textContent = eyeOpen ? `it is now called ${name}` : "";
+  $("eye_name").textContent = `it is now called ${name}`;
   $("pins").textContent = seal((doc.render.decoder.matches_pin && doc.render.voice.matches_pin)
     ? "decoder and voice match the pinned builds" : "WARNING: decoder or voice differs from the pinned build");
   $("status").textContent = `evoked at height ${doc.score.as_of_height}`;

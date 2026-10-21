@@ -63,6 +63,7 @@
     <span><span class="k">refused</span> <span id="refused">0</span></span>
   </div>
   <div><span class="k">render_hash</span> <span id="render_hash" class="hash">—</span></div>
+  <div id="true_name" style="color: var(--ash); letter-spacing: 0.2em"></div>
   <div><span class="k">score_hash</span> <span id="score_hash" class="hash">—</span></div>
   <div id="pins"></div>
   <div class="row">
@@ -87,6 +88,7 @@
       </div>
     </div>
     <div><span class="k">render_hash</span> <span id="eye_render_hash" class="hash"></span></div>
+    <div id="eye_name" style="color: var(--ash); letter-spacing: 0.2em"></div>
     <div class="k">a Watcher evokes the god with this key alone: python3 -m renderer summon --key-file KEY --birthday H</div>
     <div><button id="eye_close">return to the body</button></div>
   </div>
@@ -98,7 +100,7 @@
 </aside>
 <script>
   // cache-busting for the two local scripts: browsers kept the old creature.js even with Cache-Control: no-store
-  for (const f of ["creature.js", "app.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
+  for (const f of ["name.js", "creature.js", "app.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
 </script>
 </body>
 </html>

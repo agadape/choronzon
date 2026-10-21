@@ -18,6 +18,8 @@
   .hash span { color: var(--ash); transition: color 0.4s; }
   .hash span.lit { color: var(--bone); }
   .hash span.bad { color: var(--anomaly); }
+  .name { color: var(--ash); letter-spacing: 0.2em; font-size: 13px; min-height: 1.4em; }
+  .name.bad { color: var(--anomaly); }
   #lines { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; }
   #divider { position: fixed; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--ash); opacity: 0.6;
              transition: opacity 2s; }
@@ -35,19 +37,21 @@
   <div class="side" id="left">
     <header><span class="k">this machine</span><span class="src" id="left_src"></span></header>
     <canvas id="left_canvas"></canvas>
-    <footer><span class="k">render_hash</span><div class="hash" id="left_hash">waiting for an evocation</div></footer>
+    <footer><span class="k">render_hash</span><div class="hash" id="left_hash">waiting for an evocation</div>
+      <div class="name" id="left_name"></div></footer>
   </div>
   <div class="side" id="right">
     <header><span class="k">the other machine, from the key alone</span><span class="src" id="right_src"></span></header>
     <canvas id="right_canvas"></canvas>
-    <footer><span class="k">render_hash</span><div class="hash" id="right_hash">waiting for an evocation</div></footer>
+    <footer><span class="k">render_hash</span><div class="hash" id="right_hash">waiting for an evocation</div>
+      <div class="name" id="right_name"></div></footer>
   </div>
 </div>
 <div id="divider"></div>
 <canvas id="lines"></canvas>
 <div id="verdict"></div>
 <script>
-  for (const f of ["creature.js", "apparition.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
+  for (const f of ["name.js", "creature.js", "apparition.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
 </script>
 </body>
 </html>
