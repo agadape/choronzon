@@ -5,31 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>listener</title>
 <style>
-  :root { color-scheme: dark; --bg: #07060a; --fg: #d9d2c5; --dim: #6f6779; --accent: #b9a7ff; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
-               font: 15px/1.4 ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; }
+  /* three tokens for the body, the banner and the interface; the fourth only for exceptional states */
+  :root { color-scheme: dark; --void: #171916; --bone: #E4DFD0; --ash: #777F79; --anomaly: #FF6338; }
+  html, body { margin: 0; height: 100%; background: var(--void); color: var(--bone);
+               font: 14px/1.45 ui-monospace, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace; }
   #creature { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
-  header { position: fixed; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between;
+  header { position: fixed; top: 18px; left: 20px; right: 20px; display: flex; justify-content: space-between;
            align-items: baseline; gap: 16px; pointer-events: none; }
-  h1 { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: 0.06em; }
-  #tagline { color: var(--dim); font-style: italic; }
-  footer { position: fixed; bottom: 16px; left: 16px; right: 16px; display: grid; gap: 6px; font-size: 13px; }
+  h1 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: 0.12em; }
+  #tagline { color: var(--ash); font-style: italic; }
+  footer { position: fixed; bottom: 18px; left: 20px; right: 20px; display: grid; gap: 6px; font-size: 12.5px; }
   .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
-  .k { color: var(--dim); }
-  .hash { word-break: break-all; color: var(--accent); }
-  button { font: inherit; background: transparent; color: var(--fg); border: 1px solid var(--dim);
-           padding: 6px 14px; cursor: pointer; letter-spacing: 0.08em; }
-  button:hover { border-color: var(--accent); color: var(--accent); }
-  #pins { color: var(--dim); }
-  input { font: inherit; background: transparent; color: var(--fg); border: 1px solid var(--dim); padding: 4px 8px;
+  .k { color: var(--ash); letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
+  .hash { word-break: break-all; color: var(--bone); letter-spacing: 0.04em; }
+  button { font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash);
+           padding: 6px 16px; cursor: pointer; letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; }
+  button:hover { border-color: var(--bone); }
+  #pins { color: var(--ash); }
+  input { font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash); padding: 4px 8px;
           width: 22em; }
-  #whisper { position: fixed; top: 60px; right: 16px; width: 280px; display: grid; gap: 8px; font-size: 11px; }
+  #whisper { position: fixed; top: 64px; right: 20px; width: 280px; display: grid; gap: 8px; font-size: 11px; }
   #whisper:has(#qr:empty) { display: none; }
-  #qr svg { width: 280px; height: 280px; background: #fff; display: block; }
+  #qr svg { width: 280px; height: 280px; background: var(--bone); display: block; }
+  #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--anomaly);
+                 letter-spacing: 0.3em; font-size: 12px; pointer-events: none; }
 </style>
 </head>
 <body>
 <canvas id="creature"></canvas>
+<div id="not_the_god">NOT THE GOD</div>
 <header>
   <h1 id="name"></h1>
   <div id="tagline"></div>
@@ -41,16 +45,17 @@
     <span><span class="k">offerings</span> <span id="offerings">0</span></span>
     <span><span class="k">height</span> <span id="height">—</span></span>
     <span><span class="k">silenced</span> <span id="skipped">0</span></span>
+    <span><span class="k">refused</span> <span id="refused">0</span></span>
   </div>
   <div><span class="k">render_hash</span> <span id="render_hash" class="hash">—</span></div>
   <div><span class="k">score_hash</span> <span id="score_hash" class="hash">—</span></div>
   <div id="pins"></div>
   <div class="row">
-    <span class="k">whisper back: click a limb</span>
+    <span class="k">whisper back: click a chamber</span>
     <input id="whisper_text" placeholder="you are not alone." maxlength="400">
     <span id="whisper_status"></span>
   </div>
-  <div class="k">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</div>
+  <div style="color: var(--ash)">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</div>
 </footer>
 <aside id="whisper">
   <div id="qr"></div>

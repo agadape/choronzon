@@ -1,10 +1,13 @@
-// Listener page: loads config/brand.json + out/score.json + out/mix.wav, grows the creature, plays the buffer.
+// Listener page: loads config/brand.json + out/score.json + out/mix.wav, grows the body, plays the buffer.
 // WebAudio only PLAYS the offline mix; nothing is mixed here (browser mixing is not bit-exact).
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-let audioCtx = null, source = null, startedAt = 0, playing = false, currentHash = null, body = { limbs: [], mass: 0 };
-let buffer = null;
+let audioCtx = null, source = null, startedAt = 0, playing = false, currentHash = null;
+let body = { chambers: [], conductors: [], forged: [], silenced: [], spine: 70, count: 0 };
+let buffer = null, pendingWav = null;
+const firstSeen = {};            // tx -> performance.now() when this page first drew it (arrival animation only)
+let forgedSeen = null;
 
 async function fetchJSON(url) {
   const r = await fetch(url, { cache: "no-store" });
@@ -22,24 +25,29 @@ async function loadBrand() {
 async function loadScore() {
   let doc;
   try { doc = await fetchJSON("out/score.json"); }
-  catch (e) { $("status").textContent = "waiting for the renderer (out/score.json)"; return; }
+  catch (e) { $("status").textContent = "nothing has been evoked yet (out/score.json)"; return; }
   if (doc.render_hash === currentHash) return;
+  const firstLoad = currentHash === null;
   currentHash = doc.render_hash;
-  body = Creature.grow(doc.render.timeline);
+  body = Creature.grow(doc.render.timeline, doc.score.offerings, doc.score.skipped);
+  const now = performance.now();
+  for (const c of body.chambers) if (!(c.tx in firstSeen)) firstSeen[c.tx] = firstLoad ? now - 60000 : now;
+  const forged = doc.score.skipped.filter((s) => s.reason === "forged-conductor");
+  if (forged.length && forgedSeen === null) forgedSeen = firstLoad ? -1 : now;
   $("offerings").textContent = doc.score.offerings.length;
   $("height").textContent = doc.score.as_of_height.toLocaleString("en-US");
-  $("skipped").textContent = doc.score.skipped.length;
+  $("skipped").textContent = doc.score.skipped.filter((s) => s.reason === "flagged").length;
+  $("refused").textContent = forged.length;
   $("render_hash").textContent = doc.render_hash;
   $("score_hash").textContent = doc.score_hash;
   $("pins").textContent = (doc.render.decoder.matches_pin && doc.render.voice.matches_pin)
-    ? "decoder + voice match the pinned builds" : "WARNING: decoder or voice differs from the pinned build";
+    ? "decoder and voice match the pinned builds" : "WARNING: decoder or voice differs from the pinned build";
   $("status").textContent = `evoked at height ${doc.score.as_of_height}`;
   const r = await fetch("out/mix.wav", { cache: "no-store" });
   const ab = await r.arrayBuffer();
   if (audioCtx) buffer = await audioCtx.decodeAudioData(ab);
   else pendingWav = ab;
 }
-let pendingWav = null;
 
 async function play() {
   if (!audioCtx) {
@@ -67,13 +75,18 @@ function frame() {
   const c = $("creature");
   const W = c.width = c.clientWidth * devicePixelRatio, H = c.height = c.clientHeight * devicePixelRatio;
   const t = playing ? Math.floor((audioCtx.currentTime - startedAt) * 8000) : -1;
-  Creature.draw(c.getContext("2d"), body, t, W, H);
+  const now = performance.now();
+  Creature.draw(c.getContext("2d"), body, t, W, H, {
+    age: (tx) => (tx in firstSeen ? (now - firstSeen[tx]) / 1000 : 99),
+    forgedAge: () => (forgedSeen === null ? null : forgedSeen < 0 ? 99 : (now - forgedSeen) / 1000),
+  });
+  const f = body.forgedScreen;
+  $("not_the_god").style.display = f ? "block" : "none";
+  if (f) { $("not_the_god").style.left = `${f.x / devicePixelRatio}px`; $("not_the_god").style.top = `${f.y / devicePixelRatio}px`; $("not_the_god").style.opacity = f.fade; }
   requestAnimationFrame(frame);
 }
 
-// Whisper Back: click a limb -> ask the server for that offering's reply request (read from the wallet DB on demand)
-let hasReply = {};
-const origLoad = loadScore;
+// Whisper Back: click a chamber -> ask the server for that offering's reply request (read from the wallet DB on demand)
 async function whisper(txid) {
   const text = $("whisper_text").value.trim() || "you are not alone.";
   const r = await fetch(`whisper/${txid}?text=${encodeURIComponent(text)}`);
@@ -85,14 +98,13 @@ async function whisper(txid) {
 }
 
 $("creature").addEventListener("click", (ev) => {
-  if (!body.limbs.length) return;
   const c = $("creature"), r = c.getBoundingClientRect();
   const x = (ev.clientX - r.left) * devicePixelRatio, y = (ev.clientY - r.top) * devicePixelRatio;
-  let best = null, bestD = 40 * devicePixelRatio;
-  for (const l of body.limbs) {
-    if (l.sx1 === undefined) continue;
-    const d = Math.hypot(l.sx1 - x, l.sy1 - y);
-    if (d < bestD) { best = l; bestD = d; }
+  let best = null, bestD = 48 * devicePixelRatio;
+  for (const ch of [...body.chambers, ...body.conductors]) {
+    if (ch.sx === undefined) continue;
+    const d = Math.hypot(ch.sx - x, ch.sy - y);
+    if (d < bestD) { best = ch; bestD = d; }
   }
   if (best) whisper(best.tx);
 });

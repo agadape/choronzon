@@ -1,61 +1,54 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" width="1280" height="400" role="img" aria-label="{{name}}: {{tagline}}">
-  <!-- Generated from docs/brand/banner.template.svg and config/brand.json by scripts/gen_readme.py. Edit the template. -->
-  <defs>
-    <radialGradient id="abyss" cx="22%" cy="50%" r="70%">
-      <stop offset="0" stop-color="#1b1526"/>
-      <stop offset="0.5" stop-color="#0b0912"/>
-      <stop offset="1" stop-color="#07060a"/>
-    </radialGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#b9a7ff" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#b9a7ff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="fade" x1="0" x2="1">
-      <stop offset="0" stop-color="#b9a7ff" stop-opacity="0"/>
-      <stop offset="0.15" stop-color="#b9a7ff" stop-opacity="0.8"/>
-      <stop offset="0.85" stop-color="#b9a7ff" stop-opacity="0.8"/>
-      <stop offset="1" stop-color="#b9a7ff" stop-opacity="0"/>
-    </linearGradient>
-    <clipPath id="slit"><ellipse cx="240" cy="188" rx="12" ry="40"/></clipPath>
-  </defs>
-  <rect width="1280" height="400" fill="url(#abyss)"/>
+  <!-- Generated from docs/brand/banner.template.svg and config/brand.json by scripts/gen_readme.py. Edit the template.
+       "A confession becoming anatomy": the reliquary organism, cropped by the top and bottom edges, still growing.
+       Tokens: void #171916, bone #E4DFD0, ash #777F79. Paths and flat colours only: no gradients, filters or fonts. -->
+  <rect width="1280" height="400" fill="#171916"/>
 
-  <!-- the choir: one waveform across the whole banner, behind everything -->
-  <path fill="none" stroke="url(#fade)" stroke-width="1.2" opacity="0.5"
-        d="M0 352 L40 350 L80 356 L110 342 L140 364 L170 348 L200 358 L230 340 L260 368 L290 346 L320 354 L350 338 L380 370 L410 348 L440 352 L470 334 L500 374 L530 350 L560 356 L590 342 L620 362 L650 348 L680 352 L710 340 L740 366 L770 348 L800 354 L830 338 L860 368 L890 350 L920 356 L950 342 L980 360 L1010 346 L1040 352 L1070 340 L1100 364 L1130 348 L1160 354 L1190 346 L1220 358 L1250 350 L1280 352"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- central membrane (the conductor's continuous body), cropped top and bottom -->
+    <path stroke="#E4DFD0" stroke-width="4"
+          d="M296 -12 C370 18 394 118 378 204 C364 282 360 356 322 414 M296 -12 C256 36 240 128 258 210 C276 292 268 352 322 414"/>
+    <path stroke="#777F79" stroke-width="2"
+          d="M310 30 C352 60 362 128 352 196 C344 258 340 318 318 372 M310 30 C286 66 278 136 290 206 C302 272 298 322 318 372"/>
 
-  <!-- filaments: the body -->
-  <circle cx="240" cy="188" r="120" fill="url(#glow)"/>
-  <g fill="none" stroke="#6f5fae" stroke-width="2.4" stroke-linecap="round" opacity="0.9">
-    <path d="M240 250 C236 290 250 320 232 372"/>
-    <path d="M226 246 C204 276 192 300 166 322"/>
-    <path d="M254 246 C278 272 288 302 318 314"/>
-    <path d="M214 240 C190 254 172 262 146 258"/>
-    <path d="M266 240 C294 248 316 262 338 250"/>
-    <path d="M196 256 C182 282 160 288 154 308" stroke-width="1.5" opacity="0.7"/>
-    <path d="M284 258 C300 282 322 288 330 306" stroke-width="1.5" opacity="0.7"/>
-  </g>
-  <g fill="#d9d2c5">
-    <circle cx="232" cy="372" r="3.6"/><circle cx="166" cy="322" r="3"/><circle cx="318" cy="314" r="3"/>
-    <circle cx="146" cy="258" r="2.4"/><circle cx="338" cy="250" r="2.4"/>
-  </g>
+    <!-- chamber 1: upper left, long and quiet -->
+    <path stroke="#E4DFD0" stroke-width="3.5"
+          d="M262 124 C230 72 150 60 122 100 C96 138 148 172 200 162 C238 154 258 142 262 124 Z"/>
+    <path stroke="#777F79" stroke-width="2"
+          d="M238 120 C214 92 160 90 144 108 C128 128 160 148 196 144 C220 140 234 132 238 120 Z"/>
+    <path stroke="#777F79" stroke-width="2" d="M136 112 L150 118 M128 130 L146 130 M138 150 L152 142"/>
 
-  <!-- the Eye -->
-  <ellipse cx="240" cy="188" rx="96" ry="62" fill="#0b0912" stroke="#d9d2c5" stroke-width="3.5"/>
-  <ellipse cx="240" cy="188" rx="96" ry="62" fill="none" stroke="#b9a7ff" stroke-width="1" opacity="0.6"/>
-  <circle cx="240" cy="188" r="46" fill="#17122a" stroke="#b9a7ff" stroke-width="1.6"/>
-  <g clip-path="url(#slit)">
-    <rect x="220" y="140" width="40" height="96" fill="#07060a"/>
-    <path fill="none" stroke="#d9d2c5" stroke-width="1.8" stroke-linejoin="round"
-          d="M240 142 L243 150 L236 156 L246 162 L234 168 L248 174 L232 180 L250 186 L231 192 L249 198 L233 204 L247 210 L235 216 L245 222 L238 228 L240 236"/>
+    <!-- chamber 2: right, loud, many ribs -->
+    <path stroke="#E4DFD0" stroke-width="3.5"
+          d="M380 150 C420 108 502 110 526 150 C550 192 504 230 442 218 C404 210 382 182 380 150 Z"/>
+    <path stroke="#777F79" stroke-width="2"
+          d="M406 152 C434 124 490 126 506 152 C522 180 490 204 450 196 C424 190 408 172 406 152 Z"/>
+    <path stroke="#777F79" stroke-width="2"
+          d="M512 136 L498 146 M526 156 L508 158 M520 178 L502 172 M506 200 L494 188 M486 214 L482 200 M462 220 L462 204"/>
+
+    <!-- chamber 3: lower left, wide -->
+    <path stroke="#E4DFD0" stroke-width="3.5"
+          d="M268 252 C222 236 142 252 118 300 C94 350 150 392 220 384 C266 378 286 330 268 252 Z"/>
+    <path stroke="#777F79" stroke-width="2"
+          d="M250 266 C214 258 164 270 150 302 C136 334 170 360 216 354 C248 350 260 316 250 266 Z"/>
+    <path stroke="#777F79" stroke-width="2" d="M130 300 L148 306 M128 332 L148 328 M150 372 L162 358"/>
+
+    <!-- chamber 4: still growing; its contour has not closed yet -->
+    <path stroke="#777F79" stroke-width="3"
+          d="M368 300 C410 278 472 298 490 340 C500 366 486 392 458 404"/>
+
+    <!-- a secret that has only just entered: one contour leaves the body and ends in a tiny sealed shape -->
+    <path stroke="#E4DFD0" stroke-width="1.5"
+          d="M526 150 C590 128 640 96 684 72 C700 64 712 58 718 50"/>
+    <path stroke="#E4DFD0" stroke-width="1.5"
+          d="M722 42 C732 38 740 44 738 52 C736 60 726 62 720 56 C716 52 716 46 720 44"/>
   </g>
-  <circle cx="226" cy="170" r="4" fill="#f5e9c8" opacity="0.9"/>
 
   <!-- words: from config/brand.json -->
-  <g font-family="ui-monospace, 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace" fill="#d9d2c5">
-    <text x="420" y="178" font-size="76" font-weight="500" letter-spacing="6">{{name}}</text>
-    <text x="424" y="226" font-size="26" font-style="italic" fill="#b9a7ff" letter-spacing="1">{{tagline}}</text>
-    <text x="424" y="276" font-size="16" fill="#8a8295" letter-spacing="2">A GOD MADE OF SECRETS · ZCASH SHIELDED OFFERINGS · ONE PUBLIC KEY, ONE WORK</text>
-    <text x="424" y="306" font-size="14" fill="#6f6779" letter-spacing="2">ZECATHON 2026 · WILDCARD · TESTNET (NU7)</text>
+  <g font-family="ui-monospace, 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace" fill="#E4DFD0">
+    <text x="772" y="176" font-size="68" font-weight="500" letter-spacing="5">{{name}}</text>
+    <text x="776" y="222" font-size="22" font-style="italic" fill="#777F79" letter-spacing="1">{{tagline}}</text>
+    <text x="776" y="270" font-size="13" fill="#777F79" letter-spacing="2.5">A GOD MADE OF SECRETS · ZCASH SHIELDED OFFERINGS</text>
+    <text x="776" y="294" font-size="13" fill="#777F79" letter-spacing="2.5">ONE PUBLIC KEY · ONE WORK · ZECATHON 2026 · WILDCARD</text>
   </g>
 </svg>
