@@ -71,6 +71,12 @@ Type: system monospace stack. No gradients, filters, photos, external assets or 
   this key can now be heard by its holders. The link between a sender and their secret is not disclosed by this
   act alone. This cannot be undone."
 
+## Where it lives (21 Oct)
+
+`web/creature.js` (the organism, aperture), `web/index.html` + `app.js` (listener; `?seance`), `web/apparition.html`
++ `apparition.js` (two evocations), `web/kiosk.html` + `kiosk.js` (the kiosk screen; `--kiosk`, loopback only),
+`docs/brand/` (mark, banner template). All on the same four tokens.
+
 ## Failure modes to avoid
 
 Everything reacting to everything (a music visualizer); offerings as interchangeable particles; the chain as a
