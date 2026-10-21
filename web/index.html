@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>listener</title>
+<style>
+  :root { color-scheme: dark; --bg: #07060a; --fg: #d9d2c5; --dim: #6f6779; --accent: #b9a7ff; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+               font: 15px/1.4 ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; }
+  #creature { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  header { position: fixed; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between;
+           align-items: baseline; gap: 16px; pointer-events: none; }
+  h1 { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: 0.06em; }
+  #tagline { color: var(--dim); font-style: italic; }
+  footer { position: fixed; bottom: 16px; left: 16px; right: 16px; display: grid; gap: 6px; font-size: 13px; }
+  .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
+  .k { color: var(--dim); }
+  .hash { word-break: break-all; color: var(--accent); }
+  button { font: inherit; background: transparent; color: var(--fg); border: 1px solid var(--dim);
+           padding: 6px 14px; cursor: pointer; letter-spacing: 0.08em; }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  #pins { color: var(--dim); }
+</style>
+</head>
+<body>
+<canvas id="creature"></canvas>
+<header>
+  <h1 id="name"></h1>
+  <div id="tagline"></div>
+</header>
+<footer>
+  <div class="row">
+    <button id="play">evoke</button>
+    <span id="status">loading</span>
+    <span><span class="k">offerings</span> <span id="offerings">0</span></span>
+    <span><span class="k">height</span> <span id="height">—</span></span>
+    <span><span class="k">silenced</span> <span id="skipped">0</span></span>
+  </div>
+  <div><span class="k">render_hash</span> <span id="render_hash" class="hash">—</span></div>
+  <div><span class="k">score_hash</span> <span id="score_hash" class="hash">—</span></div>
+  <div id="pins"></div>
+  <div class="k">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</div>
+</footer>
+<script src="creature.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

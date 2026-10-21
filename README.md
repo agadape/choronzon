@@ -159,7 +159,7 @@ Vertical slice, which must run before any milestone:
 - [x] Renderer daemon on a view-only wallet: `score.json`, `score_hash`, skip log
 - [x] Offline composer: pinned decoder, local voice for text offerings, integer mix, `render_hash` + `mix.wav`
 - [x] Kiosk: text → local TTS → Codec2 → shielded send from an ephemeral wallet (`python3 -m kiosk`; first live kiosk offering: [`91621cb4…`](https://testnet.zcashexplorer.app/transactions/91621cb429bd0345f740fb678a38005bb6bc38fdfdea61fd82894755666f7e54), block 4,525,215, heard by the public-key renderer ~100 s after sending)
-- [ ] Creature (Canvas 2D) + playback of the mixed buffer
+- [x] Creature (Canvas 2D) + playback of the mixed buffer (`python3 -m web`)
 - [ ] Gate: a live offering → chain → renderer → sound + creature → a second laptop prints the same hash
 
 Milestones, each of which may be dropped without breaking the demo: the god's own voice (authenticated conductor lines), the Whisper Back button (ZIP-321 link / QR), phone offerings, Codec2 in the browser, and the Séance: a session where the viewing key stays sealed until the end and is then revealed.
@@ -173,6 +173,8 @@ python3 -m pytest    # protocol + renderer tests; the chain regression tests run
 
 python3 -m renderer once   --wallet wallets/test/V --as-of 4522002   # one render -> out/score.json, out/render_hash, out/mix.wav
 python3 -m renderer daemon --wallet wallets/test/V                    # sync -> enhance -> render, every 30 s
+python3 -m web --port 8765                                            # listener page: creature + playback of out/mix.wav
+python3 -m kiosk preview "a secret"                                   # kiosk: speak it locally (see kiosk/README.md to send)
 ```
 
 - Ubuntu 24.04, native or WSL. In WSL, work inside the Linux filesystem, not under `/mnt/c`.
@@ -187,7 +189,7 @@ python3 -m renderer daemon --wallet wallets/test/V                    # sync -> 
 | `protocol/` | Memo wire format v1: binary memos, phone envelope, readable phone replies, reply-address checksum (+ tests) |
 | `renderer/` | View-only renderer and daemon: canonical score, `score_hash`, `render_hash`, pinned-decoder wrapper (+ tests) |
 | `kiosk/` | Sender kiosk CLI: preview, ephemeral session wallet + note pool, offer, inbox (+ tests) |
-| `web/` | Listener page with the creature (in progress) |
+| `web/` | Listener page: Canvas 2D creature grown from the score + playback of the mix; stdlib static server |
 | `config/choir.json` | The god's public address and the fixed offering amount (never its viewing key) |
 | `config/` | `brand.json` (name and copy), `skiplist.txt` (flagged offerings: still on chain, never sung) |
 | `scripts/` | `setup.sh`, `smoke.sh`, `gen_readme.py` |

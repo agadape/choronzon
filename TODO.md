@@ -41,8 +41,8 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [ ] **C** Run the 10-person test from the critical review §9 (real secret vs joke; "still want to send?" after permanence warning)
 
 ## Day 5 (24 Oct) — God visual + vertical slice complete  [~12 h]
-- [ ] **B** Canvas 2D creature: ≤3 parameters from audio features (energy, pitch, duration), state `G_n = F(G_{n-1}, A_n, I_n)`, no `Math.random()`; looks alive with 3 contributions
-- [ ] **B** Web page plays the offline-mixed buffer (WebAudio playback only, no live mixing)
+- [x] **B** Canvas 2D creature: ≤3 parameters from audio features (energy, pitch, duration), state `G_n = F(G_{n-1}, A_n, I_n)`, no `Math.random()`; looks alive with 3 contributions (`web/creature.js`)
+- [x] **B** Web page plays the offline-mixed buffer (WebAudio playback only, no live mixing) (`web/app.js`, `python3 -m web`)
 - [ ] **all** GATE: live kiosk send → chain → renderer → audio + god update → second laptop same hash. If this fails, Days 6–7 fix it; no milestones.
 
 ## Day 6 (25 Oct) — milestones (each may be dropped)  [~12 h]
