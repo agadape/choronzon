@@ -187,6 +187,7 @@ python3 -m renderer daemon --wallet wallets/test/V                    # sync -> 
 python3 -m web --port 8765                                            # listener page: creature + playback of out/mix.wav
 python3 -m kiosk preview "a secret"                                   # kiosk: speak it locally (see kiosk/README.md to send)
 python3 -m renderer summon --key-file KEY --birthday 4502962 --wallet wallets/watcher   # a Watcher: from the published key alone
+./scripts/demo.sh    # rehearse the whole 3-minute demo with real transactions; prints a timing table, fails loudly
 ```
 
 - Ubuntu 24.04, native or WSL. In WSL, work inside the Linux filesystem, not under `/mnt/c`.
@@ -204,7 +205,7 @@ python3 -m renderer summon --key-file KEY --birthday 4502962 --wallet wallets/wa
 | `web/` | Listener page: Canvas 2D creature grown from the score + playback of the mix; stdlib static server |
 | `config/choir.json` | The god's public address and the fixed offering amount (never its viewing key) |
 | `config/` | `brand.json` (name and copy), `skiplist.txt` (flagged offerings: still on chain, never sung) |
-| `scripts/` | `setup.sh`, `smoke.sh`, `gen_readme.py` |
+| `scripts/` | `setup.sh`, `smoke.sh`, `demo.sh` (end-to-end rehearsal), `gen_readme.py` |
 | `spikes/`, `SPIKE_LOG.md`, `docs/`, `ai/`, `radio/` | Research and on-chain evidence from 13–20 Oct, kept as it was |
 
 ## Naming

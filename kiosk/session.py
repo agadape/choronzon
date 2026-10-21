@@ -98,6 +98,9 @@ class Session:
     def offer(self, text: str, voice: Voice, choir: Choir, want_reply: bool) -> tuple[Offering, str]:
         reply = self.wallet.generate_address() if want_reply else None
         offering = make_offering(text, voice, reply)
+        # sync first: a transaction built from a stale chain tip gets an expiry height that has already passed and
+        # is rejected at broadcast ("must not be mined at a block Height greater than its expiry"; rehearsal #1)
+        self.wallet.sync()
         txid = self.wallet.pay(payment_uri(choir, offering.memos))
         self._save(offerings=self.state().get("offerings", []) + [{"contrib_id": offering.contrib_id, "txid": txid}])
         return offering, txid
