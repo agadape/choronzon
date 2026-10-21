@@ -17,6 +17,19 @@ python3 -m web --port 8765                            # http://localhost:8765/ (
   voice match the pinned builds. It polls `out/score.json` every 5 s and regrows when the hash changes.
 - The server exposes only `web/`, `config/brand.json` and the `out/` directory; paths outside are refused.
 
+## Kiosk page (`--kiosk`, loopback only)
+
+`python3 -m web --port 8765 --kiosk` adds `http://127.0.0.1:8765/kiosk.html`: a judge types the secret on a
+screen instead of a terminal. The page shows the privacy statement from `kiosk/copy.py` verbatim before the send
+button (the CTA from `config/brand.json`), "preview the ghost voice" (`POST /kiosk/preview` → WAV from
+`kiosk.offering.make_offering` + the pinned decoder, nothing written), an optional "ask for a whisper back", and
+the send button (`POST /kiosk/offer` → `kiosk.session.Session.current().offer(...)`, exactly like
+`python3 -m kiosk offer`; refused with a message when no session is ready). The endpoints and the page exist only
+with `--kiosk` **and** for clients on 127.0.0.1/::1: a listener page served on a LAN never exposes a send
+endpoint. Responses carry txid, contrib_id, byte counts and seconds; the text and any address are never returned
+or logged. After a send the page clears the text, shows the txid with the explorer caveat (it may be on another
+fork; the proof is `wallet -w wallets/test/V list-tx`) and "the god will hear it in about 1–4 minutes".
+
 ## Demo pages
 
 - **Séance** `http://localhost:8765/?seance`: the body grows, but the hashes stay sealed. "open the eye" (or the

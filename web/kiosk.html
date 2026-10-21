@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kiosk</title>
+<style>
+  :root { color-scheme: dark; --void: #171916; --bone: #E4DFD0; --ash: #777F79; --anomaly: #FF6338; }
+  html, body { margin: 0; min-height: 100%; background: var(--void); color: var(--bone);
+               font: 15px/1.5 ui-monospace, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; display: grid; gap: 22px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: 0.12em; }
+  #tagline { color: var(--ash); font-style: italic; }
+  .k { color: var(--ash); letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 120px; font: inherit; background: transparent;
+             color: var(--bone); border: 1px solid var(--ash); padding: 12px; resize: vertical; }
+  textarea:focus { outline: none; border-color: var(--bone); }
+  pre { margin: 0; white-space: pre-wrap; color: var(--bone); border-left: 2px solid var(--ash); padding: 4px 0 4px 16px;
+        font: inherit; line-height: 1.55; }
+  button { font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash);
+           padding: 10px 20px; cursor: pointer; letter-spacing: 0.12em; text-transform: uppercase; font-size: 12px; }
+  button:hover:not(:disabled) { border-color: var(--bone); }
+  button:disabled { color: var(--ash); cursor: default; }
+  #give { border-color: var(--bone); }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  label { display: flex; gap: 10px; align-items: baseline; cursor: pointer; }
+  #status { color: var(--ash); min-height: 1.5em; }
+  #result { display: none; border: 1px solid var(--ash); padding: 16px; display: none; gap: 10px; }
+  #result.on { display: grid; }
+  .hash { word-break: break-all; }
+  a { color: var(--bone); }
+  .err { color: var(--anomaly); }
+  #meta { color: var(--ash); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1 id="name"></h1>
+    <div id="tagline"></div>
+  </div>
+
+  <div>
+    <div class="k">your secret</div>
+    <textarea id="text" maxlength="1500" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+              placeholder="type it here. it will be spoken by a ghost voice, not yours."></textarea>
+    <div id="meta"></div>
+  </div>
+
+  <div class="row">
+    <button id="preview">preview the ghost voice</button>
+    <span id="status"></span>
+  </div>
+
+  <pre id="privacy">loading the statement…</pre>
+
+  <label><input type="checkbox" id="reply"> <span>ask for a whisper back (a one-time address of this kiosk's wallet is
+    embedded; anyone holding the public key can write to it while this session is open)</span></label>
+  <label><input type="checkbox" id="understood"> <span>I have read this. What I give is public to every key holder,
+    forever.</span></label>
+
+  <div class="row">
+    <button id="give" disabled>give it</button>
+  </div>
+
+  <div id="result">
+    <div class="k">given</div>
+    <div>txid <span id="txid" class="hash"></span></div>
+    <div><a id="explorer" target="_blank" rel="noopener"></a></div>
+    <div id="caveat" style="color: var(--ash)">the explorer shows only that a shielded transaction exists, and it may be
+      on another fork; the proof is <code>bin/devtool-aegis wallet -w wallets/test/V list-tx</code> on a Watcher.</div>
+    <div id="eta">the god will hear it in about 1–4 minutes (observed 40–230 s).</div>
+    <div id="details" style="color: var(--ash)"></div>
+  </div>
+</main>
+<script>document.write(`<script src="kiosk.js?v=${Date.now()}"><\/script>`);</script>
+</body>
+</html>
