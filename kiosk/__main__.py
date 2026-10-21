@@ -6,6 +6,7 @@
   python3 -m kiosk qr "text" [--reply <ua>] [--png qr.png]    phone offering: ZIP-321 QR (ASCII envelope) for Zingo etc.
   python3 -m kiosk speak "text" --from wallets/test/B        the god's own voice (choir wallet self-send, kind=3)
   python3 -m kiosk speak "text" --from wallets/test/A --forge demo forgery: renderers show NOT THE GOD
+  python3 -m kiosk reveal --from wallets/test/B [--to key.txt]   the Eye opens: publish the full viewing key (M5)
   python3 -m kiosk session open [--notes 8] [--pool wallets/test/A]
   python3 -m kiosk session status | close
   python3 -m kiosk inbox                                 whispers that returned to this session's wallet
@@ -140,6 +141,31 @@ def cmd_speak(a) -> None:
     print(f"sent. txid {txid}\n{EXPLORER}{txid}")
 
 
+def cmd_reveal(a) -> None:
+    """The Eye opens: publish the choir wallet's full viewing key. Irrevocable; do it on purpose, at the climax.
+
+    Prints the key (and a QR) to the screen. Nothing is written unless --to names a file (e.g. for the README).
+    """
+    wallet_dir = Path(a.from_wallet)
+    key, birthday = Devtool(wallet_dir).full_viewing_key()
+    choir = Choir.load()
+    if Devtool(wallet_dir).default_address() != choir.address:
+        sys.exit(f"{wallet_dir.name} is not the choir wallet in config/choir.json")
+    print(copy.banner())
+    print("THE EYE OPENS. From this moment anyone holding this key can hear every offering, forever.")
+    print("It cannot be closed again.\n")
+    if not a.yes and input("type OPEN to publish the full viewing key: ").strip() != "OPEN":
+        sys.exit("the Eye stays closed")
+    print(f"\nfull viewing key (birthday height {birthday}):\n{key}\n")
+    from renderer.whisper import qr_ascii
+    print(qr_ascii(key))
+    print(f"a Watcher evokes the god with:\n  python3 -m renderer summon --key-file KEY --birthday {birthday} "
+          f"--wallet wallets/watcher")
+    if a.to:
+        Path(a.to).write_text(key + "\n")
+        print(f"key written to {a.to} (your choice; it is now a published document)")
+
+
 def cmd_session(a) -> None:
     if a.action == "open":
         pool_dir = Path(a.pool)
@@ -193,6 +219,10 @@ def main(argv=None) -> None:
     s.add_argument("text")
     s.add_argument("--from", dest="from_wallet", required=True, help="the choir wallet dir (or an outsider with --forge)")
     s.add_argument("--forge", action="store_true", help="demo: send a conductor memo from a wallet that is not the god")
+    s = sub.add_parser("reveal", help="the Eye opens: publish the choir's full viewing key (irrevocable)")
+    s.add_argument("--from", dest="from_wallet", required=True, help="the choir wallet dir")
+    s.add_argument("--to", help="also write the key to this file")
+    s.add_argument("--yes", action="store_true")
     s = sub.add_parser("session")
     s.add_argument("action", choices=["open", "status", "close"])
     s.add_argument("--notes", type=int, default=8)
@@ -200,8 +230,8 @@ def main(argv=None) -> None:
     sub.add_parser("inbox")
     a = p.parse_args(argv)
     try:
-        {"preview": cmd_preview, "offer": cmd_offer, "qr": cmd_qr, "speak": cmd_speak, "session": cmd_session,
-         "inbox": cmd_inbox}[a.command](a)
+        {"preview": cmd_preview, "offer": cmd_offer, "qr": cmd_qr, "speak": cmd_speak, "reveal": cmd_reveal,
+         "session": cmd_session, "inbox": cmd_inbox}[a.command](a)
     except DevtoolError as e:
         sys.exit(str(e))
 

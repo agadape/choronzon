@@ -171,7 +171,7 @@ Milestones, each of which may be dropped without breaking the demo:
 - [x] the god's own voice: `python3 -m kiosk speak "…" --from <choir wallet>` sends a conductor line (`kind=3`) the choir wallet pays to itself; the renderer accepts it only on outputs that spent the choir's own notes and skips the same memo from anyone else as `forged-conductor` (live: [`d6bcb9f7…`](https://testnet.zcashexplorer.app/transactions/d6bcb9f7f6a704de2dbc928f42e6e2bfa03f20132b4430a95ad3f4a90b3e59a5) accepted, [`b126b3c7…`](https://testnet.zcashexplorer.app/transactions/b126b3c781feaffc40d490716cb8a9d306576730cdccf34d353f47a5b8517312) rejected, block 4,525,280)
 - [x] phone offerings: `python3 -m kiosk qr "text" [--reply <your address>] --png qr.png` makes a ZIP-321 QR whose memo is the ASCII envelope, so a mobile wallet sends it intact; the same request paid from a laptop wallet landed as [`ebc5bcad…`](https://testnet.zcashexplorer.app/transactions/ebc5bcadf47feb1d7f1fcd0558c91c3f43ef9be99101365b1341ac1427b114cc) and was voiced by the renderer
 - [ ] Codec2 in the browser
-- [ ] the Séance: a session where the viewing key stays sealed until the end and is then revealed
+- [x] the Séance (command line): the key stays sealed until `python3 -m kiosk reveal --from <choir wallet>` prints it on purpose (nothing is written unless `--to`); anyone who receives it runs `python3 -m renderer summon --key-file KEY --birthday <height> --wallet wallets/watcher` and, from the key alone, prints the same `score_hash` and `render_hash` (the page's séance mode is still open)
 
 ## Run it (Linux or WSL, testnet only)
 
@@ -184,6 +184,7 @@ python3 -m renderer once   --wallet wallets/test/V --as-of 4522002   # one rende
 python3 -m renderer daemon --wallet wallets/test/V                    # sync -> enhance -> render, every 30 s
 python3 -m web --port 8765                                            # listener page: creature + playback of out/mix.wav
 python3 -m kiosk preview "a secret"                                   # kiosk: speak it locally (see kiosk/README.md to send)
+python3 -m renderer summon --key-file KEY --birthday 4502962 --wallet wallets/watcher   # a Watcher: from the published key alone
 ```
 
 - Ubuntu 24.04, native or WSL. In WSL, work inside the Linux filesystem, not under `/mnt/c`.

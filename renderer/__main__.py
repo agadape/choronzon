@@ -3,6 +3,7 @@
   python3 -m renderer once   --wallet wallets/test/V [--as-of N|tip] [--sync] [--out DIR]
   python3 -m renderer daemon --wallet wallets/test/V [--interval 30] [--out DIR]
   python3 -m renderer whisper <txid> --wallet wallets/test/V [--text ...] [--phone] [--send-from wallets/test/L]
+  python3 -m renderer summon --key-file key.txt --birthday 4503120 --wallet wallets/watcher [--as-of N]
 
 `daemon` loops sync -> enhance -> render at the scanned height -> write out/score.json + out/render_hash.
 Only a view-only wallet is accepted (the public viewing key); --allow-spend-key exists for the V-vs-B check.
@@ -125,11 +126,37 @@ def cmd_whisper(args) -> None:
         print(whisper.qr_ascii(uri))
 
 
+def cmd_summon(args) -> None:
+    """A new Watcher: from the published key alone, build a view-only wallet, sync it and evoke the god.
+
+    This is the second-laptop proof: a machine that had nothing but the key prints the same hashes.
+    The key is read from --key-file or the SUMMON_KEY environment variable, never from the command line
+    (shell history) and never logged.
+    """
+    import os
+    from kiosk.devtool import Devtool, DevtoolError
+    key = Path(args.key_file).read_text().strip() if args.key_file else os.environ.get("SUMMON_KEY", "").strip()
+    if not key.startswith(("uview", "uvftest", "uvf1")):
+        sys.exit("no key: pass --key-file or set SUMMON_KEY (a unified full viewing key)")
+    wallet_dir = Path(args.wallet)
+    if not (wallet_dir / "data.sqlite").exists():
+        log.info("summon: creating a view-only wallet from the key (birthday %s)", args.birthday)
+        try:
+            Devtool(wallet_dir, server=args.server)._run("init-fvk", "--name", "watcher", "--fvk", key,
+                                                          "--birthday", str(args.birthday), "-s", args.server)
+        except DevtoolError as e:
+            sys.exit(str(e))
+    log.info("summon: syncing (first time: a few minutes)")
+    sync_and_enhance(args.devtool, wallet_dir, args.server)
+    args.sync, args.allow_spend_key = False, False
+    cmd_once(args)
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="python3 -m renderer", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True)
-    for name in ("once", "daemon", "whisper"):
+    for name in ("once", "daemon", "whisper", "summon"):
         s = sub.add_parser(name)
         s.add_argument("--wallet", required=True, help="wallet directory (view-only)")
         s.add_argument("--out", default=str(REPO / "out"), help="output directory ('' = don't write, once only)")
@@ -141,6 +168,10 @@ def main(argv: list[str] | None = None) -> None:
     sub.choices["once"].add_argument("--as-of", default="tip", help="block height, or 'tip' = scanned height")
     sub.choices["once"].add_argument("--sync", action="store_true", help="sync + enhance before rendering")
     sub.choices["daemon"].add_argument("--interval", type=float, default=30.0, help="seconds between loops")
+    s = sub.choices["summon"]
+    s.add_argument("--key-file", help="file holding the published full viewing key (or set SUMMON_KEY)")
+    s.add_argument("--birthday", type=int, required=True, help="block height the god was born at")
+    s.add_argument("--as-of", default="tip", help="block height to evoke at (compare with the other laptop)")
     w = sub.choices["whisper"]
     w.add_argument("txid", help="the offering to answer (display order)")
     w.add_argument("--text", default="you are not alone.", help="the whisper (text)")
@@ -149,7 +180,7 @@ def main(argv: list[str] | None = None) -> None:
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", stream=sys.stderr)
     try:
-        {"once": cmd_once, "daemon": cmd_daemon, "whisper": cmd_whisper}[args.command](args)
+        {"once": cmd_once, "daemon": cmd_daemon, "whisper": cmd_whisper, "summon": cmd_summon}[args.command](args)
     except KeyboardInterrupt:
         log.info("stopped")
 

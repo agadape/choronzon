@@ -12,6 +12,10 @@ python3 -m kiosk offer "text" [--reply]              # send from the session wal
 python3 -m kiosk inbox                               # whispers that returned to this session's wallet
 python3 -m kiosk session close                       # wipe the wallet, its identity and the sent secrets
 python3 -m kiosk offer "text" --from wallets/test/A  # operator / seeding: a named wallet, labelled as such
+python3 -m kiosk qr "text" [--reply <ua>] --png qr.png   # phone offering: ZIP-321 QR with the ASCII envelope
+python3 -m kiosk speak "text" --from wallets/test/B  # the god's own voice: a conductor line the choir pays to itself
+python3 -m kiosk speak "text" --from wallets/test/A --forge   # demo forgery: every renderer shows NOT THE GOD
+python3 -m kiosk reveal --from wallets/test/B [--to key.txt]  # the Eye opens: publish the full viewing key (M5)
 ```
 
 - The session wallet lives under `wallets/kiosk/current/` (git-ignored) and is deleted on `close`. Its `sent_notes`

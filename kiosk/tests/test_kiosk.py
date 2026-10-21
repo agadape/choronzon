@@ -109,6 +109,19 @@ def test_devtool_error_sanitizes_addresses(tmp_path, monkeypatch):
     assert CHOIR_ADDR not in str(e.value) and "<address>" in str(e.value)
 
 
+def test_full_viewing_key_parsing(tmp_path, monkeypatch):
+    import subprocess
+    sample = ("Account 8bdf96d0-b2a6-4da9-8ecd-daf338dbba6e (birthday height 4503120)\n     Name: x\n"
+              "     UIVK: uvitest1abc\n     UFVK: uvftest1s5vnzz3xm2abcdefghijklmnopqrstuvwxyz0123456789\n")
+
+    class Done:
+        returncode, stdout, stderr = 0, sample, ""
+
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: Done())
+    key, birthday = devtool.Devtool(tmp_path).full_viewing_key()
+    assert key.startswith("uvftest1s5vnzz3xm2") and birthday == 4503120
+
+
 def test_devtool_refuses_to_spend_without_identity(tmp_path):
     d = devtool.Devtool(tmp_path)
     with pytest.raises(devtool.DevtoolError):

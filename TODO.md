@@ -50,7 +50,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [x] **M2 A/C** Whisper Back: "whisper back" button → ZIP-321 URI/QR to the reply address; reply inbox view for demo wallet (`renderer/whisper.py`, `python3 -m renderer whisper`, web limb click → QR, `kiosk inbox`; live loop 21 Oct: offering `8d02a6b0…` from the ephemeral wallet → L's reply `143f91ee…` → inbox matched in ~80 s, V sees 0)
 - [x] **M3 C** Phone contributions: QR with ASCII envelope (`python3 -m kiosk qr "text" [--reply ua] [--png]`; envelope path proven end-to-end with the product code by paying the QR's URI from wallet L: `ebc5bcad…`). Still to do: scan the same QR with Zingo on a real phone (user)
 - [ ] **M4 B** Codec2 in browser (`@uimaxbai/ffmpeg-core-codec2` or skip)
-- [ ] **M5 C** Séance format: viewing key hidden during session, revealed at the end as the climax
+- [x] **M5 C** Séance format: viewing key hidden during session, revealed at the end as the climax (`python3 -m kiosk reveal --from wallets/test/B` prints the UFVK + QR on purpose, nothing written unless `--to`; `python3 -m renderer summon --key-file K --birthday H --wallet DIR` = a new Watcher from the key alone → same hashes. Web séance mode (hashes/key hidden until reveal) belongs to `web/`, open)
 
 ## Day 7 (26 Oct) — hardening  [~12 h]
 - [ ] **A** Privacy review: no analytics, no cloud calls, logs contain only txid + validation result, no reply addresses retained

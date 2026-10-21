@@ -52,6 +52,15 @@ class Devtool:
             raise DevtoolError("no account in wallet")
         return m.group(0)
 
+    def full_viewing_key(self) -> tuple[str, int]:
+        """The account's unified full viewing key and birthday height. Publishing it is a deliberate act (M5)."""
+        out = self._run("list-accounts")
+        key = re.search(r"UFVK: (uv[a-z]*1[0-9a-z]+)", out)
+        birthday = re.search(r"birthday height (\d+)", out)
+        if not key or not birthday:
+            raise DevtoolError("no full viewing key in wallet")
+        return key.group(1), int(birthday.group(1))
+
     def default_address(self) -> str:
         m = _UA.search(self._run("list-addresses"))
         if not m:
