@@ -76,9 +76,13 @@ function frame() {
   const W = c.width = c.clientWidth * devicePixelRatio, H = c.height = c.clientHeight * devicePixelRatio;
   const t = playing ? Math.floor((audioCtx.currentTime - startedAt) * 8000) : -1;
   const now = performance.now();
+  // the body lives in the band between the header and the footer, so the hashes stay readable
+  const top = document.querySelector("header").getBoundingClientRect().bottom + 8;
+  const bottom = document.querySelector("footer").getBoundingClientRect().top - 8;
   Creature.draw(c.getContext("2d"), body, t, W, H, {
     age: (tx) => (tx in firstSeen ? (now - firstSeen[tx]) / 1000 : 99),
     forgedAge: () => (forgedSeen === null ? null : forgedSeen < 0 ? 99 : (now - forgedSeen) / 1000),
+    safe: [top * devicePixelRatio, Math.max(top + 80, bottom) * devicePixelRatio],
   });
   const f = body.forgedScreen;
   $("not_the_god").style.display = f ? "block" : "none";

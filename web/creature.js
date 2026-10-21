@@ -127,25 +127,32 @@ function path(ctx, pts, close = true, fraction = 1) {
 }
 
 // draw(ctx, body, t, W, H, opts): t = playback position in samples (-1 = silent); opts.age(tx) = seconds since
-// the page first saw this chamber (arrival animation), opts.forgedAge = seconds since a forgery was first seen.
+// the page first saw this chamber (arrival animation), opts.forgedAge = seconds since a forgery was first seen,
+// opts.safe = [top, bottom] in device px: the band between header and footer that the body must fit into.
 function draw(ctx, body, t, W, H, opts = {}) {
   const T = tokens();
+  const dpr = devicePixelRatio || 1;
   ctx.fillStyle = T.void; ctx.fillRect(0, 0, W, H);
+  const spine = body.spine || 70, w0b = body.w0 || 12;
   const items = [...body.chambers.map((c) => c.outer), ...body.silenced.map((s) => s.outer),
-                 [[-body.w0, -body.spine], [body.w0, body.spine]]];
+                 [[-w0b, -spine], [w0b, spine]]];
   let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
   for (const pts of items) for (const [x, y] of pts) {
     minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
   }
-  const scale = Math.min((W * 0.72) / (maxX - minX), (H * 0.72) / (maxY - minY), 2.2 * devicePixelRatio);
-  const ox = W / 2 - ((minX + maxX) / 2) * scale, oy = H / 2 - ((minY + maxY) / 2) * scale;
+  // fit into the safe band (between header and footer), never larger than ~1.4 CSS px per body unit
+  const [top, bottom] = opts.safe || [0, H];
+  const boxW = W * 0.84, boxH = Math.max(80, (bottom - top) * 0.88);
+  let scale = Math.min(boxW / Math.max(1, maxX - minX), boxH / Math.max(1, maxY - minY), 1.4 * dpr);
+  if (!isFinite(scale) || scale <= 0) scale = dpr;
+  const ox = W / 2 - ((minX + maxX) / 2) * scale, oy = (top + bottom) / 2 - ((minY + maxY) / 2) * scale;
   const X = (x) => ox + x * scale, Y = (y) => oy + y * scale;
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   const sec = t >= 0 ? t / 8000 : 0;
 
   // --- the central membrane: nearly nothing before the first offering, a continuous body after -----------------
   const alive = body.count > 0;
-  const sp = body.spine, w0 = alive ? body.w0 : 12;
+  const sp = spine, w0 = alive ? w0b : 12;
   const root = [];
   for (let i = 0; i < 2 * K; i++) {
     const th = (i / (2 * K)) * TAU;
