@@ -43,7 +43,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 ## Day 5 (24 Oct) — God visual + vertical slice complete  [~12 h]
 - [x] **B** Canvas 2D creature: ≤3 parameters from audio features (energy, pitch, duration), state `G_n = F(G_{n-1}, A_n, I_n)`, no `Math.random()`; looks alive with 3 contributions (`web/creature.js`)
 - [x] **B** Web page plays the offline-mixed buffer (WebAudio playback only, no live mixing) (`web/app.js`, `python3 -m web`)
-- [ ] **all** GATE: live kiosk send → chain → renderer → audio + god update → second laptop same hash. If this fails, Days 6–7 fix it; no milestones. (One machine done 21 Oct: kiosk `91621cb4…` / `8d02a6b0…` → V renderer in 40–100 s → mix + creature updated. **Second laptop still to do.**)
+- [ ] **all** GATE: live kiosk send → chain → renderer → audio + god update → second laptop same hash. If this fails, Days 6–7 fix it; no milestones. (One machine done 21 Oct: kiosk `91621cb4…` / `8d02a6b0…` → V renderer in 40–100 s → mix + creature updated. "Second laptop" proven as a fresh wallet from the key alone: `renderer summon` → same `render_hash` `8540a0a5…` @4525294 as V in 28 s. **A second physical laptop is still worth doing before the demo.**)
 
 ## Day 6 (25 Oct) — milestones (each may be dropped)  [~12 h]
 - [x] **M1 A** Conductor voice: self-send detection (S13) → "the god speaks" layer; forged voice shown as rejected (protocol `kind=3`, `renderer/score.py` conductor vs `forged-conductor`, composer `choir/2`; `python3 -m kiosk speak`; live 21 Oct: god `d6bcb9f7…` accepted, forgery `b126b3c7…` rejected, block 4525280; web "NOT THE GOD" visual still open)
