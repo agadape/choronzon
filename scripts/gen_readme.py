@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parent.parent
 BRAND = ROOT / "config" / "brand.json"
 TEMPLATE = ROOT / "docs" / "README.template.md"
 OUT = ROOT / "README.md"
+# other templates rendered the same way: docs/brand/<x>.template.svg -> docs/brand/<x>.svg
+BRAND_TEMPLATES = sorted((ROOT / "docs" / "brand").glob("*.template.svg"))
 PACKAGE_FILES = (ROOT / "package.json", ROOT / "package-lock.json")
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 
@@ -41,16 +43,18 @@ def package_json(path: Path, slug: str) -> str:
 
 def main() -> None:
     brand = json.loads(BRAND.read_text(encoding="utf-8"))
-    template = TEMPLATE.read_text(encoding="utf-8")
-    if brand["name"].lower() in template.lower():
-        sys.exit(f"{TEMPLATE.relative_to(ROOT)} hardcodes the name; use {{{{name}}}} instead")
-    outputs = {OUT: render(brand, template)}
+    outputs = {}
+    for tpl, out in [(TEMPLATE, OUT)] + [(t, t.with_name(t.name.replace(".template", ""))) for t in BRAND_TEMPLATES]:
+        template = tpl.read_text(encoding="utf-8")
+        if brand["name"].lower() in template.lower():
+            sys.exit(f"{tpl.relative_to(ROOT)} hardcodes the name; use {{{{name}}}} instead")
+        outputs[out] = render(brand, template)
     outputs.update({p: package_json(p, brand["slug"]) for p in PACKAGE_FILES if p.exists()})
     if "--check" in sys.argv[1:]:
         stale = [p.name for p, text in outputs.items() if not p.exists() or p.read_text(encoding="utf-8") != text]
         if stale:
             sys.exit(f"stale: {', '.join(stale)}: run python3 scripts/gen_readme.py")
-        print("README.md and package name are up to date")
+        print("README.md, brand SVGs and package name are up to date")
         return
     for path, text in outputs.items():
         path.write_text(text, encoding="utf-8", newline="\n")

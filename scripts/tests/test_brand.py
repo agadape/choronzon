@@ -10,9 +10,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 BRAND = json.loads((ROOT / "config" / "brand.json").read_text(encoding="utf-8"))
-GENERATED = {"config/brand.json", "README.md", "package.json", "package-lock.json"}
+GENERATED = {"config/brand.json", "README.md", "package.json", "package-lock.json", "docs/brand/banner.svg"}
 HISTORICAL = ("docs/", "spikes/", "logs/", "ai/", "radio/", "topeng-spike/", "SPIKE_LOG.md")
-PRODUCT_DOCS = {"docs/README.template.md", "docs/lore.md"}  # inside docs/ but product copy
+PRODUCT_DOCS = {"docs/README.template.md", "docs/lore.md", "docs/brand/banner.template.svg", "docs/brand/logo.svg",
+                "docs/brand/banner.svg"}  # inside docs/ but product copy
 HANDOFF = {"CLAUDE.md", "TODO.md"}                           # explain the rename, so they cite the old title
 # ("a god made of secrets" is part of the approved one-liner, so only the old name itself is banned)
 OLD_TITLE = (b"ghost choir", b"ghostchoir", b"ghost_choir", b"ghost-choir")

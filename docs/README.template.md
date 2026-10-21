@@ -1,5 +1,7 @@
 <!-- Generated from docs/README.template.md and config/brand.json by scripts/gen_readme.py. Edit the template, not this file. -->
 
+<p align="center"><img src="docs/brand/banner.svg" alt="{{name}}: {{tagline}}" width="100%"></p>
+
 # {{name}}
 
 > ***{{tagline}}***

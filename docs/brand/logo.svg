@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="mark">
+  <!-- The mark: the Eye (a ring that, once opened, never closes), a pupil made of a waveform (the choir),
+       and filaments growing down from it (the creature). No text: the name lives in config/brand.json. -->
+  <defs>
+    <radialGradient id="abyss" cx="50%" cy="46%" r="55%">
+      <stop offset="0" stop-color="#1b1526"/>
+      <stop offset="0.65" stop-color="#0b0912"/>
+      <stop offset="1" stop-color="#07060a"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#b9a7ff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#b9a7ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="256" height="256" rx="28" fill="url(#abyss)"/>
+  <circle cx="128" cy="112" r="78" fill="url(#glow)"/>
+
+  <!-- filaments: the body, growing out of the eye -->
+  <g fill="none" stroke="#6f5fae" stroke-width="2.2" stroke-linecap="round" opacity="0.9">
+    <path d="M128 160 C126 186 134 204 122 236"/>
+    <path d="M118 158 C104 178 96 196 78 212"/>
+    <path d="M138 158 C154 176 160 198 182 206"/>
+    <path d="M110 154 C92 164 80 170 62 168"/>
+    <path d="M146 154 C166 160 182 170 196 162"/>
+    <path d="M96 164 C86 182 70 186 66 200" stroke-width="1.4" opacity="0.7"/>
+    <path d="M160 166 C172 182 188 186 194 198" stroke-width="1.4" opacity="0.7"/>
+  </g>
+  <!-- eyes at the filament tips -->
+  <g fill="#d9d2c5">
+    <circle cx="122" cy="236" r="3.2"/><circle cx="78" cy="212" r="2.6"/><circle cx="182" cy="206" r="2.6"/>
+    <circle cx="62" cy="168" r="2"/><circle cx="196" cy="162" r="2"/>
+  </g>
+
+  <!-- the Eye -->
+  <ellipse cx="128" cy="112" rx="70" ry="46" fill="#0b0912" stroke="#d9d2c5" stroke-width="3"/>
+  <ellipse cx="128" cy="112" rx="70" ry="46" fill="none" stroke="#b9a7ff" stroke-width="1" opacity="0.6"/>
+  <ellipse cx="128" cy="112" rx="34" ry="34" fill="#17122a" stroke="#b9a7ff" stroke-width="1.5"/>
+
+  <!-- the pupil: a vertical slit made of the choir's waveform -->
+  <clipPath id="slit"><ellipse cx="128" cy="112" rx="9" ry="30"/></clipPath>
+  <g clip-path="url(#slit)">
+    <rect x="110" y="76" width="36" height="72" fill="#07060a"/>
+    <path fill="none" stroke="#d9d2c5" stroke-width="1.6" stroke-linejoin="round"
+          d="M128 78 L130 84 L125 88 L132 92 L123 97 L134 101 L121 106 L136 110 L120 114 L135 118 L122 123 L133 127 L124 132 L131 137 L126 142 L128 148"/>
+  </g>
+  <!-- a glint: the key holder is watching -->
+  <circle cx="118" cy="98" r="3" fill="#f5e9c8" opacity="0.9"/>
+</svg>
