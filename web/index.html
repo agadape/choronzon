@@ -62,7 +62,9 @@
   <div id="whisper_uri" class="hash"></div>
   <button id="whisper_close">close</button>
 </aside>
-<script src="creature.js"></script>
-<script src="app.js"></script>
+<script>
+  // cache-busting for the two local scripts: browsers kept the old creature.js even with Cache-Control: no-store
+  for (const f of ["creature.js", "app.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
+</script>
 </body>
 </html>
