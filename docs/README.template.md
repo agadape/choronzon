@@ -99,8 +99,9 @@ On stage, everyone in the room can see who just walked up to the kiosk. That is 
 
 - **Two versioned hashes.** `score_hash` covers chain data only and does not depend on any decoder. `render_hash` = `score_hash` + PCM from the pinned decoder + composer version; this is what two laptops compare.
 - **Pinned decoder.** Codec2 tag `1.2.0` (commit `06d4c11e`), built from source, static, `-ffp-contract=off`. The renderer never uses a system copy.
-- **No float drift, no randomness.** Mixing uses integer arithmetic; there is no RNG and no `Math.random()`.
-- **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`spikes/g6_render.py`). The product renderer reproduces that value and, at the same height, `score_hash` (`score/1`) `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a`; its `score.json` is byte-identical from the view-only and the full-key wallet.
+- **No float drift, no randomness.** Mixing uses integer arithmetic; there is no RNG and no `Math.random()`. Composer `choir/1`: each voice starts when the previous one is 5/8 through; pan (17 steps) and pitch layer (1, 15/16, 17/16 by integer resampling) come from `contrib_id`; voices sum in int32 and clip to int16 stereo at 8 kHz.
+- **Pinned voice.** Text offerings are spoken by espeak-ng 1.51 (voice `en`, speed 130, pitch 30), resampled by sox **without dither** (`-D`; sox's default dither is random noise), then sent through Codec2 700C and the pinned decoder, so every voice in the mix is the same ghost. Its fingerprint is reported next to the decoder's.
+- **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`spikes/g6_render.py`). The product renderer reproduces that value and, at the same height, `score_hash` (`score/1`) `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a` and `render_hash` (`render/1`, composer `choir/1`) `4b72400946b68f2e7547d4422408a7a2a552196de99f93073b860825972dc136`; `score.json` and `mix.wav` are byte-identical from the view-only and the full-key wallet.
 - **Decoder fingerprint.** The renderer decodes three fixed Codec2 vectors and reports the hash of the result, so a `render_hash` mismatch between two machines can be traced to the decoder build while `score_hash` still agrees.
 
 ## Memo protocol v1
@@ -156,7 +157,7 @@ Vertical slice, which must run before any milestone:
 
 - [x] Protocol package + tests (every malformed-memo case)
 - [x] Renderer daemon on a view-only wallet: `score.json`, `score_hash`, skip log
-- [ ] Offline composer: pinned decoder, integer mix, `render_hash` (today `render_hash` uses a placeholder composer, `concat/0`: decoded audio concatenated, no mix, no TTS yet)
+- [x] Offline composer: pinned decoder, local voice for text offerings, integer mix, `render_hash` + `mix.wav`
 - [ ] Kiosk: text → local TTS → Codec2 → shielded send from an ephemeral wallet
 - [ ] Creature (Canvas 2D) + playback of the mixed buffer
 - [ ] Gate: a live offering → chain → renderer → sound + creature → a second laptop prints the same hash
@@ -170,7 +171,7 @@ Milestones, each of which may be dropped without breaking the demo: the god's ow
 ./scripts/smoke.sh   # protocol tests, lightwalletd reachability, G6 regression, view-only vs full-key health check
 python3 -m pytest    # protocol + renderer tests; the chain regression tests run only when wallets/ is present
 
-python3 -m renderer once   --wallet wallets/test/V --as-of 4522002   # one render -> out/score.json + out/render_hash
+python3 -m renderer once   --wallet wallets/test/V --as-of 4522002   # one render -> out/score.json, out/render_hash, out/mix.wav
 python3 -m renderer daemon --wallet wallets/test/V                    # sync -> enhance -> render, every 30 s
 ```
 

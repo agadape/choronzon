@@ -14,9 +14,11 @@ import json
 import logging
 import sys
 import time
+from pathlib import Path
 
 from . import render as rnd
 from .decoder import REPO, Decoder
+from .tts import Voice
 from .score import load_skiplist
 from .wallet import NotReady, WalletDB, sync_and_enhance
 
@@ -34,13 +36,23 @@ def _log_result(result: rnd.RenderResult, seen: set[str]) -> None:
             seen.add(o.txid)
             log.info("offering tx=%s height=%d codec=%d%s", o.txid, o.height, o.codec,
                      " reply-address-invalid" if o.reply_invalid else "")
-    for txid in result.decode_failures:
-        log.warning("audio decode failed tx=%s (rendered as silence)", txid)
-    if not result.fingerprint_matches_pin:
+    for txid in result.mix.failures:
+        log.warning("voice failed tx=%s (rendered as 1 s of silence)", txid)
+    if not result.decoder_matches_pin:
         log.warning("decoder fingerprint differs from the pinned codec2 build: render_hash will differ "
+                    "from other machines (score_hash is unaffected)")
+    if not result.voice_matches_pin:
+        log.warning("voice fingerprint differs from the pinned espeak-ng/sox build: render_hash will differ "
                     "from other machines (score_hash is unaffected)")
     log.info("rendered as_of=%d offerings=%d skipped=%d score_hash=%s render_hash=%s", result.score.as_of_height,
              len(result.score.offerings), len(result.score.skipped), result.score_hash, result.render_hash)
+
+
+def _voice(decoder: Decoder, args) -> Voice:
+    voice = Voice(decoder, cache_dir=Path(args.out) / "cache" if args.out else None)
+    if not voice.available():
+        sys.exit("espeak-ng and sox are required to voice text offerings (scripts/setup.sh installs them)")
+    return voice
 
 
 def _open_wallet(args) -> WalletDB:
@@ -59,7 +71,8 @@ def cmd_once(args) -> None:
     as_of = scanned if args.as_of == "tip" else int(args.as_of)
     if as_of > scanned:
         sys.exit(f"as_of {as_of} is above the scanned height {scanned}: sync first")
-    result = rnd.render(db, as_of, Decoder(args.c2dec), load_skiplist(args.skiplist))
+    decoder = Decoder(args.c2dec)
+    result = rnd.render(db, as_of, decoder, load_skiplist(args.skiplist), _voice(decoder, args))
     _log_result(result, set())
     if args.out:
         rnd.write_outputs(result, args.out)
@@ -68,6 +81,7 @@ def cmd_once(args) -> None:
 
 def cmd_daemon(args) -> None:
     db, decoder, seen, last = _open_wallet(args), Decoder(args.c2dec), set(), None
+    voice = _voice(decoder, args)
     log.info("daemon start wallet=%s interval=%ss out=%s", args.wallet, args.interval, args.out)
     while True:
         try:
@@ -77,7 +91,7 @@ def cmd_daemon(args) -> None:
         as_of, skiplist = db.scanned_height(), load_skiplist(args.skiplist)
         if (as_of, skiplist) != last:
             try:
-                result = rnd.render(db, as_of, decoder, skiplist)
+                result = rnd.render(db, as_of, decoder, skiplist, voice)
             except NotReady as e:
                 log.info("waiting: %s", e)
             else:

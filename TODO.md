@@ -27,10 +27,10 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [x] **C** Write README skeleton with the privacy wording from `CLAUDE.md` §6 verbatim + "your own wallet remembers" + "block order ≠ send order" (merged template `145e283`, updated `45481f7`; generated from `config/brand.json`)
 
 ## Day 3 (22 Oct) — offline composer  [~12 h]
-- [ ] **B** Pin decoder: `c2dec` version recorded; decode 700C/1200/1300 → PCM 8 kHz int16
-- [ ] **B** Deterministic mixer: integer arithmetic, per-`contrib_id` pan/pitch-layer derived from the id, no RNG, no float drift; output one WAV + hash
-- [ ] **B** Text contributions → local TTS (espeak-ng now; Piper if time) → same pipeline
-- [ ] **A** Verify G6 still holds end-to-end: two machines, same wallet key, same `render_hash` incl. PCM
+- [x] **B** Pin decoder: `c2dec` version recorded; decode 700C/1200/1300 → PCM 8 kHz int16 (`264aae3`, fingerprint in `renderer/decoder.py`)
+- [x] **B** Deterministic mixer: integer arithmetic, per-`contrib_id` pan/pitch-layer derived from the id, no RNG, no float drift; output one WAV + hash (`renderer/composer.py` `choir/1`)
+- [x] **B** Text contributions → local TTS (espeak-ng now; Piper if time) → same pipeline (`renderer/tts.py`; espeak-ng 1.51 + sox `-D`, fingerprint pinned)
+- [ ] **A** Verify G6 still holds end-to-end: two machines, same wallet key, same `render_hash` incl. PCM (one machine so far: V == B byte-identical incl. `mix.wav`; needs a second laptop)
 - [ ] **C** Collect 10–15 seed "secrets" (original, safe to publish) and pre-send them so the god is never empty
 
 ## Day 4 (23 Oct) — kiosk (sender)  [~12 h]

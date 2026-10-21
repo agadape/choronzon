@@ -109,8 +109,7 @@ Handling rules (decided 21 Oct): the choir UFVK is published deliberately (READM
 
 1. ~~Repo layout, `protocol/`, renderer daemon, README~~ — done on Day 2 (see TODO.md). Use them:
    `python3 -m pytest` (95 tests; chain regression needs `wallets/`), `python3 -m renderer once --wallet wallets/test/V --as-of 4522002` (→ `out/score.json` + `out/render_hash`; anchors: g6 `c46dd5de…`, score/1 `41530793…`), `python3 -m renderer daemon --wallet wallets/test/V`.
-   The renderer's composer is a placeholder (`COMPOSER_VERSION = "concat/0"` in `renderer/render.py`); Day 3 replaces it and bumps the version (update `RENDER_HASH` in `renderer/tests/test_chain_regression.py` then).
-2. Offline composer: contributions → one deterministic PCM buffer (pinned `c2dec`, integer mixing, per-`contrib_id` pan/pitch).
+2. ~~Offline composer~~ — done Day 3 (`renderer/composer.py` `choir/1`, `renderer/tts.py`): `out/mix.wav` stereo 8 kHz; render/1 anchor at 4522002 = `4b724009…`. Any change to the composer, the voice params or the pins bumps `COMPOSER_VERSION` and `RENDER_HASH` in `renderer/tests/test_chain_regression.py`. **sox must run with `-D`** (default dither is random → non-deterministic). Per-offering integer features for the creature are in `score.json` → `render.timeline` (`energy`, `zero_crossings`, `samples`, `start`, `pan`, `pitch_layer`).
 3. Kiosk: text → espeak-ng (upgrade: Piper) → Codec2 700C → `pay` from an ephemeral wallet funded from the pool.
 4. God 2D on Canvas.
 5. Then milestones: Whisper Back button (ZIP-321 URI/QR), phone contributions (envelope), conductor voice, Séance reveal moment.

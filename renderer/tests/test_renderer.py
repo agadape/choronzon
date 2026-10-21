@@ -37,6 +37,23 @@ class FakeDecoder:
         return "fake-" + self.tag.decode()
 
 
+class FakeVoice:
+    """Stands in for espeak-ng: deterministic PCM derived from the text."""
+
+    def __init__(self, tag: bytes = b"v1"):
+        self.tag = tag
+
+    def speak(self, text):
+        return self.tag + text.encode("utf-8") * 4
+
+    def fingerprint(self):
+        return "fake-voice-" + self.tag.decode()
+
+
+def render(db, as_of, decoder=None, skiplist=frozenset(), voice=None):
+    return rnd.render(db, as_of, decoder or FakeDecoder(), skiplist, voice or FakeVoice())
+
+
 def make_wallet(tmp_path, notes, spend_key=False, tip=100, scan_ranges=((0, 101, 10),), name="wallet"):
     """notes: (txid, height, tx_index, output_index, memo|None, is_change[, pool])."""
     d = tmp_path / name
@@ -169,22 +186,25 @@ def _audio_wallet(tmp_path):
     return make_wallet(tmp_path, [(txid(1), 10, 1, 0, memo, 0), (txid(2), 20, 1, 0, offering(b"later"), 0)])
 
 
-def test_score_hash_ignores_the_decoder_render_hash_does_not(tmp_path):
+def test_score_hash_ignores_decoder_and_voice_render_hash_does_not(tmp_path):
     db = WalletDB(_audio_wallet(tmp_path))
-    a, b = rnd.render(db, 100, FakeDecoder(b"v1")), rnd.render(db, 100, FakeDecoder(b"v2"))
-    assert a.score_hash == b.score_hash and a.render_hash != b.render_hash
+    a = render(db, 100, FakeDecoder(b"v1"), voice=FakeVoice(b"v1"))
+    b = render(db, 100, FakeDecoder(b"v2"), voice=FakeVoice(b"v1"))
+    c = render(db, 100, FakeDecoder(b"v1"), voice=FakeVoice(b"v2"))
+    assert a.score_hash == b.score_hash == c.score_hash
+    assert len({a.render_hash, b.render_hash, c.render_hash}) == 3
 
 
 def test_as_of_is_explicit_and_part_of_the_hash(tmp_path):
     db = WalletDB(_audio_wallet(tmp_path))
-    early, late = rnd.render(db, 15, FakeDecoder()), rnd.render(db, 100, FakeDecoder())
+    early, late = render(db, 15), render(db, 100)
     assert len(early.score.offerings) == 1 and len(late.score.offerings) == 2
-    assert rnd.render(db, 16, FakeDecoder()).score_hash != early.score_hash  # same offerings, different height
+    assert render(db, 16).score_hash != early.score_hash  # same offerings, different height
 
 
 def test_flagging_changes_the_score_and_lists_the_tx(tmp_path):
     db = WalletDB(_audio_wallet(tmp_path))
-    plain, flagged = rnd.render(db, 100, FakeDecoder()), rnd.render(db, 100, FakeDecoder(), frozenset({txid(2)}))
+    plain, flagged = render(db, 100), render(db, 100, skiplist=frozenset({txid(2)}))
     assert plain.score_hash != flagged.score_hash
     assert flagged.score.to_json()["skipped"] == [{"tx": txid(2), "height": 20, "tx_index": 1,
                                                     "reason": REASON_FLAGGED}]
@@ -194,12 +214,14 @@ def test_outputs_are_deterministic_and_hold_no_content_or_addresses(tmp_path):
     w = make_wallet(tmp_path, [(txid(1), 10, 1, 0, offering(b"my secret words", reply=REPLY), 0)])
     db = WalletDB(w)
     for out in ("o1", "o2"):
-        rnd.write_outputs(rnd.render(db, 100, FakeDecoder()), tmp_path / out)
+        rnd.write_outputs(render(db, 100), tmp_path / out)
     one, two = (tmp_path / "o1" / "score.json").read_bytes(), (tmp_path / "o2" / "score.json").read_bytes()
     assert one == two
+    assert (tmp_path / "o1" / "mix.wav").read_bytes() == (tmp_path / "o2" / "mix.wav").read_bytes()
     assert b"my secret words" not in one and REPLY.encode() not in one and b"zutest" not in one
     doc = json.loads(one)
     assert doc["score"]["offerings"][0]["has_reply"] is True
+    assert doc["render"]["timeline"][0]["tx"] == txid(1) and doc["render"]["composer"] == "choir/1"
     assert (tmp_path / "o1" / "render_hash").read_text().strip() == doc["render_hash"]
 
 
