@@ -59,6 +59,7 @@ def test_served_files_and_confinement(served):
     assert req("GET", "/")[0] == 200
     assert req("GET", "/out/score.json")[0] == 200
     assert req("GET", "/config/brand.json")[0] == 200
+    assert req("GET", "/logo.svg")[0] == 200 and req("GET", "/style.css")[0] == 200
     for bad in ("/out/../secret.txt", "/out/%2e%2e/secret.txt", "/out//etc/hostname", "/out/..%2fsecret.txt",
                 "/../pyproject.toml", "/%2e%2e/pyproject.toml", "/out/../../etc/passwd", "/tests/", "/out/"):
         status, _, body = req("GET", bad)

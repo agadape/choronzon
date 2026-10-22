@@ -4,21 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>two evocations</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
 <style>
-  :root { color-scheme: dark; --void: #171916; --bone: #E4DFD0; --ash: #777F79; --anomaly: #FF6338; }
-  html, body { margin: 0; height: 100%; background: var(--void); color: var(--bone);
-               font: 14px/1.45 ui-monospace, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace; }
   #stage { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
+  #stage.explaining { grid-template-columns: 3fr 2fr; }
+  #stage.explaining #right { display: none; }
   .side { position: relative; display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
   .side canvas { width: 100%; height: 100%; display: block; }
-  .side header, .side footer { padding: 14px 18px; display: grid; gap: 4px; }
-  .k { color: var(--ash); letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
+  .side header, .side footer { padding: 16px clamp(14px, 2vw, 24px); display: grid; gap: 6px; }
   .src { color: var(--ash); font-size: 11px; word-break: break-all; }
-  .hash { word-break: break-all; letter-spacing: 0.06em; font-size: 13px; }
-  .hash span { color: var(--ash); transition: color 0.4s; }
-  .hash span.lit { color: var(--bone); }
-  .hash span.bad { color: var(--anomaly); }
-  .name { color: var(--ash); letter-spacing: 0.2em; font-size: 13px; min-height: 1.4em; }
+  .name { color: var(--ash); letter-spacing: 0.2em; font-size: 12.5px; min-height: 1.4em; }
   .name.bad { color: var(--anomaly); }
   #lines { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; }
   #divider { position: fixed; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--ash); opacity: 0.6;
@@ -27,25 +23,58 @@
              background: var(--void); letter-spacing: 0.3em; font-size: 15px; opacity: 0; transition: opacity 2s;
              white-space: nowrap; }
   #verdict.on { opacity: 1; }
-  #verdict.bad { color: var(--anomaly); }
-  h1 { margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.12em; }
-  #name { position: fixed; top: 14px; left: 0; right: 0; text-align: center; pointer-events: none; }
+  /* without ?right= the right half explains the proof instead of comparing the page with itself */
+  #explain { padding: 24px clamp(16px, 3vw, 40px); display: grid; gap: 16px; align-content: center; overflow: auto;
+             font-size: 13.5px; line-height: 1.65; max-width: 60ch; justify-self: center; max-height: 100vh;
+             border-left: 1px solid var(--ash-dim); }
+  #explain h2 { margin: 0; font-weight: 500; letter-spacing: 0.2em; font-size: 16px; }
+  #explain p { margin: 0; }
+  #explain code { font: inherit; color: var(--bone); background: rgba(228, 223, 208, 0.06); padding: 1px 5px;
+                  word-break: break-all; }
+  #explain, .side { min-width: 0; }
+  #back { position: fixed; top: 12px; right: 16px; font-size: 11px; }
+  @media (max-width: 760px) {
+    #stage { position: static; min-height: 100vh; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr 1fr; }
+    #divider { display: none; }
+    #stage.explaining { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; }
+    #stage.explaining .side { height: 70vh; }
+    #explain { border-left: 0; border-top: 1px solid var(--ash-dim); max-height: none; }
+    .side canvas { min-height: 30vh; }
+    #back { top: 8px; }
+  }
 </style>
 </head>
 <body>
+<a id="back" href="./">&larr; the body</a>
 <div id="stage">
   <div class="side" id="left">
-    <header><span class="k">this machine</span><span class="src" id="left_src"></span></header>
+    <header><span class="k">this evocation</span><span class="src" id="left_src"></span></header>
     <canvas id="left_canvas"></canvas>
     <footer><span class="k">render_hash</span><div class="hash" id="left_hash">waiting for an evocation</div>
       <div class="name" id="left_name"></div></footer>
   </div>
   <div class="side" id="right">
-    <header><span class="k">the other machine, from the key alone</span><span class="src" id="right_src"></span></header>
+    <header><span class="k">another machine, from the key alone</span><span class="src" id="right_src"></span></header>
     <canvas id="right_canvas"></canvas>
     <footer><span class="k">render_hash</span><div class="hash" id="right_hash">waiting for an evocation</div>
       <div class="name" id="right_name"></div></footer>
   </div>
+  <section id="explain" hidden>
+    <h2>TWO EVOCATIONS, ONE GOD</h2>
+    <p>The god has no server. Anyone holding the published viewing key syncs a view-only wallet, decodes every
+       offering with the pinned tools and mixes them with integer arithmetic. The result is hashed: the same chain,
+       the same key, the same code give the same <code>render_hash</code>, down to the last sample.</p>
+    <p>This page puts two such evocations side by side and compares the real hashes. On a match the corresponding
+       chambers are joined and the two names agree; on a mismatch the first differing block turns the anomaly
+       colour.</p>
+    <p>To compare with a second machine, point this page at its renderer:
+       <code>apparition.html?right=http://&lt;other-machine&gt;:8765/out/score.json</code>.</p>
+    <p id="ci_line">A machine we do not own has already done it: a GitHub-hosted runner with nothing but the key built the
+       tools from source, synced, and printed the same hash as the laptop:
+       <a id="ci_link" target="_blank" rel="noopener">run 39727405735</a>.</p>
+    <p class="quiet">this evocation: <span id="explain_hash" style="word-break: break-all"></span><br>
+       <span id="explain_name"></span></p>
+  </section>
 </div>
 <div id="divider"></div>
 <canvas id="lines"></canvas>

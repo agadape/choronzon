@@ -59,44 +59,50 @@ function grow(timeline, offerings, skipped) {
     // attachment: the side of the root membrane with fewer chambers, or an earlier chamber on that side that has
     // the fewest children (never the two most recent ones, so the body branches instead of forming a chain)
     const side = p.pan < 8 ? -1 : p.pan > 8 ? 1 : (g[3] < 0.5 ? -1 : 1);
-    const band = (p.pitch_layer - 1) * 0.55;              // three depths along the spine
     const sideKey = side < 0 ? "left" : "right";
-    const candidates = chambers.slice(0, Math.max(0, chambers.length - 2)).filter((c) => c.side === side && c.depth < 3);
+    const candidates = chambers.slice(0, Math.max(0, chambers.length - 2)).filter((c) => c.side === side && c.depth < 2 && c.kids < 2);
     let parent = null;
-    if (candidates.length) {
+    if (candidates.length && rootKids[sideKey] >= 3) {       // the first chambers of each side sit on the membrane
       const minKids = Math.min(...candidates.map((c) => c.kids));
-      if (minKids < rootKids[sideKey] / 2 || g[4] < 0.55) {
+      if (g[4] < 0.7) {
         const pool = candidates.filter((c) => c.kids === minKids);
         parent = pool[Math.floor(g[5] * pool.length) % pool.length];
       }
     }
-    const len = 48 + secs * 110 + loud * 20, thick = 13 + loud * 26;
+    const len = 46 + secs * 100 + loud * 18, thick = 12 + loud * 22;
     let ax, ay, angle, depth = 0;
     if (!parent) {
-      rootKids[sideKey]++;
-      ay = band * spine * 0.85 + (g[6] - 0.5) * 36;
+      // root chambers take evenly spaced slots along the spine (top to bottom, alternating around the middle),
+      // so they never pile up; pitch_layer only nudges the slot
+      const slot = rootKids[sideKey]++;
+      const order = [0, 4, 2, 6, 1, 5, 3, 7, 8, 9, 10, 11];
+      const pos = (order[slot % order.length] + 0.5) / 8 + Math.floor(slot / 12) * 0.04;
+      ay = (pos * 2 - 1) * spine * 0.86 + (p.pitch_layer - 1) * 6;
       ax = side * rootX(ay);                                 // on the membrane's surface, not inside it
-      angle = (side > 0 ? 0 : Math.PI) + (g[7] - 0.5) * 1.1 + band * side * 0.5;
+      angle = (side > 0 ? 0 : Math.PI) + (ay / spine) * side * 0.55 + (g[7] - 0.5) * 0.5;
     } else {
       parent.kids++;
       depth = parent.depth + 1;
-      angle = parent.angle + (g[6] < 0.5 ? -1 : 1) * (0.45 + g[7] * 0.7);
-      if (Math.cos(angle) * side < 0.1) angle = parent.angle + (g[6] < 0.5 ? 1 : -1) * 0.5;   // keep growing outward
-      ax = parent.cx + Math.cos(parent.angle) * (parent.len / 2) * 0.8 + Math.cos(angle) * 4;
-      ay = parent.cy + Math.sin(parent.angle) * (parent.len / 2) * 0.8 + Math.sin(angle) * 4;
+      angle = parent.angle + (parent.kids === 1 ? -1 : 1) * (0.55 + g[7] * 0.45);
+      if (Math.cos(angle) * side < 0.15) angle = parent.angle + (parent.kids === 1 ? 1 : -1) * 0.6;   // keep growing outward
+      ax = parent.cx + Math.cos(parent.angle) * (parent.len / 2) * 0.85 + Math.cos(angle) * 3;
+      ay = parent.cy + Math.sin(parent.angle) * (parent.len / 2) * 0.85 + Math.sin(angle) * 3;
     }
-    // bounded, deterministic collision pass: rotate away from chambers that would overlap (at most 6 tries)
+    // bounded, deterministic collision pass: rotate away from chambers that would overlap, then shrink a little
     let cx = ax + Math.cos(angle) * (len / 2), cy = ay + Math.sin(angle) * (len / 2);
-    for (let tries = 0; tries < 6; tries++) {
-      const hit = chambers.some((c) => Math.hypot(c.cx - cx, c.cy - cy) < (c.len + len) / 4 + (c.thick + thick) / 2)
-                  || Math.abs(cx) < rootX(Math.max(-spine, Math.min(spine, cy))) + len / 4;
-      if (!hit) break;
-      angle += (g[5] < 0.5 ? -1 : 1) * 0.42;
-      cx = ax + Math.cos(angle) * (len / 2); cy = ay + Math.sin(angle) * (len / 2);
+    let L = len;
+    const gap = 10;
+    const hits = () => chambers.some((c) => Math.hypot(c.cx - cx, c.cy - cy) < (c.len + L) / 4 + (c.thick + thick) / 2 + gap)
+                       || Math.abs(cx) < rootX(Math.max(-spine, Math.min(spine, cy))) + L / 4;
+    for (let tries = 0; tries < 10 && hits(); tries++) {
+      angle += (tries % 2 === 0 ? 1 : -1) * (0.36 * (tries + 1)) * (g[5] < 0.5 ? 1 : -1);
+      if (tries >= 6) L *= 0.9;
+      cx = ax + Math.cos(angle) * (L / 2); cy = ay + Math.sin(angle) * (L / 2);
     }
-    chambers.push({ ...base, parent, side, depth, kids: 0, ax, ay, cx, cy, angle, len, thick,
-                    ribs: 2 + Math.round(bright * 7), outer: lobe(cx, cy, angle, len, thick, g),
-                    inner: lobe(cx, cy, angle, len * 0.58, thick * 0.55, g) });
+    const lenFinal = L;
+    chambers.push({ ...base, parent, side, depth, kids: 0, ax, ay, cx, cy, angle, len: lenFinal, thick,
+                    ribs: 2 + Math.round(bright * 7), outer: lobe(cx, cy, angle, lenFinal, thick, g),
+                    inner: lobe(cx, cy, angle, lenFinal * 0.58, thick * 0.55, g) });
   });
   const forged = (skipped || []).filter((s) => s.reason === "forged-conductor");
   const silenced = (skipped || []).filter((s) => s.reason === "flagged").map((s, i) => {
@@ -142,8 +148,8 @@ function draw(ctx, body, t, W, H, opts = {}) {
   }
   // fit into the safe band (between header and footer), never larger than ~1.4 CSS px per body unit
   const [top, bottom] = opts.safe || [0, H];
-  const boxW = W * 0.84, boxH = Math.max(80, (bottom - top) * 0.88);
-  let scale = Math.min(boxW / Math.max(1, maxX - minX), boxH / Math.max(1, maxY - minY), 1.4 * dpr);
+  const boxW = W * 0.9, boxH = Math.max(80, (bottom - top) * 0.96);
+  let scale = Math.min(boxW / Math.max(1, maxX - minX), boxH / Math.max(1, maxY - minY), 2.0 * dpr);
   if (!isFinite(scale) || scale <= 0) scale = dpr;
   const ox = W / 2 - ((minX + maxX) / 2) * scale, oy = (top + bottom) / 2 - ((minY + maxY) / 2) * scale;
   const X = (x) => ox + x * scale, Y = (y) => oy + y * scale;
@@ -183,10 +189,14 @@ function drawBody(ctx, body, t, W, H, T, dpr, X, Y, w0, sp, sec, opts) {
     const wob = 1 + 0.05 * Math.sin(3 * th + 1.3) + 0.03 * Math.sin(7 * th);
     root.push([Math.cos(th) * w0 * wob, Math.sin(th) * sp * wob]);
   }
+  const rootPts = root.map(([x, y]) => [X(x), Y(y)]);
+  ctx.globalAlpha = 1; ctx.fillStyle = T.void; path(ctx, rootPts); ctx.fill();   // the membrane occludes what is behind
   ctx.strokeStyle = alive ? T.bone : T.ash; ctx.globalAlpha = alive ? 1 : 0.5;
-  ctx.lineWidth = (alive ? 2.6 : 1.2) * devicePixelRatio;
-  path(ctx, root.map(([x, y]) => [X(x), Y(y)])); ctx.stroke();
-  ctx.strokeStyle = T.ash; ctx.lineWidth = 1.3 * devicePixelRatio; ctx.globalAlpha = alive ? 0.9 : 0.35;
+  ctx.lineWidth = (alive ? 2.8 : 1.2) * dpr;
+  if (alive) { ctx.shadowColor = T.bone; ctx.shadowBlur = 10 * dpr; }
+  path(ctx, rootPts); ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = T.ash; ctx.lineWidth = 1.3 * dpr; ctx.globalAlpha = alive ? 0.9 : 0.35;
   path(ctx, root.map(([x, y]) => [X(x * 0.6), Y(y * 0.88)])); ctx.stroke();
   ctx.globalAlpha = 1;
 
@@ -204,12 +214,15 @@ function drawBody(ctx, body, t, W, H, T, dpr, X, Y, w0, sp, sec, opts) {
     c.sx = X(0); c.sy = Y(c.y);
   }
 
-  // --- chambers ---------------------------------------------------------------------------------------------------
+  // --- chambers: drawn root-first; each chamber is filled with the void so nearer ones occlude what is behind ---
+  // depth gives weight and opacity (generation 0 heaviest), the sounding chamber glows; time only modulates
+  const weights = [2.4, 1.9, 1.5], alphas = [1, 0.85, 0.7];
   for (const c of body.chambers) {
     const singing = t >= c.start && t < c.end;
     const age = opts.age ? opts.age(c.tx) : 99;
     const forming = Math.min(1, age / 1.6);                       // arrival: the contour is drawn from its attachment
     const phase = singing ? (sec - c.start / 8000) * TAU * 1.8 : 0;
+    const d0 = Math.min(c.depth, 2);
     // the active chamber: a single inward pressure wave travelling along the contour
     const outer = c.outer.map(([x, y], i) => {
       if (!singing) return [X(x), Y(y)];
@@ -219,18 +232,25 @@ function drawBody(ctx, body, t, W, H, T, dpr, X, Y, w0, sp, sec, opts) {
     const innerScale = singing ? 1 - 0.18 * (0.5 + 0.5 * Math.sin(phase)) : 1;
     const inner = c.inner.map(([x, y]) => [X(c.cx + (x - c.cx) * innerScale), Y(c.cy + (y - c.cy) * innerScale)]);
     // attachment: a short neck from the parent surface to the chamber
-    ctx.strokeStyle = T.ash; ctx.lineWidth = 1.4 * devicePixelRatio; ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = T.ash; ctx.lineWidth = 1.3 * dpr; ctx.globalAlpha = 0.8 * alphas[d0];
     ctx.beginPath(); ctx.moveTo(X(c.ax), Y(c.ay)); ctx.lineTo(X(c.cx - Math.cos(c.angle) * c.len * 0.38), Y(c.cy - Math.sin(c.angle) * c.len * 0.38)); ctx.stroke();
-    // outer contour
-    ctx.strokeStyle = c.silent ? T.ash : T.bone; ctx.globalAlpha = c.silent ? 0.55 : 1;
-    ctx.lineWidth = (singing ? 3.2 : 2.2) * devicePixelRatio;
+    // body of the chamber: void fill (occludes lines behind it), a faint inner warmth when it sings
+    if (forming >= 1) {
+      ctx.globalAlpha = 1; ctx.fillStyle = T.void; path(ctx, outer); ctx.fill();
+      if (singing) { ctx.fillStyle = T.bone; ctx.globalAlpha = 0.10 + 0.06 * Math.sin(phase); path(ctx, outer); ctx.fill(); }
+      if (c.silent) { ctx.fillStyle = T.ash; ctx.globalAlpha = 0.18; path(ctx, outer); ctx.fill(); }
+    }
+    // outer contour, with a soft deterministic glow for the sounding chamber
+    ctx.strokeStyle = c.silent ? T.ash : T.bone; ctx.globalAlpha = c.silent ? 0.55 : alphas[d0];
+    ctx.lineWidth = (singing ? weights[d0] + 1.0 : weights[d0]) * dpr;
+    if (singing) { ctx.shadowColor = T.bone; ctx.shadowBlur = 18 * dpr; }
     path(ctx, outer, true, forming); ctx.stroke();
+    ctx.shadowBlur = 0;
     if (forming >= 1) {
       // inner membrane + ribs between the membranes (detail for close viewing)
-      ctx.strokeStyle = T.ash; ctx.lineWidth = 1.3 * devicePixelRatio; ctx.globalAlpha = c.silent ? 0.35 : 0.9;
+      ctx.strokeStyle = T.ash; ctx.lineWidth = 1.2 * dpr; ctx.globalAlpha = (c.silent ? 0.35 : 0.85) * alphas[d0];
       path(ctx, inner); ctx.stroke();
-      if (c.silent) { ctx.fillStyle = T.ash; ctx.globalAlpha = 0.18; path(ctx, outer); ctx.fill(); }
-      ctx.globalAlpha = singing ? 1 : 0.7;
+      ctx.globalAlpha = (singing ? 1 : 0.6) * alphas[d0];
       for (let r = 0; r < c.ribs; r++) {
         const i = Math.floor(((r + 0.5) / c.ribs) * (K / 2));           // ribs on the far half of the lobe
         const [x1, y1] = outer[(i + K - K / 4) % K], [x2, y2] = inner[(i + K - K / 4) % K];

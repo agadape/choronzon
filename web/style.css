@@ -1,0 +1,56 @@
+/* Shared look for the listener, apparition and kiosk pages. Four tokens, one system monospace stack, no requests. */
+:root {
+  color-scheme: dark;
+  --void: #171916; --bone: #E4DFD0; --ash: #777F79; --anomaly: #FF6338;
+  --ash-dim: rgba(119, 127, 121, 0.35);
+  --mono: ui-monospace, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--void); color: var(--bone); }
+body { font: 14px/1.5 var(--mono); overflow-x: hidden; }
+a { color: var(--bone); text-decoration: underline; text-decoration-color: var(--ash); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--bone); }
+h1 { margin: 0; font-weight: 500; letter-spacing: 0.16em; font-size: clamp(26px, 4vw, 44px); line-height: 1.1; }
+.tagline { color: var(--ash); font-style: italic; font-size: clamp(14px, 1.6vw, 18px); margin-top: 6px; }
+.lede { color: var(--bone); max-width: 62ch; font-size: clamp(13px, 1.3vw, 15px); line-height: 1.6; margin: 14px 0 0; opacity: 0.9; }
+.k { color: var(--ash); letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; }
+.quiet { color: var(--ash); }
+.bad { color: var(--anomaly); }
+button, .button {
+  font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash); padding: 10px 22px;
+  cursor: pointer; letter-spacing: 0.16em; text-transform: uppercase; font-size: 12px; border-radius: 2px;
+}
+button:hover:not(:disabled), .button:hover { border-color: var(--bone); }
+button:disabled { color: var(--ash); cursor: default; }
+button.primary { border-color: var(--bone); padding: 12px 30px; font-size: 13px; }
+button.primary.live { background: var(--bone); color: var(--void); }
+input, textarea {
+  font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash); padding: 8px 10px;
+  border-radius: 2px; max-width: 100%;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--bone); }
+.row { display: flex; gap: 14px 22px; flex-wrap: wrap; align-items: center; }
+.stat { display: inline-flex; gap: 8px; align-items: baseline; white-space: nowrap; }
+.stat b { font-weight: 500; }
+
+/* hashes always in 8-char blocks that wrap as whole blocks, never mid-string */
+.hash { display: flex; flex-wrap: wrap; gap: 4px 10px; letter-spacing: 0.06em; font-size: 12.5px; }
+.hash span { color: var(--ash); }
+.hash span.lit { color: var(--bone); }
+.hash span.bad { color: var(--anomaly); }
+
+/* the proof panel: secondary, collapsed by default */
+details.proof { border-top: 1px solid var(--ash-dim); padding-top: 10px; }
+details.proof summary { cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: center; }
+details.proof summary::-webkit-details-marker { display: none; }
+details.proof summary::before { content: "+"; color: var(--ash); width: 1em; display: inline-block; }
+details.proof[open] summary::before { content: "\2212"; }
+details.proof .body { display: grid; gap: 10px; padding: 12px 0 4px 1.6em; font-size: 12.5px; }
+details.proof .body .links { display: flex; gap: 18px; flex-wrap: wrap; }
+
+@media (max-width: 600px) {
+  body { font-size: 13px; }
+  .row { gap: 10px 16px; }
+  button.primary { padding: 11px 22px; }
+  details.proof .body { padding-left: 0; }
+}

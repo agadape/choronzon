@@ -3,20 +3,34 @@
 // render_hash. The comparison is of the real hashes: nothing is scrambled, predicted or shown before it is loaded.
 // Match: the hashes light up in synchronised blocks, thin lines join the corresponding chambers, everything goes
 // still. Mismatch: the first differing block turns the anomaly colour and the lines never appear.
+// Without ?right= the right half explains the proof instead of comparing the page with itself.
 "use strict";
 
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-const SRC = { left: q.get("left") || "out/score.json", right: q.get("right") || "out/score.json" };
+const EXPLAIN = !q.get("right");
+const SRC = { left: q.get("left") || "out/score.json", right: q.get("right") || "" };
 const sides = {
   left: { doc: null, body: null, canvas: $("left_canvas"), hashEl: $("left_hash"), nameEl: $("left_name") },
   right: { doc: null, body: null, canvas: $("right_canvas"), hashEl: $("right_hash"), nameEl: $("right_name") },
 };
-let verdict = null, verdictAt = 0, lit = 0;
-$("left_src").textContent = SRC.left;
-$("right_src").textContent = SRC.right + (SRC.right === SRC.left ? "  (same source: pass ?right=<url> for a second machine)" : "");
+let verdict = null, verdictAt = 0;
+$("left_src").textContent = SRC.left === "out/score.json" ? "this machine" : SRC.left;
+if (EXPLAIN) {
+  $("right").hidden = true;
+  $("explain").hidden = false;
+  $("stage").classList.add("explaining");
+  $("divider").style.display = "none";
+} else {
+  $("right_src").textContent = SRC.right;
+}
 
-fetch("config/brand.json").then((r) => r.json()).then((b) => { document.title = `${b.name}: two evocations`; });
+fetch("config/brand.json").then((r) => r.json()).then((b) => {
+  document.title = `${b.name}: two evocations`;
+  $("ci_link").href = `https://github.com/agadape/${b.slug}/actions/runs/39727405735`;
+});
+
+const blocks = (h) => h.match(/.{1,8}/g) || [];
 
 async function load(name) {
   const s = sides[name];
@@ -34,26 +48,31 @@ async function load(name) {
     for (const b of blocks(doc.render_hash)) {
       const span = document.createElement("span");
       span.textContent = b;
-      s.hashEl.append(span, " ");
+      if (EXPLAIN) span.className = "lit";
+      s.hashEl.appendChild(span);
     }
-    s.nameEl.textContent = "";                              // the name appears with the verdict, not before
-    verdict = null; lit = 0;
+    if (EXPLAIN && name === "left") {
+      s.nameEl.textContent = `it is now called ${trueName(doc.render_hash)}`;
+      $("explain_hash").textContent = doc.render_hash;
+      $("explain_name").textContent = `it is now called ${trueName(doc.render_hash)}`;
+    } else s.nameEl.textContent = "";                        // the name appears with the verdict, not before
+    verdict = null;
   } catch (e) {
     s.hashEl.textContent = `waiting for an evocation (${e.message})`;
   }
 }
-const blocks = (h) => h.match(/.{1,8}/g) || [];
 
 function compare(now) {
   const L = sides.left.doc, R = sides.right.doc;
-  if (!L || !R || verdict !== null) return;
+  if (EXPLAIN || !L || !R || verdict !== null) return;
   verdict = L.render_hash === R.render_hash ? "same" : "different";
   verdictAt = now;
 }
 
 function frame() {
   const now = performance.now();
-  for (const s of Object.values(sides)) {
+  for (const [name, s] of Object.entries(sides)) {
+    if (EXPLAIN && name === "right") continue;
     const c = s.canvas, W = c.width = c.clientWidth * devicePixelRatio, H = c.height = c.clientHeight * devicePixelRatio;
     if (s.body) Creature.draw(c.getContext("2d"), s.body, -1, W, H, { age: () => 99, forgedAge: () => 99, safe: [0, H] });
     else { const ctx = c.getContext("2d"); ctx.fillStyle = "#171916"; ctx.fillRect(0, 0, W, H); }
@@ -104,6 +123,6 @@ function frame() {
   requestAnimationFrame(frame);
 }
 
-load("left"); load("right");
-setInterval(() => { load("left"); load("right"); }, 5000);
+load("left"); if (!EXPLAIN) load("right");
+setInterval(() => { load("left"); if (!EXPLAIN) load("right"); }, 5000);
 requestAnimationFrame(frame);

@@ -9,7 +9,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "build_web.sh"
 ALLOWED = {"index.html", "apparition.html", "static.json", "vercel.json", "config/brand.json", "out/score.json",
-           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "name.js"}
+           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "name.js", "style.css",
+           "logo.svg", "og.png"}
 
 
 def run(*args, check=True):
@@ -36,7 +37,7 @@ def test_dist_holds_exactly_the_allow_list(out, tmp_path):
     files = {str(p.relative_to(dist)).replace("\\", "/") for p in dist.rglob("*") if p.is_file()}
     assert files <= ALLOWED | {f for f in files if f.endswith(".css")}
     assert {"index.html", "apparition.html", "static.json", "vercel.json", "config/brand.json", "out/score.json",
-            "out/mix.wav", "app.js", "creature.js", "name.js"} <= files
+            "out/mix.wav", "app.js", "creature.js", "name.js", "style.css", "logo.svg"} <= files
     assert "kiosk.js" not in files and "out/cache/secretvoice.c2" not in files
     static = json.loads((dist / "static.json").read_text())
     assert static["static"] is True and static["as_of_height"] == 4522002 and static["render_hash"] == "a" * 64

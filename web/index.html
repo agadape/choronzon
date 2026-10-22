@@ -4,76 +4,107 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>listener</title>
+<meta name="description" content="">
+<meta property="og:type" content="website">
+<meta property="og:title" content="">
+<meta property="og:description" content="">
+<meta property="og:image" content="og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
 <style>
-  /* three tokens for the body, the banner and the interface; the fourth only for exceptional states */
-  :root { color-scheme: dark; --void: #171916; --bone: #E4DFD0; --ash: #777F79; --anomaly: #FF6338; }
-  html, body { margin: 0; height: 100%; background: var(--void); color: var(--bone);
-               font: 14px/1.45 ui-monospace, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace; }
   #creature { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
-  header { position: fixed; top: 18px; left: 20px; right: 20px; display: flex; justify-content: space-between;
-           align-items: baseline; gap: 16px; pointer-events: none; }
-  h1 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: 0.12em; }
-  #tagline { color: var(--ash); font-style: italic; }
-  footer { position: fixed; bottom: 18px; left: 20px; right: 20px; display: grid; gap: 6px; font-size: 12.5px; }
-  .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
-  .k { color: var(--ash); letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
-  .hash { word-break: break-all; color: var(--bone); letter-spacing: 0.04em; }
-  button { font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash);
-           padding: 6px 16px; cursor: pointer; letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; }
-  button:hover { border-color: var(--bone); }
-  #pins { color: var(--ash); }
-  input { font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash); padding: 4px 8px;
-          width: 22em; }
-  #whisper { position: fixed; top: 64px; right: 20px; width: 280px; display: grid; gap: 8px; font-size: 11px; }
+  #top, #bottom { position: fixed; left: 0; right: 0; padding: 20px clamp(16px, 3vw, 40px); pointer-events: none; }
+  #top { top: 0; }
+  #top > * { pointer-events: auto; }
+  #bottom { bottom: 0; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+  #bottom > * { min-width: 0; }
+  #bottom > * { pointer-events: auto; }
+  #actions { margin-top: 18px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  #status { color: var(--ash); }
+  #strip { display: flex; gap: 10px 26px; flex-wrap: wrap; align-items: baseline; }
+  #true_name { letter-spacing: 0.22em; }
+  #privacy { color: var(--ash); font-size: 12px; max-width: 80ch; }
+  #whisper_row input { width: min(26em, 100%); }
+  #whisper { position: fixed; top: 16px; right: 16px; width: min(300px, calc(100vw - 32px)); display: grid; gap: 8px;
+             font-size: 11px; background: var(--void); padding: 10px; border: 1px solid var(--ash-dim); z-index: 4; }
   #whisper:has(#qr:empty) { display: none; }
-  #qr svg { width: 280px; height: 280px; background: var(--bone); display: block; }
+  #qr svg { width: 100%; aspect-ratio: 1; height: auto; background: var(--bone); display: block; }
   #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--anomaly);
                  letter-spacing: 0.3em; font-size: 12px; pointer-events: none; }
   /* séance: hashes and key stay sealed until the Eye opens */
-  .sealed .hash { color: var(--ash); letter-spacing: 0.3em; }
-  #open_eye { display: none; border-color: var(--bone); }
+  #open_eye { display: none; }
   .sealed #open_eye { display: inline-block; }
-  #eye { position: fixed; inset: 0; display: none; place-items: center; background: var(--void); z-index: 5; }
+  .sealed #proof { display: none; }
+  #eye { position: fixed; inset: 0; display: none; place-items: center; background: var(--void); z-index: 5;
+         overflow: auto; }
   #eye.on { display: grid; }
-  #eye .panel { max-width: 720px; padding: 32px; display: grid; gap: 18px; }
+  #eye .panel { max-width: 720px; padding: 32px clamp(16px, 4vw, 40px); display: grid; gap: 18px; }
   #eye h2 { margin: 0; font-weight: 500; letter-spacing: 0.3em; font-size: 20px; }
-  #eye p { margin: 0; color: var(--bone); line-height: 1.6; }
-  #eye .k { color: var(--ash); }
-  #eye_key { word-break: break-all; font-size: 12px; color: var(--bone); border: 1px solid var(--ash); padding: 12px; }
-  #eye_qr svg { width: 220px; height: 220px; background: var(--bone); display: block; }
-  #eye .row { align-items: start; }
+  #eye p { margin: 0; line-height: 1.6; }
+  #eye_key { word-break: break-all; font-size: 12px; border: 1px solid var(--ash); padding: 12px; }
+  #eye_qr svg { width: 200px; max-width: 100%; height: auto; background: var(--bone); display: block; }
   #eye .irrevocable { color: var(--anomaly); letter-spacing: 0.2em; }
+  @media (max-width: 600px) {
+    #top, #bottom { padding: 14px 16px; }
+    #bottom { gap: 8px; }
+    .lede { display: none; }   /* the one-liner is in the README and the proof panel; phones keep the body */
+    #strip { gap: 6px 14px; font-size: 12px; }
+    #strip .stat .k { display: none; }               /* numbers only, each with a short label below */
+    #strip .stat::before { content: attr(data-l); color: var(--ash); font-size: 10px; letter-spacing: 0.1em; }
+    #true_name { width: 100%; font-size: 12px; }
+    #proof_hint { display: none; }
+    #whisper_row { gap: 8px; }
+    #whisper_row input { width: 100%; }
+    #privacy { font-size: 11px; }
+  }
 </style>
 </head>
 <body>
 <canvas id="creature"></canvas>
 <div id="not_the_god">NOT THE GOD</div>
-<header>
+
+<header id="top">
   <h1 id="name"></h1>
-  <div id="tagline"></div>
-</header>
-<footer>
-  <div class="row">
-    <button id="play">evoke</button>
+  <div id="tagline" class="tagline"></div>
+  <p id="lede" class="lede"></p>
+  <div id="actions">
+    <button id="play" class="primary">listen</button>
     <button id="open_eye">open the eye</button>
     <span id="status">loading</span>
-    <span><span class="k">offerings</span> <span id="offerings">0</span></span>
-    <span><span class="k">height</span> <span id="height">—</span></span>
-    <span><span class="k">silenced</span> <span id="skipped">0</span></span>
-    <span><span class="k">refused</span> <span id="refused">0</span></span>
   </div>
-  <div><span class="k">render_hash</span> <span id="render_hash" class="hash">—</span></div>
-  <div id="true_name" style="color: var(--ash); letter-spacing: 0.2em"></div>
-  <div><span class="k">score_hash</span> <span id="score_hash" class="hash">—</span></div>
-  <div id="pins"></div>
-  <div id="snapshot" style="color: var(--ash)"></div>
-  <div class="row">
-    <span class="k">whisper back: click a chamber</span>
+</header>
+
+<footer id="bottom">
+  <div id="strip">
+    <span class="stat" data-l="offerings"><span class="k">offerings</span><b id="offerings">0</b></span>
+    <span class="stat" data-l="height"><span class="k">height</span><b id="height">—</b></span>
+    <span class="stat" data-l="refused"><span class="k">refused</span><b id="refused">0</b></span>
+    <span class="stat" data-l="silenced"><span class="k">silenced</span><b id="skipped">0</b></span>
+    <span id="true_name" class="quiet"></span>
+  </div>
+  <details class="proof" id="proof">
+    <summary><span class="k">proof</span><span class="quiet" id="proof_hint">two hashes anyone can recompute from the public key</span></summary>
+    <div class="body">
+      <div><div class="k">render_hash</div><div id="render_hash" class="hash"></div></div>
+      <div><div class="k">score_hash</div><div id="score_hash" class="hash"></div></div>
+      <div id="pins" class="quiet"></div>
+      <div id="snapshot" class="quiet"></div>
+      <div class="links">
+        <a id="link_readme" target="_blank" rel="noopener">how to verify</a>
+        <a id="link_block" target="_blank" rel="noopener">this block on ZecBlock</a>
+        <a id="link_apparition" href="apparition.html">two evocations</a>
+      </div>
+    </div>
+  </details>
+  <div id="whisper_row" class="row">
+    <span class="k" id="whisper_label">whisper back: click a chamber</span>
     <input id="whisper_text" placeholder="you are not alone." maxlength="400">
-    <span id="whisper_status"></span>
+    <span id="whisper_status" class="quiet"></span>
   </div>
-  <div style="color: var(--ash)">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</div>
+  <div id="privacy">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</div>
 </footer>
+
 <section id="eye">
   <div class="panel">
     <h2>THE EYE IS OPEN.</h2>
@@ -81,26 +112,26 @@
     <p>Every offering accessible through this key can now be heard by its holders. The link between a sender and
        their secret is not disclosed by this act alone.</p>
     <p class="irrevocable">This cannot be undone.</p>
-    <div class="row">
+    <div class="row" style="align-items: start">
       <div id="eye_qr"></div>
-      <div>
+      <div style="flex: 1; min-width: 200px">
         <div class="k">full viewing key <span id="eye_birthday"></span></div>
         <div id="eye_key">not published on this server (start it with --key-file after `kiosk reveal --to`)</div>
       </div>
     </div>
-    <div><span class="k">render_hash</span> <span id="eye_render_hash" class="hash"></span></div>
-    <div id="eye_name" style="color: var(--ash); letter-spacing: 0.2em"></div>
+    <div><div class="k">render_hash</div><div id="eye_render_hash" class="hash"></div></div>
+    <div id="eye_name" class="quiet" style="letter-spacing: 0.22em"></div>
     <div class="k">a Watcher evokes the god with this key alone: python3 -m renderer summon --key-file KEY --birthday H</div>
     <div><button id="eye_close">return to the body</button></div>
   </div>
 </section>
 <aside id="whisper">
   <div id="qr"></div>
-  <div id="whisper_uri" class="hash"></div>
+  <div id="whisper_uri" style="word-break: break-all"></div>
   <button id="whisper_close">close</button>
 </aside>
 <script>
-  // cache-busting for the two local scripts: browsers kept the old creature.js even with Cache-Control: no-store
+  // cache-busting for the local scripts: browsers kept the old creature.js even with Cache-Control: no-store
   for (const f of ["name.js", "creature.js", "app.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
 </script>
 </body>

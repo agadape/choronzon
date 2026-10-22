@@ -20,7 +20,7 @@ done
 
 # The allow-list: every file dist/ may contain, as a path relative to dist/.
 allowed() {
-  printf "%s\n" index.html apparition.html static.json vercel.json config/brand.json out/score.json out/mix.wav out/render_hash
+  printf "%s\n" index.html apparition.html static.json vercel.json config/brand.json out/score.json out/mix.wav out/render_hash logo.svg og.png
   for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || basename "$f"; done
   for f in web/*.css; do [ -e "$f" ] || continue; basename "$f"; done
   true
@@ -31,7 +31,7 @@ verify() {
   while IFS= read -r f; do
     rel=${f#"$DIST"/}
     if ! grep -qx "$rel" <(allowed); then echo "!! not in the allow-list: $rel" >&2; bad=1; fi
-    case "$rel" in *.py|*.age|*.sqlite|*.toml|wallets/*|logs/*|*/wallets/*|*/logs/*|.env*|*.pem|*.key)
+    case "$rel" in *.py|*.age|*.sqlite|*.toml|wallets/*|logs/*|*/wallets/*|*/logs/*|.env*|*.pem|*.key|kiosk.js)
       echo "!! forbidden file type in dist: $rel" >&2; bad=1;; esac
   done < <(find "$DIST" -type f | sort)
   for f in index.html apparition.html static.json vercel.json config/brand.json out/score.json out/mix.wav; do
@@ -49,6 +49,8 @@ cp web/index.html web/apparition.html "$DIST/"
 for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || cp "$f" "$DIST/"; done
 for f in web/*.css; do [ -e "$f" ] && cp "$f" "$DIST/"; done
 cp config/brand.json "$DIST/config/brand.json"
+cp docs/brand/logo.svg "$DIST/logo.svg"                       # favicon
+[ -f web/og.png ] && cp web/og.png "$DIST/og.png"             # link preview image (rendered from the page, committed)
 cp "$OUT/score.json" "$OUT/mix.wav" "$DIST/out/"
 [ -f "$OUT/render_hash" ] && cp "$OUT/render_hash" "$DIST/out/"
 python3 - "$OUT/score.json" "$DIST/static.json" <<'EOF'

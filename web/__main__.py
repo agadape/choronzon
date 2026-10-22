@@ -39,7 +39,7 @@ def _confined(base: Path, sub: str) -> Path | None:
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
-    routes = {"config/brand.json": REPO / "config" / "brand.json"}
+    routes = {"config/brand.json": REPO / "config" / "brand.json", "logo.svg": REPO / "docs" / "brand" / "logo.svg"}
 
     def __init__(self, *a, out_dir: Path, wallet_dir: Path | None, key_file: str | None = None,
                  birthday: int | None = None, kiosk: bool = False, **k):
