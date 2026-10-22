@@ -72,3 +72,12 @@ def test_build_pins_come_from_setup_sh():
     key = re.search(r"^key=(\S+)$", out, re.M).group(1)
     assert f"devtool-{devtool}-" in key and key.endswith(f"codec2-{codec2[:12]}")
     assert re.search(r"^devtool=" + devtool + r"-nu7-[0-9a-f]{16}$", out, re.M)
+
+
+def test_manual_publish_uses_the_same_height_rule():
+    script = (ROOT / "scripts" / "publish_web.sh").read_text()
+    assert "--as-of last" in script and "--dry-run" in script and "--no-render" in script
+    assert '"$HEIGHT" -lt "$LIVE_HEIGHT"' in script
+    assert script.index("--dry-run") < script.index("vercel deploy")
+    assert "newest_tx_height" in (ROOT / "scripts" / "ci_render.sh").read_text()
+

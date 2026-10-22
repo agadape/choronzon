@@ -1,6 +1,6 @@
 """Renderer CLI.
 
-  python3 -m renderer once   --wallet wallets/test/V [--as-of N|tip] [--sync] [--out DIR]
+  python3 -m renderer once   --wallet wallets/test/V [--as-of N|tip|last] [--sync] [--out DIR]
   python3 -m renderer daemon --wallet wallets/test/V [--interval 30] [--out DIR]
   python3 -m renderer whisper <txid> --wallet wallets/test/V [--text ...] [--phone] [--send-from wallets/test/L]
   python3 -m renderer summon --key-file key.txt --birthday 4503120 --wallet wallets/watcher [--as-of N]
@@ -70,7 +70,7 @@ def cmd_once(args) -> None:
     if args.sync:
         sync_and_enhance(args.devtool, args.wallet, args.server)
     scanned = db.scanned_height()
-    as_of = scanned if args.as_of == "tip" else int(args.as_of)
+    as_of = scanned if args.as_of == "tip" else db.newest_tx_height() if args.as_of == "last" else int(args.as_of)
     if as_of > scanned:
         sys.exit(f"as_of {as_of} is above the scanned height {scanned}: sync first")
     decoder = Decoder(args.c2dec)
@@ -171,7 +171,7 @@ def main(argv: list[str] | None = None) -> None:
         s.add_argument("--devtool", default=str(REPO / "bin" / "devtool-aegis"))
         s.add_argument("--server", default="zecrocks")
         s.add_argument("--allow-spend-key", action="store_true", help="only for comparing against the choir wallet")
-    sub.choices["once"].add_argument("--as-of", default="tip", help="block height, or 'tip' = scanned height")
+    sub.choices["once"].add_argument("--as-of", default="tip", help="block height, 'tip' = scanned height, 'last' = height of the newest transaction the key sees")
     sub.choices["once"].add_argument("--sync", action="store_true", help="sync + enhance before rendering")
     sub.choices["daemon"].add_argument("--interval", type=float, default=30.0, help="seconds between loops")
     s = sub.choices["summon"]

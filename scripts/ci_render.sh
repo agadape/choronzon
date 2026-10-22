@@ -75,9 +75,7 @@ done
 HEIGHT=$(python3 - "$WALLET" <<'EOF'
 import sys
 from renderer.wallet import WalletDB
-db = WalletDB(sys.argv[1])
-scanned = db.scanned_height()
-print(max((c.height for c in db.candidates(scanned)), default=scanned))
+print(WalletDB(sys.argv[1]).newest_tx_height())
 EOF
 )
 python3 -m renderer once --wallet "$WALLET" --as-of "$HEIGHT" --out "$OUT" >"$TMP/summary.json" 2>>"$LOG" \

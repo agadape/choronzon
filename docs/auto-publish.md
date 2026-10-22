@@ -133,9 +133,12 @@ First run: `gh workflow run publish-web.yml --repo agadape/choronzon`, then `gh 
 | drop the watcher cache for good (corrupt copy) | `gh variable set WATCHER_CACHE_GEN --repo agadape/choronzon --body 2` (any new value) |
 | publish from the laptop instead | `./scripts/publish_web.sh` (WSL, Windows Vercel CLI) |
 
-The manual fallback renders wallet V at the **tip**, so its height is above the newest transaction. Scheduled
-runs leave it up (they never replace a higher snapshot with a lower one) until an offering is mined above that
-height; then they deploy as usual. `force=true` replaces it at once.
+The manual fallback follows the same height rule (`renderer once --as-of last`: wallet V at the newest
+transaction) and refuses to deploy a height below the live `static.json` unless `--force`; `--dry-run` stops before
+the deploy and prints the height and `render_hash` it would publish. A snapshot published from the laptop before
+22 Oct 2026 was rendered at the tip: scheduled runs leave such a higher snapshot up (they never replace a higher
+snapshot with a lower one) until an offering is mined above that height; then they deploy as usual.
+`force=true` replaces it at once.
 
 When a run fails, the page keeps serving the last good snapshot: nothing is deployed unless the render, the pin
 check, the allow-list build and the deploy all succeed.

@@ -84,3 +84,18 @@ Fourteen offerings written by the team and sent from a team wallet before the sh
 | 14 | `bf713af93ead7b19557bd39046e8b8fa6a57deaf598c340951db9f8fa251df64` | 4,527,794 |
 
 Sent with `kiosk offer - --from wallets/test/A` (ghost voice, Codec2 700C, one transaction per seed, no retries); all 14 accepted by the public-key wallet V about 2 min after the last send. Render at 4,527,794: 43 offerings, 16 skipped, render_hash `6ae739854eca770ef1c3d32b4519f31be8b10b5f83cdd883b747bce63cab444e` (true name GUNZHAI'LIS).
+
+## Second machine: a GitHub-hosted runner from the key alone (22 Oct 2026)
+
+| What | Value |
+|---|---|
+| Run | [39727405735](https://github.com/agadape/choronzon/actions/runs/39727405735) (`publish-web`, dispatch, `ubuntu-24.04` runner, cache miss, 13 m 31 s) |
+| What the runner had | the repository, the published key (repository secret `CHOIR_UFVK`) and nothing else: it built the pinned devtool + NU7 patch and Codec2 `1.2.0` from source, created a view-only wallet from the key, synced and enhanced it, and rendered |
+| Height | 4,527,794 (the newest transaction the key sees; the wallet was synced to 4,527,973) |
+| `render_hash` | `6ae739854eca770ef1c3d32b4519f31be8b10b5f83cdd883b747bce63cab444e` |
+| `score_hash` | `2649909b9e9154cf6186b47f016350b16c5ddae3e5b42a951b755aae7a68fae6` |
+| Fingerprints | `decoder_matches_pin` and `voice_matches_pin` both true (the job fails otherwise); espeak-ng 1.51 and sox 14.4.2 from the Ubuntu archive |
+| Same as | wallet V on the laptop: `python3 -m renderer once --wallet wallets/test/V --as-of 4527794` printed the same two hashes |
+| Repeat | cache-hit run [39732713347](https://github.com/agadape/choronzon/actions/runs/39732713347), 41 s: same height and hash (*no new offering*) |
+
+This is a machine that never saw ours, reproducing the work from one key. It is not a physical second laptop; that is still recommended for the live demo ([docs/fresh-clone.md](fresh-clone.md)). Details: [docs/auto-publish.md](auto-publish.md).

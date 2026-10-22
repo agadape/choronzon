@@ -63,6 +63,12 @@ class WalletDB:
                           (PRIORITY_SCANNED, tip))[0][0]
         return tip if gap is None else min(tip, gap - 1)
 
+    def newest_tx_height(self) -> int:
+        """Height of the newest transaction the key can see (the scanned height when there is none). A render there
+        has the same score as one at the tip, but its hashes change only when something new is mined."""
+        scanned = self.scanned_height()
+        return max((c.height for c in self.candidates(scanned)), default=scanned)
+
     def candidates(self, as_of: int) -> list[Candidate]:
         tables = {r[0] for r in self._query("select name from sqlite_master where type = 'table'")}
         out = []
