@@ -16,6 +16,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [ ] Assign A / B / C to real people (how: put the names on the owner codes here and in "team members and roles" of `docs/submission-form.md`)
 - [x] Testnet (patched devtool, proven) vs mainnet (stock devtool, untested G5) for the demo → **testnet** (21 Oct)
 - [x] 21 Oct: protocol v1 on chain is canonical; two versioned hashes (`score_hash` chain-only, `render_hash` = score + pinned-decoder PCM + composer version); Codec2 pinned to tag 1.2.0 built from source; 0.00001 TAZ; UFVK published deliberately but never in code/tests/logs/commits; reply addresses never persisted outside the wallet DB; `GC1R:<contrib_id decimal>:<text>`; work in WSL `~/zecathon`; repo private until 28 Oct
+- [x] UFVK publication: README on submission day + Séance reveal on stage (22 Oct) (steps: "the publication act" in `docs/submission-checklist.md`; until then the key stays out of code, tests, logs and commits)
 - [x] Risk accepted: single lightwalletd (`testnet.zec.rocks`). Mitigation: wallet DBs synced before the demo, seed contributions pre-sent, demo video as backup; look for an alternative testnet lightwalletd only if time allows (≤30 min)
 
 ## Day 2 (21 Oct) — repo + protocol + renderer daemon  [~12 h]
@@ -61,7 +62,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 ## Day 8 (27 Oct) — demo video + polish  [~12 h]
 - [ ] **C** Record demo video (real txs, explorer shown, two-laptop hash moment, whisper back if M2 done) (how: the shot list and pre-show checklist in `docs/demo-script.md`; explorer = ZecBlock after pre-show check 8; the link goes into `docs/submission-form.md`)
 - [ ] **B** Visual/audio polish only on the demo path
-- [x] **C** README final: what it is, setup, demo walkthrough, privacy model, limits, architecture diagram, spike evidence links (21–22 Oct: restructure into one document for a ten-minute judge `c283dd3`, network-fallback / visual-direction links `417793c`, explorer links switched to ZecBlock `efb600a`; generated from `docs/README.template.md`. Left for the user at submission: paste the full viewing key by hand at the placeholder under "The key", if decided)
+- [x] **C** README final: what it is, setup, demo walkthrough, privacy model, limits, architecture diagram, spike evidence links (21–22 Oct: restructure into one document for a ten-minute judge `c283dd3`, network-fallback / visual-direction links `417793c`, explorer links switched to ZecBlock `efb600a`; generated from `docs/README.template.md`. Left for the user at submission: paste the full viewing key by hand at the placeholder under "The key", as decided 22 Oct; steps in `docs/submission-checklist.md`, "the publication act")
 
 ## Day 9 (28 Oct) — submit
 - [ ] **all** Re-run `spikes/` smoke tests against the final environment (how: `./scripts/smoke.sh` and `python3 -m pytest -q`; dry run green on 22 Oct, see the end of `docs/submission-checklist.md`)

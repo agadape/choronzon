@@ -14,9 +14,25 @@ track, prize paid in ZEC to a shielded address. The repo stays private until the
 - [ ] README privacy section still the exact §6 wording; no "anonymous" / "untraceable" anywhere in product copy
       (`git grep -niE "anonymous|untraceable" -- README.md docs/README.template.md kiosk web`)
 - [ ] `config/skiplist.txt` reviewed: anything on chain that must not be sung at the show is listed with a reason
-- [ ] decide whether the choir's full viewing key goes into the README at submission (CLAUDE.md §6 says yes,
-      deliberately, as the publication act) or only on stage at the Séance; if in the README, add it by hand, never
-      via a script, and note the birthday height 4502962 next to it
+- [x] decided 22 Oct: the choir's full viewing key is published in the README on submission day **and** revealed on
+      stage at the Séance
+- [ ] **Submission day: the publication act.** Last step before the repository goes public, after every box above is
+      ticked and the final secret scan is clean. `CLAUDE.md` §6 forbids the key in code, tests, logs or commits until
+      this moment; after it the key is public forever and cannot be revoked.
+      1. `python3 -m kiosk reveal --from wallets/test/B --to /tmp/eye.key` (type `OPEN`; the file lives outside the
+         repo; never under `logs/`, never piped through `tee`)
+      2. open `docs/README.template.md` in an editor and replace the HTML-comment placeholder under "### The key" **by
+         hand** (no script, no `sed`) with a fenced text block holding the key on one line, the birthday height
+         4502962, and the one-line command a reader runs after saving the key as `eye.key`:
+         `python3 -m renderer summon --key-file eye.key --birthday 4502962 --wallet wallets/watcher` (the key goes in a
+         file, never on a command line). In the paragraph above it, change "possibly pasted here" to "pasted here".
+      3. `python3 scripts/gen_readme.py`, then `python3 scripts/gen_readme.py --check`; `git status` shows only
+         `docs/README.template.md` and `README.md` changed
+      4. commit with a message that says this is the deliberate publication act (e.g. "README: publish the choir's
+         full viewing key (deliberate publication act, irrevocable)", via `git commit -F`), then push
+      5. `shred -u /tmp/eye.key`
+      6. re-run the secret scan (dry-run check 4): the key must now appear only in `README.md` and
+         `docs/README.template.md`, and only from the publication commit on
 
 ## Submission form (thezecathon.com)
 
@@ -64,8 +80,8 @@ Only the user can do:
 
 - run `./scripts/demo.sh` on the day (it sends testnet transactions) and keep its log;
 - review `config/skiplist.txt`: listen to the test and rehearsal offerings once (pre-show check 5 in `docs/demo-script.md`);
-- decide whether the full viewing key goes into the README; if yes, paste it by hand under "### The key" in
-  `docs/README.template.md` with birthday 4502962, regenerate, and re-run checks 3, 4 and 9;
+- the publication act on submission day (decided 22 Oct: README + Séance; steps above): reveal to `/tmp/eye.key`,
+  paste by hand under "### The key", regenerate, commit as the deliberate publication act, `shred -u`, re-run checks 3, 4 and 9;
 - assign A / B / C and fill "team members and roles"; record the demo video and add its link;
 - the second-laptop run (`docs/fresh-clone.md`) and the 10-person test (`docs/user-test-kit.md`);
 - create the shielded payout address (mainnet, a team wallet, not in this repo; `protocol.is_unified_address` must accept it);
