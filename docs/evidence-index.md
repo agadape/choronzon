@@ -59,3 +59,26 @@ Hash anchors (the regression in `renderer/tests/test_chain_regression.py` pins t
 | Watcher from the key alone (`renderer summon`, fresh wallet, 28 s) == V | 4,525,294 | `8540a0a57d6f80d409d4ed5948789f64e524fc08252a15ea3bd904dd58fa1af5` | the second-laptop proof without a second laptop | TODO Day 5 gate |
 | Rehearsal 1 summon == V (14 offerings, 7 skipped), `mix.wav` byte-identical | 4,525,338 | `7dc6f42ac61c13b6f6017fb2f934858a9d73cb7f6e748dc88e2b08438427081e` | same, unattended | `logs/demo_20261021T110109Z.log` |
 | Rehearsal 2 summon == V (15 offerings, 8 skipped), `mix.wav` byte-identical | 4,525,371 | `bb2cf2dcb69bc7decaa454c7dada7055069ec6e53068092e5b76fe3be6c72cc9` | same | `logs/demo_20261021T110459Z.log` |
+
+## Pre-sent seed offerings (22 Oct 2026)
+
+Fourteen offerings written by the team and sent from a team wallet before the show; the demo says so out loud.
+
+| Seed | Txid (display order) | Block |
+|---|---|---|
+| 1 | `3ef034051ef987751bfe91144d00c5d66f78697775e35a572a9913087b6ca982` | 4,527,786 |
+| 2 | `aa0569600a68d1a3bf42f26728ab54e73a5b8d8221f54068fc331f79b3966be6` | 4,527,786 |
+| 3 | `11a8ca364003c316872f9699d07b9d36a0a22622a04e7973d83a7269f8b7d556` | 4,527,786 |
+| 4 | `0d10dfa419e79cf4e457a4d456e8629424093476df56da1e4e7f7894825bbaaa` | 4,527,786 |
+| 5 | `7a6ea95075bcba6e775454b9a925f9311525ec24c19313036b442039d251964f` | 4,527,787 |
+| 6 | `a486d66816406572060af5c7b62d8b0a1151aab18accc83ccf746c172eab256b` | 4,527,787 |
+| 7 | `e1ebd1bc47b27bbff368300dd7df0ae0ff8455e2b4bdc529b5a82c2c1fe3c2f8` | 4,527,789 |
+| 8 | `cfc9086c28ed4733a583fd6ae13d9e61145fe802042e8088fb86793661015ceb` | 4,527,789 |
+| 9 | `02099265095c4dc34bb2a812d605da294fb9908f0b39c6a8e15c9005bd2b5a3f` | 4,527,789 |
+| 10 | `12eb8b5dd3a87d7786ca28306274b8bacd21a1504b75d7227583e2a37181800c` | 4,527,789 |
+| 11 | `f77089b53550b75dd464664c96b6a1cc414e4b4548d67ff1c4becc6f5bee08f4` | 4,527,791 |
+| 12 | `2d6a0acdf82516b52c74f1f38bd6d5bf6b8b6ab6a23460cc406ce699c5776776` | 4,527,791 |
+| 13 | `2bf1f0325ccfd2a10619aa7c21695aa938f23d492971b0ab90adc9007a4983a4` | 4,527,794 |
+| 14 | `bf713af93ead7b19557bd39046e8b8fa6a57deaf598c340951db9f8fa251df64` | 4,527,794 |
+
+Sent with `kiosk offer - --from wallets/test/A` (ghost voice, Codec2 700C, one transaction per seed, no retries); all 14 accepted by the public-key wallet V about 2 min after the last send. Render at 4,527,794: 43 offerings, 16 skipped, render_hash `6ae739854eca770ef1c3d32b4519f31be8b10b5f83cdd883b747bce63cab444e` (true name GUNZHAI'LIS).

@@ -31,7 +31,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [x] **B** Deterministic mixer: integer arithmetic, per-`contrib_id` pan/pitch-layer derived from the id, no RNG, no float drift; output one WAV + hash (`renderer/composer.py` `choir/1`)
 - [x] **B** Text contributions → local TTS (espeak-ng now; Piper if time) → same pipeline (`renderer/tts.py`; espeak-ng 1.51 + sox `-D`, fingerprint pinned)
 - [ ] **A** Verify G6 still holds end-to-end: two machines, same wallet key, same `render_hash` incl. PCM (one machine so far: V == B byte-identical incl. `mix.wav`; needs a second laptop)
-- [ ] **C** Collect 10–15 seed "secrets" (original, safe to publish) and pre-send them so the god is never empty
+- [x] **C** Collect 10–15 seed "secrets" (original, safe to publish) and pre-send them so the god is never empty (14 sent 22 Oct @4,527,786–4,527,794; txids in `docs/evidence-index.md` "Pre-sent seed offerings (22 Oct 2026)")
 
 ## Day 4 (23 Oct) — kiosk (sender)  [~12 h]
 - [x] **A** Kiosk CLI: text → TTS → Codec2 → chunk → `pay` from an **ephemeral** wallet funded from the pool; wipe wallet dir after session; never store raw recordings (`python3 -m kiosk`; live tx `91621cb4…` @4525215 from wallet A; web UI = Day 5/6)
