@@ -1,6 +1,6 @@
 # Evidence index — every claim → transaction → where to look
 
-Network: Zcash **testnet**, NU7 (branch `77190ad9`). Explorer: `https://testnet.zcashexplorer.app/transactions/<txid>` (txids below are in display order = what devtool, Zingo and explorers show; the sandbox could not open the explorer (HTTP 403), so click one to confirm before the demo). Choir wallet = `wallets/test/B` (address `zutest1sv9c9mzq54ye…`, UFVK `uvftest1s5vnzz3xm2…`); public reader = `wallets/test/V`.
+Network: Zcash **testnet**, NU7 (branch `77190ad9`). Explorer: ZecBlock (formerly CipherScan), `https://testnet.zecblock.com/tx/<txid>` and `/block/<height>` (JSON: `https://api.testnet.cipherscan.app/api/tx/<txid>`). It is on our chain: its block 4,525,215 has the hash `testnet.zec.rocks` serves (`000026af4552…`), and every txid in this file resolves there as confirmed and canonical (checked 22 Oct 2026). `testnet.zcashexplorer.app` follows a different testnet fork; do not use it (see "Product build" below). Txids below are in display order = what devtool, Zingo and explorers show. An explorer shows only that a shielded transaction exists; the independent proof remains the public-key wallet V (`list-tx` after `sync`). Choir wallet = `wallets/test/B` (address `zutest1sv9c9mzq54ye…`, UFVK `uvftest1s5vnzz3xm2…`); public reader = `wallets/test/V`.
 
 | Claim | Txid | Block | What it proves | Local evidence |
 |---|---|---|---|---|
@@ -27,13 +27,15 @@ Negative results worth citing in the README's honesty section:
 
 ## Product build (21 Oct 2026)
 
-Same network, same explorer URL scheme. **Explorer status on 21 Oct:** `testnet.zcashexplorer.app` answered
+Same network, same explorer (ZecBlock). **Explorer status:** on 21 Oct `testnet.zcashexplorer.app` answered
 "Transaction Not Found" for every txid checked (`91621cb4…`, `143f91ee…`, `9ecb9c7e…`, and the older `22b168c9…`,
 `3b67fb1b…`, `a71ccb5d…`), and its block 4,487,269 (hash `0141cdbb…`, dated 21 Oct 12:12 UTC) is not the block
-4,487,269 that `testnet.zec.rocks` serves (hash `00002a1f…`, 11 Oct): the explorer follows a different testnet chain.
-The links below are kept for when it is back on the NU7 chain; until then the proof that a shielded transaction exists is
-the public-key wallet V (`list-tx` after `sync`) and the renderer log. Pre-show check: `…/blocks/4525215` must show hash
-`000026af4552065fbbbd94b5c9a0be7914fc402733c53c6f464921b9817b72ac`.
+4,487,269 that `testnet.zec.rocks` serves (hash `00002a1f…`, 11 Oct): that explorer follows a different testnet fork.
+ZecBlock (`testnet.zecblock.com`) is on our chain: its block 4,525,215 has hash
+`000026af4552065fbbbd94b5c9a0be7914fc402733c53c6f464921b9817b72ac`, and on 22 Oct every txid in this file resolved
+there as confirmed and canonical. An explorer shows only that a shielded transaction exists; the independent proof
+remains the public-key wallet V (`list-tx` after `sync`) and the renderer log. Pre-show check:
+`https://testnet.zecblock.com/block/4525215` must show a hash starting `000026af4552`.
 
 | Claim | Txid | Block | What it proves | Local evidence |
 |---|---|---|---|---|

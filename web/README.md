@@ -38,8 +38,9 @@ the send button (`POST /kiosk/offer` → `kiosk.session.Session.current().offer(
 `python3 -m kiosk offer`; refused with a message when no session is ready). The endpoints and the page exist only
 with `--kiosk` **and** for clients on 127.0.0.1/::1: a listener page served on a LAN never exposes a send
 endpoint. Responses carry txid, contrib_id, byte counts and seconds; the text and any address are never returned
-or logged. After a send the page clears the text, shows the txid with the explorer caveat (it may be on another
-fork; the proof is `wallet -w wallets/test/V list-tx`) and "the god will hear it in about 1–4 minutes".
+or logged. After a send the page clears the text, shows the txid with a ZecBlock link and its caveat (it shows
+only that a shielded transaction exists; the independent proof is `wallet -w wallets/test/V list-tx`) and "the god
+will hear it in about 1–4 minutes".
 
 ## Demo pages
 

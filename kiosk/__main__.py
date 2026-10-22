@@ -31,7 +31,9 @@ from .offering import Choir, make_offering, payment_uri
 from .session import Session
 
 REPO = Path(__file__).resolve().parents[1]
-EXPLORER = "https://testnet.zcashexplorer.app/transactions/"
+# ZecBlock (formerly CipherScan) follows our NU7 testnet chain: its block 4,525,215 is 000026af4552… (checked
+# 22 Oct 2026). Not every public testnet explorer does (docs/evidence-index.md).
+EXPLORER = "https://testnet.zecblock.com/tx/"
 
 
 def voice() -> Voice:
@@ -115,11 +117,11 @@ def printable(text: str) -> str:
 
 def sent(txid: str) -> str:
     """What the kiosk says after a broadcast. The explorer link is a courtesy, never the proof: a public explorer
-    can lag or follow another fork of testnet (it did on 21 Oct 2026); the proof is our own synced wallet."""
+    can lag behind the chain; the independent proof is a synced wallet holding only the public key."""
     return (f"sent. txid {txid}\n"
-            f"public explorer (may lag or follow another fork): {EXPLORER}{txid}\n"
+            f"public explorer (may lag a few blocks): {EXPLORER}{txid}\n"
             f"(it shows at most that a shielded transaction exists)\n"
-            f"proof on our chain: bin/devtool-aegis wallet -w wallets/test/V list-tx after sync")
+            f"independent proof: bin/devtool-aegis wallet -w wallets/test/V list-tx after sync")
 
 
 def cmd_pool(a) -> None:

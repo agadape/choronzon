@@ -4,7 +4,8 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const EXPLORER = "https://testnet.zcashexplorer.app/transactions/";
+// ZecBlock follows our NU7 testnet chain (block 4,525,215 = 000026af4552…, checked 22 Oct 2026).
+const EXPLORER = "https://testnet.zecblock.com/tx/";
 let audio = null;
 
 async function init() {
