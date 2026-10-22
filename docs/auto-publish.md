@@ -71,15 +71,15 @@ Private repository (until 28 Oct): GitHub-hosted Linux minutes count against the
 (Free 2,000 min, Pro 3,000 min; each job is rounded up to the whole minute). Public repository (from 28 Oct):
 standard runners are free.
 
-| Run | Billed minutes (estimate, see *Measured* below) |
-|---|---|
-| tools cached, no new offering (almost every run) | 1–2 |
-| tools cached, new offering → deploy | 2 |
-| cache miss (first run, or a pin/patch change): builds the devtool | 15–25 |
+| Run | Wall clock (measured 22 Oct, see below) | Billed minutes |
+|---|---|---|
+| tools cached, no new offering (almost every run) | 41 s | 1 |
+| tools cached, new offering → deploy | ~1.5 min | 2 |
+| cache miss (first run, or a pin/patch change): builds the devtool | 13.5 min | 14 |
 
-48 runs a day ≈ 50–100 min/day ≈ 300–600 min from 22 to 28 Oct. A whole month as a private repository would be
-1,500–3,000 min, more than GitHub Free includes; if the repository stays private, switch the cron to hourly
-(`"0 * * * *"`) or pause it. Vercel: each deploy is a static deployment of ~4.5 MB (mostly `out/mix.wav`), and
+48 runs a day ≈ 50 min/day ≈ 300 min from 22 to 28 Oct. A whole month as a private repository would be
+~1,500 min: inside GitHub Free's 2,000, but most of it. If the repository stays private and the quota matters,
+switch the cron to hourly (`"0 * * * *"`) or pause it. Vercel: each deploy is a static deployment of ~4.5 MB (mostly `out/mix.wav`), and
 deploys happen only when an offering arrives.
 
 Caches (repository limit 10 GB, entries unused for 7 days are evicted): `bin/` ~100 MB before compression
@@ -157,6 +157,15 @@ check, the allow-list build and the deploy all succeed.
 - `dist/` is the allow-list of `scripts/build_web.sh` (pages, scripts, `config/brand.json`, `out/score.json`,
   `out/mix.wav`, `out/render_hash`, `static.json`, `vercel.json`): no kiosk, no Whisper Back, no key.
 
-## Measured
+## Measured (22 Oct 2026)
 
-Filled in after the first runs (cache miss, then cache hit).
+| Run | Cache | Wall clock | What happened |
+|---|---|---|---|
+| [39727405735](https://github.com/agadape/choronzon/actions/runs/39727405735) (dispatch) | miss | 13 m 31 s (devtool build 12 m 0 s, apt 14 s, summon + render from the birthday 24 s, deploy + live check 35 s) | synced to 4,527,973; rendered at the newest transaction **4,527,794**; `render_hash 6ae73985…`; deployed, production served the new hash |
+| [39732713347](https://github.com/agadape/choronzon/actions/runs/39732713347) (dispatch) | hit (bin/ + watcher @4,527,973) | 41 s (job 30 s: apt 16 s, render 7 s) | synced to 4,528,086; same height and hash; stopped with *no new offering* |
+
+Same value on the laptop: after `sync`, `python3 -m renderer once --wallet wallets/test/V --as-of 4527794`
+printed `render_hash 6ae739854eca770ef1c3d32b4519f31be8b10b5f83cdd883b747bce63cab444e` and
+`score_hash 2649909b…`. A GitHub runner that never saw our machines, with codec2 built from source, espeak-ng
+1.51 and sox 14.4.2 from the Ubuntu archive, reproduced the laptop's hash exactly (`decoder_matches_pin` and
+`voice_matches_pin` true). Neither run's log contains the key (GitHub shows `***` where the secret is set).
