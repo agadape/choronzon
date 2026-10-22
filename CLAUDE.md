@@ -104,6 +104,8 @@ Handling rules (decided 21 Oct): the choir UFVK is published deliberately (READM
 - Wallet DB txids are byte-reversed vs explorers/Zingo.
 - Old regexes broke on new address encodings; match `(zu|tu|u)test1…`.
 - `scripts/smoke.sh` has two chain checks: **regression** (`spikes/g6_render.py` at the fixed height 4522002 must give `c46dd5de…`, 7 accepted) and **health** (current height; V and B must agree). `as_of` is inside every hash, so a render at the current height never equals the G6 value.
+- Public web (22 Oct): `https://<slug>.vercel.app` = a static snapshot (listener, séance hashes, apparition; no kiosk, no Whisper Back, no key). Refresh with `./scripts/publish_web.sh` (render from V at tip → `scripts/build_web.sh` allow-list into `dist/` → Windows Vercel CLI via `cmd.exe` run *from* `%LOCALAPPDATA%\<slug>-web`; never pass `--cwd "<path>"` through cmd.exe). Production domain is public; per-deployment URLs stay behind Vercel Authentication.
+- `pkill -f <pattern>` inside `wsl.exe … bash -lc '…'` kills that shell too when its own command line contains the pattern; kill by `pgrep -f "^python3 -m …"` PIDs instead.
 - Editing files from Windows over `\\wsl.localhost\…` resets the exec bit; `chmod +x` scripts afterwards (`git diff --summary` shows mode changes).
 
 ## 9. Next (day 3 →) — full checklist in `TODO.md`

@@ -28,8 +28,10 @@ mkdir -p "$WSL_DIR"
 rsync -r --delete --exclude .vercel dist/ "$WSL_DIR/"
 
 echo "== deploy to Vercel (production) =="
+# cmd.exe started from a /mnt/c path runs in that Windows directory; passing --cwd "<path>" through cmd.exe keeps
+# the quotes in the argument and the CLI fails with ENOENT (first publish, 22 Oct)
 if [ ! -d "$WSL_DIR/.vercel" ]; then
-  (cd /mnt/c && cmd.exe /c "vercel link --yes --project $SLUG --cwd \"$WIN_DIR\"")
+  (cd "$WSL_DIR" && cmd.exe /c "vercel link --yes --project $SLUG")
 fi
-(cd /mnt/c && cmd.exe /c "vercel deploy --prod --yes --cwd \"$WIN_DIR\"")
+(cd "$WSL_DIR" && cmd.exe /c "vercel deploy --prod --yes")
 echo "published snapshot at height $(python3 -c "import json; print(json.load(open('dist/static.json'))['as_of_height'])")"

@@ -10,6 +10,8 @@
 
 **ZECATHON 2026** (by zkSNARKs) · Wildcard track · Zcash testnet (NU7) · built 13–28 Oct 2026 · MIT
 
+**Listen to it:** [{{slug}}.vercel.app](https://{{slug}}.vercel.app): a static snapshot of the god rendered from the public viewing key at one block height (the height and render time are printed on the page). Whisper Back, the kiosk and the key live at the installation, not on this page. Refreshed with `scripts/publish_web.sh`.
+
 ---
 
 **Ten minutes, in order:** [what it is](#the-myth) · [why Zcash](#why-it-needs-zcash) · [how it works](#how-it-works) · [privacy, in the words the kiosk prints](#privacy-read-this-before-you-give-it-anything) · [why two laptops agree](#determinism-the-blockchain-is-the-score) · [run it](#run-it-linux-or-wsl-testnet-only) (the judge's path from the key alone: [docs/fresh-clone.md](docs/fresh-clone.md)) · [evidence](#evidence-zcash-testnet-nu7) · [limits](#limits) · [status](#status).
