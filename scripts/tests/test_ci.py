@@ -49,6 +49,12 @@ def test_key_file_is_private_and_always_deleted(workflow):
     assert "shred -u" in delete["run"]
 
 
+def test_never_replaces_a_higher_snapshot(workflow):
+    compare = next(s for s in steps(workflow) if s["name"] == "Compare with the live site")
+    assert "static.json" in compare["run"] and "as_of_height" in compare["run"]
+    assert '"$HEIGHT" -lt "$live_height"' in compare["run"]
+
+
 def test_no_xtrace_anywhere():
     assert CI_SCRIPTS
     for f in [WORKFLOW, *CI_SCRIPTS]:

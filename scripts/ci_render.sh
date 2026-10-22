@@ -52,6 +52,26 @@ for attempt in 1 2 3; do
 done
 [ "$ok" = 1 ] || fail "renderer summon failed three times (lightwalletd unreachable, or the CHOIR_UFVK secret is wrong)"
 
+# The scan queue's upper bound is the chain tip lightwalletd reported at the start of the last sync; the render must
+# not start below it (scanned_height stops before the first unscanned range, so a partial sync would hide offerings).
+behind() {
+  python3 - "$WALLET" <<'EOF'
+import sys
+from renderer.wallet import WalletDB
+db = WalletDB(sys.argv[1])
+known_tip = db._query("select max(block_range_end) - 1 from scan_queue")[0][0] or 0
+print(max(0, known_tip - db.scanned_height()))
+EOF
+}
+for attempt in 1 2 3; do
+  gap=$(behind)
+  [ "$gap" = 0 ] && break
+  echo "the watcher is $gap blocks below the chain tip it knows; syncing again"
+  python3 -c 'import sys; from renderer.wallet import sync_and_enhance; sync_and_enhance("bin/devtool-aegis", sys.argv[1])' \
+    "$WALLET" 2>>"$LOG" || echo "  cause: $(tail -n 1 "$LOG")"
+done
+[ "$(behind)" = 0 ] || fail "the watcher wallet did not reach the chain tip after three more syncs"
+
 HEIGHT=$(python3 - "$WALLET" <<'EOF'
 import sys
 from renderer.wallet import WalletDB
@@ -80,4 +100,5 @@ open(sys.argv[4], "w").write(f"height={height}\ntip={tip['as_of_height']}\nrende
 EOF
 echo "recreated=$RECREATED" >>"$TMP/result.env"
 if [ -n "${GITHUB_OUTPUT:-}" ]; then cat "$TMP/result.env" >>"$GITHUB_OUTPUT"; else cat "$TMP/result.env"; fi
-echo "rendered at height $HEIGHT: render_hash $(sed -n 's/^render_hash=//p' "$TMP/result.env")"
+echo "rendered at height $HEIGHT (newest transaction; watcher synced to the tip, $(sed -n 's/^tip=//p' "$TMP/result.env")):" \
+     "render_hash $(sed -n 's/^render_hash=//p' "$TMP/result.env")"

@@ -22,12 +22,16 @@ and deploys a new static snapshot to Vercel production **only when the render ch
 5. **Key file.** The secret `CHOIR_UFVK` is written to `$RUNNER_TEMP/choir.key` with `umask 077` (mode 0600).
    It is shredded in an `if: always()` step right after the render, so also when the render fails.
 6. **Render** (`scripts/ci_render.sh`): `python3 -m renderer summon --key-file …` (init-fvk on the first run,
-   sync, enhance), then a second render at **the height of the newest transaction the key can see** (see below).
-   A failed summon is retried once on the same wallet and once on a wallet re-created from the key. The job
-   **fails** if `decoder_matches_pin` or `voice_matches_pin` is false: that render_hash would be reproducible on
-   no other machine, so it is never published.
-7. **Compare** the new `render_hash` with `https://<slug>.vercel.app/out/render_hash`. Equal: the run stops with
-   the notice *no new offering*. Different (or the site unreachable): continue.
+   sync, enhance). A failed summon is retried once on the same wallet and once on a wallet re-created from the
+   key. Then it checks that the wallet is scanned up to the chain tip lightwalletd reported (the upper bound of
+   its scan queue) and syncs again, up to three times, if not; a wallet that stays behind fails the job. Then a
+   second render at **the height of the newest transaction the key can see** (see below). The job **fails** if
+   `decoder_matches_pin` or `voice_matches_pin` is false: that render_hash would be reproducible on no other
+   machine, so it is never published.
+7. **Compare** with the live site (`/out/render_hash` and `/static.json`). Same `render_hash`: the run stops with
+   the notice *no new offering*. Live snapshot at a **higher** height (a manual `publish_web.sh` renders at the
+   tip): also stop, a snapshot is never replaced by one at a lower height. Otherwise (or the site unreachable):
+   continue.
 8. **Build** `dist/` with `scripts/build_web.sh` (the allow-list check is in there) and **deploy** with the pinned
    CLI, `npx --yes vercel@62.7.0 deploy dist --prod --yes --token "$VERCEL_TOKEN"`, into the project named by the
    repo variables `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` (`scripts/ci_deploy.sh`). It then polls the production
@@ -122,16 +126,16 @@ First run: `gh workflow run publish-web.yml --repo agadape/choronzon`, then `gh 
 | Want | Do |
 |---|---|
 | run now | `gh workflow run publish-web.yml --repo agadape/choronzon` |
-| deploy even if the hash is unchanged | `gh workflow run publish-web.yml --repo agadape/choronzon -f force=true` |
+| deploy even if the hash is unchanged (or the live snapshot is higher) | `gh workflow run publish-web.yml --repo agadape/choronzon -f force=true` |
 | pause the schedule | `gh workflow disable publish-web.yml --repo agadape/choronzon` (or Actions → publish-web → ⋯ → Disable workflow) |
 | resume | `gh workflow enable publish-web.yml --repo agadape/choronzon` |
 | reset the watcher wallet once | `gh workflow run publish-web.yml --repo agadape/choronzon -f reset_wallet=true` |
 | drop the watcher cache for good (corrupt copy) | `gh variable set WATCHER_CACHE_GEN --repo agadape/choronzon --body 2` (any new value) |
 | publish from the laptop instead | `./scripts/publish_web.sh` (WSL, Windows Vercel CLI) |
 
-The manual fallback renders wallet V at the **tip**, so its hash differs from the scheduled render; the next
-scheduled run sees the difference and redeploys at the newest-transaction height (one extra deploy, harmless).
-Pause the schedule first if a manual snapshot must stay up.
+The manual fallback renders wallet V at the **tip**, so its height is above the newest transaction. Scheduled
+runs leave it up (they never replace a higher snapshot with a lower one) until an offering is mined above that
+height; then they deploy as usual. `force=true` replaces it at once.
 
 When a run fails, the page keeps serving the last good snapshot: nothing is deployed unless the render, the pin
 check, the allow-list build and the deploy all succeed.

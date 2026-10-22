@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: "Deploy even if the live site already serves this render_hash"
+        description: "Deploy even if the live site already serves this render_hash, or a snapshot at a higher height"
         type: boolean
         default: false
       reset_wallet:
@@ -162,12 +162,21 @@ jobs:
           HEIGHT: ${{ steps.render.outputs.height }}
           FORCE: ${{ inputs.force == true }}
         run: |
-          live=$(curl -fsS --retry 3 --max-time 20 "https://$SLUG.vercel.app/out/render_hash?run=$GITHUB_RUN_ID" 2>/dev/null | tr -d '[:space:]' || true)
-          if [ "$live" = "$RENDER_HASH" ] && [ "$FORCE" != true ]; then
-            echo "::notice title=no new offering::https://$SLUG.vercel.app already serves render_hash $RENDER_HASH (height $HEIGHT)"
+          site="https://$SLUG.vercel.app"
+          live=$(curl -fsS --retry 3 --max-time 20 "$site/out/render_hash?run=$GITHUB_RUN_ID" 2>/dev/null | tr -d '[:space:]' || true)
+          live_height=$(curl -fsS --retry 3 --max-time 20 "$site/static.json?run=$GITHUB_RUN_ID" 2>/dev/null \
+                        | python3 -c "import json, sys; print(int(json.load(sys.stdin)['as_of_height']))" 2>/dev/null || echo 0)
+          echo "live: render_hash ${live:-unreachable} at height $live_height; new: $RENDER_HASH at height $HEIGHT"
+          if [ "$FORCE" = true ]; then
+            echo "changed=true" >>"$GITHUB_OUTPUT"
+          elif [ "$live" = "$RENDER_HASH" ]; then
+            echo "::notice title=no new offering::$site already serves render_hash $RENDER_HASH (height $HEIGHT)"
+            echo "changed=false" >>"$GITHUB_OUTPUT"
+          elif [ "$HEIGHT" -lt "$live_height" ]; then
+            # e.g. a manual scripts/publish_web.sh snapshot at the tip: never replace a higher snapshot with a lower one
+            echo "::notice title=no new offering::$site is at height $live_height, above the newest transaction ($HEIGHT); not replacing it"
             echo "changed=false" >>"$GITHUB_OUTPUT"
           else
-            echo "live render_hash: ${live:-unreachable}; new: $RENDER_HASH at height $HEIGHT"
             echo "changed=true" >>"$GITHUB_OUTPUT"
           fi
 
