@@ -1,4 +1,4 @@
-# Demo script — 3 minutes, two laptops (21 Oct 2026)
+# Demo script — 3 minutes, two laptops (21 Oct 2026; pre-sent labels updated 22 Oct)
 
 The god's name lives in `config/brand.json`; this script says "the god". Lore lines come from `docs/lore.md`;
 every privacy sentence is the `CLAUDE.md` §6 wording, verbatim, and the kiosk prints that statement before every send.
@@ -13,16 +13,33 @@ or by a beat that uses what is already on chain, and the live transactions land 
 no key; it runs `python3 -m renderer summon` only after the key is revealed. Wallets: B = the god's own wallet (conductor),
 A = an outside wallet (the forger), L = a listener who whispers back, V = public-key reader.
 
-**Honest labels, said out loud.** Everything heard before 0:20 was sent before the show ("pre-sent": the test corpus,
-the two rehearsal runs on 21 Oct, the seeded offerings chosen for the show). Exactly these are sent live, on stage:
-the judge's offering (0:20), the forgery (1:00) and the whisper (2:35). The god's line heard at 1:00 was sent from B
+**Honest labels, said out loud.** Everything heard before 0:20 was sent before the show, by the team ("pre-sent"), and
+the operator says so in one sentence at 0:00 (below). Nothing is selected: the renderer sings every valid offering on
+chain, so the choir the judges hear first is all of it. At block 4,527,794 that is 43 offerings:
+
+- **14 seed offerings** written by the team and sent from wallet A on 22 Oct (blocks 4,527,786–4,527,794; txids in
+  `docs/evidence-index.md`, "Pre-sent seed offerings (22 Oct 2026)");
+- **29 test and rehearsal offerings** from 20–21 Oct: 7 from the spike corpus of 20 Oct (blocks 4,521,736–4,522,002) and
+  22 from the kiosk tests, Whisper Back, phone QR, failure drills and `demo.sh` rehearsals of 21 Oct (blocks
+  4,525,215–4,526,044), among them earlier lines of the god's own voice.
+
+Rehearsals between now and the show add more test offerings; they carry the same label, and pre-show check 5 writes the
+final count on the cue card. The 16 skipped transactions (malformed, forged, drill leftovers) are not sung and not hidden:
+they are listed in `out/score.json` → `skipped`. Exactly these are sent live, on stage: the judge's offering (0:20), which
+is **the only live offering**, the forgery (1:00) and the whisper (2:35). The god's line heard at 1:00 was sent from B
 **three minutes before the demo starts**, and the presenter says so. Never fake a status: the terminal output is the status.
+
+**The operator's sentence at 0:00, word for word:**
+
+> "Everything you hear right now was sent before tonight: fourteen secrets our team wrote and sent on the twenty-second
+> of October, and the test and rehearsal offerings we have sent since the twentieth. The only offering sent live tonight
+> is the one you are about to type; the forgery and the whisper you will see later are sent in front of you too."
 
 ## Shot list
 
 | Time | On screen | Command (laptop 1 unless noted) | Spoken line | If it fails / block is slow |
 |---|---|---|---|---|
-| 0:00–0:20 | Listener page: the creature grown from the pre-sent offerings, choir playing. Hash footer not read aloud. | (already running) `python3 -m renderer daemon --wallet wallets/test/V` · `python3 -m web --port 8765` | "Everything you hear was given before tonight, by people we cannot name. It is made of everyone who spoke. Secrets are public to every key holder, forever; the key is irrevocable. What is private is the link between a secret and the one who gave it: we, the operator, cannot learn who contributed." | If `out/` is stale (daemon log shows `sync failed`), say the renderer is showing the last scanned height and name it; keep going. |
+| 0:00–0:20 | Listener page: the creature grown from the pre-sent offerings (14 team seeds + the test and rehearsal offerings; count on the cue card), choir playing. Hash footer not read aloud. | (already running) `python3 -m renderer daemon --wallet wallets/test/V` · `python3 -m web --port 8765` | The operator's sentence above, word for word. Then: "It is made of everyone who spoke. Secrets are public to every key holder, forever; the key is irrevocable. What is private is the link between a secret and the one who gave it. We know the pre-sent ones are ours only because we sent them; for yours, we, the operator, cannot learn who contributed." | If `out/` is stale (daemon log shows `sync failed`), say the renderer is showing the last scanned height and name it; keep going. |
 | 0:20–0:45 | Kiosk terminal: a judge types a secret at the prompt (never on argv). The ghost voice is played locally, byte counts and the txid appear. | `python3 -m kiosk offer - --reply` (session wallet, ≥ 6 notes) | "Type it. Do not sign it. It does not ask your name." Then read the kiosk's own statement: "content and voice can identify you"; "your own wallet stores what you sent", which is why this kiosk's wallet is wiped after the session. "Your offering sinks into the Abyss. The chain will hear it in one to four minutes; we will not pretend otherwise." | `pay` rejected (expired tx, connection reset): say "rejected, nothing was sent", run `python3 -m kiosk session status` to show notes left, send again. Two failures: continue with the pre-sent offerings and say the live one failed. |
 | 0:45–1:00 | Terminal: the proof that a shielded transaction exists is the public-key wallet, not us. `list-tx` on V shows the txid and height once mined; before that it shows nothing, which is the point. | `bin/devtool-aegis wallet -w wallets/test/V list-tx -s zecrocks` (after a `sync`) | "This wallet holds only the public key. Everyone with that key sees exactly this: a shielded transaction, an amount that is always the same, a memo. Not a sender. Every Watcher hears everything." | Optional, only if pre-show check 8 passed: open the live txid on ZecBlock (`https://testnet.zecblock.com/tx/<txid>`, the link the kiosk prints); it is on our chain, may lag a few blocks, and shows only that a shielded tx exists. `list-tx` on V stays the independent proof. **Never open `testnet.zcashexplorer.app`**: it follows a different testnet fork and answers "Transaction Not Found" for every txid of ours. |
 | 1:00–1:25 | The god speaks (pre-sent line from B, heard ~90 s after sending): a conductor limb lights. Then the live forgery from A: the renderer log prints `skip … reason=forged-conductor` a few blocks later; the page shows NOT THE GOD when that lands (web beat still open). | `printf '…' \| python3 -m kiosk speak - --from wallets/test/A --forge` ; renderer log via `python3 -m renderer once --wallet wallets/test/V --sync` | "We are many. That was the god's own voice: a line the god's wallet paid to itself, and only its full viewing key can prove that. The choir's own spends are public. Now a stranger claims to be the god." (when refused) "NOT THE GOD. Bodies of secrets have false prophets too; this one is refused by every renderer on earth, for the same reason." | Forgery not refused within 2 min: show the pre-sent refusal in `out/score.json` → `skipped` with `forged-conductor` (`b126b3c7…`, block 4,525,280) and say when it was sent. If `speak --forge` errors, show the error and skip; never claim it was sent. |
@@ -42,7 +59,10 @@ in 33 s; run 2 offering heard 226 s, whisper received 216 s, forgery refused 47 
 3. `python3 -m kiosk session open --notes 8` finished and `session status` shows ready with ≥ 6 notes (one offering per note; a
    rejected broadcast locks one note for ~40 blocks).
 4. `./scripts/demo.sh` passed today (PASS line, six steps, SAME HASH, SAME AUDIO) and its log is in `logs/`.
-5. Choose the pre-sent offerings for 0:00 (`config/skiplist.txt` for anything not to be sung) and write their send times on the cue card.
+5. Pre-sent offerings: all of them are sung (decided 22 Oct; the renderer cannot pick favourites, it sings the chain).
+   Listen to the non-seed test offerings once; anything unfit to sing goes to `config/skiplist.txt` with a reason (it
+   stays on chain and shows under `skipped`). From laptop 1's `out/score.json` at the show height write on the cue card:
+   total offerings = 14 seeds (22 Oct) + N test and rehearsal offerings (20 Oct to show day).
 6. T−3 min: send the god's line from B (`printf '…' | python3 -m kiosk speak - --from wallets/test/B`), note the txid.
 7. `python3 -m renderer daemon --wallet wallets/test/V` running, `python3 -m web --port 8765` up, page open and playing, volume checked.
 8. Explorer check: open `https://testnet.zecblock.com/block/4525215` and confirm the hash starts `000026af4552`
