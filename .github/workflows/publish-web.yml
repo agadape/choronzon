@@ -1,0 +1,205 @@
+# Re-render the god from its published viewing key and deploy the static listener page to Vercel production,
+# only when the render changed. What it does, what it costs, how to pause it: docs/auto-publish.md.
+#
+# Secrets (set by a person, never by a script): CHOIR_UFVK (the choir's full viewing key), VERCEL_TOKEN.
+# Variables (not secret): VERCEL_ORG_ID, VERCEL_PROJECT_ID; optional WATCHER_CACHE_GEN (change it to drop the
+# cached watcher wallet). Never add `set -x` to any step or script of this workflow.
+name: publish-web
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Deploy even if the live site already serves this render_hash"
+        type: boolean
+        default: false
+      reset_wallet:
+        description: "Ignore the cached watcher wallet and sync again from the birthday"
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish-web
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CHOIR_BIRTHDAY: "4502962"
+  WATCHER: wallets/watcher
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04   # same distro as the voice pins (espeak-ng 1.51, sox 14.4.2) and the codec2 build
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Pins and cache keys
+        id: pins
+        run: |
+          scripts/ci_build_tools.sh --key >>"$GITHUB_OUTPUT"
+          echo "slug=$(python3 -c "import json; print(json.load(open('config/brand.json'))['slug'])")" >>"$GITHUB_OUTPUT"
+
+      - name: Restore bin/ (devtool-aegis, c2enc, c2dec)
+        id: bin
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: ${{ steps.pins.outputs.key }}
+
+      - name: Install system packages
+        env:
+          BUILD: ${{ steps.bin.outputs.cache-hit != 'true' }}
+        run: |
+          pkgs="espeak-ng sox libsox-fmt-all"
+          if [ "$BUILD" = true ]; then pkgs="$pkgs build-essential pkg-config libssl-dev protobuf-compiler cmake"; fi
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends $pkgs >/dev/null
+          dpkg-query -W espeak-ng sox libsox3
+
+      - name: Restore the cargo registry
+        if: steps.bin.outputs.cache-hit != 'true'
+        id: cargo
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-${{ steps.pins.outputs.key }}
+
+      - name: Build bin/ (cache miss only; as scripts/setup.sh steps 3-4)
+        if: steps.bin.outputs.cache-hit != 'true'
+        id: build
+        run: scripts/ci_build_tools.sh
+
+      - name: Save bin/
+        if: steps.build.outcome == 'success'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: bin
+          key: ${{ steps.pins.outputs.key }}
+
+      - name: Save the cargo registry
+        if: steps.build.outcome == 'success' && steps.cargo.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-${{ steps.pins.outputs.key }}
+
+      - name: Restore the watcher wallet
+        if: ${{ !inputs.reset_wallet }}
+        id: watcher
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.WATCHER }}
+          key: watcher-${{ vars.WATCHER_CACHE_GEN || '1' }}-${{ steps.pins.outputs.devtool }}-run${{ github.run_id }}
+          restore-keys: watcher-${{ vars.WATCHER_CACHE_GEN || '1' }}-${{ steps.pins.outputs.devtool }}-
+
+      - name: Write the key file
+        env:
+          CHOIR_UFVK: ${{ secrets.CHOIR_UFVK }}
+        run: |
+          umask 077
+          case "$CHOIR_UFVK" in
+            uview*|uvftest*|uvf1*) ;;
+            *) echo "::error::secret CHOIR_UFVK is missing or is not a unified full viewing key (docs/auto-publish.md)"; exit 1;;
+          esac
+          printf '%s\n' "$CHOIR_UFVK" >"$RUNNER_TEMP/choir.key"
+
+      - name: Render from the key (summon, then render at the newest transaction)
+        id: render
+        timeout-minutes: 20
+        run: scripts/ci_render.sh --key-file "$RUNNER_TEMP/choir.key" --birthday "$CHOIR_BIRTHDAY" --wallet "$WATCHER" --out out
+
+      - name: Delete the key file
+        if: always()
+        run: |
+          if [ -e "$RUNNER_TEMP/choir.key" ]; then shred -u "$RUNNER_TEMP/choir.key" || rm -f "$RUNNER_TEMP/choir.key"; fi
+          [ ! -e "$RUNNER_TEMP/choir.key" ] && echo "key file deleted"
+
+      - name: Decide whether to save the watcher wallet
+        if: steps.render.outcome == 'success'
+        id: watcher-save
+        env:
+          MATCHED: ${{ steps.watcher.outputs.cache-matched-key }}
+          TIP: ${{ steps.render.outputs.tip }}
+          RECREATED: ${{ steps.render.outputs.recreated }}
+        run: |
+          # one cache entry per ~5 h (240 blocks) is enough: a restored wallet only has to sync the gap.
+          # A wallet re-created from the key (the restored copy failed) is saved at once, so the next run restores it.
+          restored=${MATCHED##*-}
+          if [ -z "$MATCHED" ] || [ "$RECREATED" = 1 ] || [ $((TIP - restored)) -ge 240 ]; then
+            echo "save=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Save the watcher wallet
+        if: steps.watcher-save.outputs.save == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.WATCHER }}
+          key: watcher-${{ vars.WATCHER_CACHE_GEN || '1' }}-${{ steps.pins.outputs.devtool }}-${{ steps.render.outputs.tip }}
+
+      - name: Compare with the live site
+        id: compare
+        env:
+          SLUG: ${{ steps.pins.outputs.slug }}
+          RENDER_HASH: ${{ steps.render.outputs.render_hash }}
+          HEIGHT: ${{ steps.render.outputs.height }}
+          FORCE: ${{ inputs.force == true }}
+        run: |
+          live=$(curl -fsS --retry 3 --max-time 20 "https://$SLUG.vercel.app/out/render_hash?run=$GITHUB_RUN_ID" 2>/dev/null | tr -d '[:space:]' || true)
+          if [ "$live" = "$RENDER_HASH" ] && [ "$FORCE" != true ]; then
+            echo "::notice title=no new offering::https://$SLUG.vercel.app already serves render_hash $RENDER_HASH (height $HEIGHT)"
+            echo "changed=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "live render_hash: ${live:-unreachable}; new: $RENDER_HASH at height $HEIGHT"
+            echo "changed=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the static snapshot (allow-list)
+        if: steps.compare.outputs.changed == 'true'
+        run: scripts/build_web.sh --out out --dist dist >/dev/null
+
+      - name: Deploy to Vercel production
+        if: steps.compare.outputs.changed == 'true'
+        id: deploy
+        timeout-minutes: 10
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          RENDER_HASH: ${{ steps.render.outputs.render_hash }}
+        run: scripts/ci_deploy.sh --dist dist --expect "$RENDER_HASH"
+
+      - name: Summary
+        if: always()
+        env:
+          HEIGHT: ${{ steps.render.outputs.height }}
+          RENDER_HASH: ${{ steps.render.outputs.render_hash }}
+          CHANGED: ${{ steps.compare.outputs.changed }}
+          URL: ${{ steps.deploy.outputs.url }}
+          SLUG: ${{ steps.pins.outputs.slug }}
+        run: |
+          {
+            echo "| | |"; echo "|---|---|"
+            echo "| height | ${HEIGHT:-–} |"
+            echo "| render_hash | \`${RENDER_HASH:-–}\` |"
+            if [ -n "$URL" ]; then echo "| deployed | $URL → https://$SLUG.vercel.app |"
+            elif [ "$CHANGED" = false ]; then echo "| deployed | no new offering |"
+            else echo "| deployed | – |"; fi
+          } >>"$GITHUB_STEP_SUMMARY"

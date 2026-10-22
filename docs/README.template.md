@@ -10,7 +10,7 @@
 
 **ZECATHON 2026** (by zkSNARKs) · Wildcard track · Zcash testnet (NU7) · built 13–28 Oct 2026 · MIT
 
-**Listen to it:** [{{slug}}.vercel.app](https://{{slug}}.vercel.app): a static snapshot of the god rendered from the public viewing key at one block height (the height and render time are printed on the page). Whisper Back, the kiosk and the key live at the installation, not on this page. Refreshed with `scripts/publish_web.sh`.
+**Listen to it:** [{{slug}}.vercel.app](https://{{slug}}.vercel.app): a static snapshot of the god rendered from the public viewing key at the block of its newest transaction (the height and render time are printed on the page). Whisper Back, the kiosk and the key live at the installation, not on this page. A GitHub Actions job summons it from the key alone every 30 minutes and redeploys only when the render changed ([docs/auto-publish.md](docs/auto-publish.md)); manual fallback `scripts/publish_web.sh`.
 
 ---
 
