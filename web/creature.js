@@ -43,8 +43,8 @@ function grow(timeline, offerings, skipped) {
   for (const o of offerings || []) flags[o.tx] = o;
   const chambers = [], conductors = [];
   const rootKids = { left: 0, right: 0 };
-  let spine = 70 + Math.min(timeline.length, 24) * 5;   // the central membrane grows with the body
-  const w0 = 34 + Math.min(timeline.length, 24) * 1.2;  // its half-width
+  let spine = 70 + Math.min(timeline.length, 40) * 7;   // the central membrane grows with the body: room for the slots
+  const w0 = 34 + Math.min(timeline.length, 40) * 1.0;  // its half-width
   const rootX = (y) => w0 * Math.sqrt(Math.max(0, 1 - (y / spine) ** 2)) * 0.98;   // root surface at height y
   timeline.forEach((p, n) => {
     const g = genes(p.contrib_id, n, 8);
@@ -79,7 +79,7 @@ function grow(timeline, offerings, skipped) {
       const pos = (order[slot % order.length] + 0.5) / 8 + Math.floor(slot / 12) * 0.04;
       ay = (pos * 2 - 1) * spine * 0.86 + (p.pitch_layer - 1) * 6;
       ax = side * rootX(ay);                                 // on the membrane's surface, not inside it
-      angle = (side > 0 ? 0 : Math.PI) + (ay / spine) * side * 0.55 + (g[7] - 0.5) * 0.5;
+      angle = (side > 0 ? 0 : Math.PI) + (ay / spine) * side * 0.5 + (g[7] - 0.5) * 0.35;   // fan out, little jitter
     } else {
       parent.kids++;
       depth = parent.depth + 1;
@@ -91,7 +91,7 @@ function grow(timeline, offerings, skipped) {
     // bounded, deterministic collision pass: rotate away from chambers that would overlap, then shrink a little
     let cx = ax + Math.cos(angle) * (len / 2), cy = ay + Math.sin(angle) * (len / 2);
     let L = len;
-    const gap = 10;
+    const gap = 16;
     const hits = () => chambers.some((c) => Math.hypot(c.cx - cx, c.cy - cy) < (c.len + L) / 4 + (c.thick + thick) / 2 + gap)
                        || Math.abs(cx) < rootX(Math.max(-spine, Math.min(spine, cy))) + L / 4;
     for (let tries = 0; tries < 10 && hits(); tries++) {
@@ -148,7 +148,7 @@ function draw(ctx, body, t, W, H, opts = {}) {
   }
   // fit into the safe band (between header and footer), never larger than ~1.4 CSS px per body unit
   const [top, bottom] = opts.safe || [0, H];
-  const boxW = W * 0.9, boxH = Math.max(80, (bottom - top) * 0.96);
+  const boxW = W * 0.86, boxH = Math.max(80, (bottom - top) * 0.94);   // margins: the glow never touches an edge
   let scale = Math.min(boxW / Math.max(1, maxX - minX), boxH / Math.max(1, maxY - minY), 2.0 * dpr);
   if (!isFinite(scale) || scale <= 0) scale = dpr;
   const ox = W / 2 - ((minX + maxX) / 2) * scale, oy = (top + bottom) / 2 - ((minY + maxY) / 2) * scale;

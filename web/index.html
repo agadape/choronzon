@@ -23,7 +23,8 @@
   #actions { margin-top: 18px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   #status { color: var(--ash); }
   #strip { display: flex; gap: 10px 26px; flex-wrap: wrap; align-items: baseline; }
-  #true_name { letter-spacing: 0.22em; }
+  #true_name { letter-spacing: 0.22em; color: var(--bone); }   /* the hook: the name both laptops will agree on */
+  #true_name::before { content: ""; }
   #privacy { color: var(--ash); font-size: 12px; max-width: 80ch; }
   #whisper_row input { width: min(26em, 100%); }
   #whisper { position: fixed; top: 16px; right: 16px; width: min(300px, calc(100vw - 32px)); display: grid; gap: 8px;
@@ -48,11 +49,12 @@
   @media (max-width: 600px) {
     #top, #bottom { padding: 14px 16px; }
     #bottom { gap: 8px; }
-    .lede { display: none; }   /* the one-liner is in the README and the proof panel; phones keep the body */
+    .lede { font-size: 12.5px; line-height: 1.5; margin-top: 10px; opacity: 0.85; }   /* a phone visitor must still be told what this is */
+    #actions { margin-top: 14px; }
     #strip { gap: 6px 14px; font-size: 12px; }
     #strip .stat .k { display: none; }               /* numbers only, each with a short label below */
     #strip .stat::before { content: attr(data-l); color: var(--ash); font-size: 10px; letter-spacing: 0.1em; }
-    #true_name { width: 100%; font-size: 12px; }
+    #true_name { width: 100%; font-size: 13.5px; margin-top: 6px; }
     #proof_hint { display: none; }
     #whisper_row { gap: 8px; }
     #whisper_row input { width: 100%; }
