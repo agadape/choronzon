@@ -10,6 +10,19 @@ const firstSeen = {};            // tx -> performance.now() when this page first
 let forgedSeen = null;
 // séance mode (?seance): the hashes and the key stay sealed until the operator opens the Eye
 const SEANCE = new URLSearchParams(location.search).has("seance");
+// static snapshot (Vercel): static.json next to index.html marks a build with no wallet and no key behind it
+let STATIC = null;
+async function loadStatic() {
+  try {
+    const r = await fetch("static.json", { cache: "no-store" });
+    if (r.ok) STATIC = await r.json();
+  } catch (e) { STATIC = null; }
+  if (STATIC && STATIC.static) {
+    const when = new Date(STATIC.rendered_at).toISOString().replace("T", " ").slice(0, 16) + " UTC";
+    $("snapshot").textContent = `snapshot of the god at height ${Number(STATIC.as_of_height).toLocaleString("en-US")}, ` +
+      `rendered ${when}; the installation re-renders every block.`;
+  }
+}
 let eyeOpenedAt = null;          // performance.now() when the aperture started; null = not started
 let eyeOpen = !SEANCE;           // hashes (and the key) show only once the aperture has crossed the whole body
 if (SEANCE) document.body.classList.add("sealed");
@@ -104,6 +117,11 @@ function frame() {
 
 // Whisper Back: click a chamber -> ask the server for that offering's reply request (read from the wallet DB on demand)
 async function whisper(txid) {
+  if (STATIC && STATIC.static) {
+    $("whisper_status").textContent = "whisper back works at the installation (it reads the reply address from a wallet, never from this page)";
+    $("qr").innerHTML = "";
+    return;
+  }
   const text = $("whisper_text").value.trim() || "you are not alone.";
   const r = await fetch(`whisper/${txid}?text=${encodeURIComponent(text)}`);
   if (!r.ok) { $("whisper_status").textContent = "this offering asked for no whisper"; $("qr").innerHTML = ""; return; }
@@ -134,11 +152,15 @@ async function openEye() {
   $("open_eye").style.display = "none";
   // the operator's own machine opens the Eye on the server (loopback + same origin), then reads the key
   let eye = null;
-  try {
-    await fetch("eye/open", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-    const r = await fetch("eye", { cache: "no-store" });
-    if (r.ok) eye = await r.json();
-  } catch (e) { /* no key on this server: hashes only */ }
+  if (STATIC && STATIC.static) {           // a snapshot has no key behind it: the Eye reveals the hashes only
+    $("eye_key").textContent = "the key is published at the installation when the Eye opens there, never by this snapshot";
+  } else {
+    try {
+      await fetch("eye/open", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const r = await fetch("eye", { cache: "no-store" });
+      if (r.ok) eye = await r.json();
+    } catch (e) { /* no key on this server: hashes only */ }
+  }
   setTimeout(() => {
     eyeOpen = true;
     document.body.classList.remove("sealed");
@@ -157,6 +179,6 @@ $("eye_close").addEventListener("click", () => $("eye").classList.remove("on"));
 document.addEventListener("keydown", (ev) => { if (ev.key === "e" && SEANCE) openEye(); });
 
 $("play").addEventListener("click", () => (playing ? (stop(), $("play").textContent = "evoke") : play()));
-loadBrand().then(loadScore);
-setInterval(loadScore, 5000);
+loadBrand().then(loadStatic).then(loadScore);
+setInterval(loadScore, 5000);   // on a snapshot the hash never changes, so this is a no-op there
 requestAnimationFrame(frame);
