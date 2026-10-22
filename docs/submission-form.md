@@ -91,7 +91,7 @@ Proven on Zcash testnet (NU7); txids in display order:
 - Ten seconds of speech rebuilt byte-identical from a view-only wallet: 576ff3939156f5d29c8ed3754016a425eb16aa5d6989002b7ae5a166076775b0 (4,518,093)
 - Same render hash on two independent wallets (G6): c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4 at block 4,522,002
 
-How to verify: the public testnet explorer currently follows another testnet chain, so it does not show these transactions and its links are not proof. The proof is a view-only wallet: sync it, then run list-tx, or render from the key (docs/fresh-clone.md). Claim-to-txid table: docs/evidence-index.md. A real phone scan of the QR path is still pending.
+How to verify: ZecBlock (testnet.zecblock.com) shows these transactions on our chain; an explorer shows only that a shielded transaction exists. The independent proof is a view-only wallet (sync it, then run list-tx) or a render from the key (docs/fresh-clone.md). Claim-to-txid table: docs/evidence-index.md. A real phone scan of the QR path is still pending.
 ```
 
 ## How to run it / judge path — 787 chars
