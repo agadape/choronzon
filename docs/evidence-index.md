@@ -99,3 +99,14 @@ Sent with `kiosk offer - --from wallets/test/A` (ghost voice, Codec2 700C, one t
 | Repeat | cache-hit run [39732713347](https://github.com/agadape/choronzon/actions/runs/39732713347), 41 s: same height and hash (*no new offering*) |
 
 This is a machine that never saw ours, reproducing the work from one key. It is not a physical second laptop; that is still recommended for the live demo ([docs/fresh-clone.md](fresh-clone.md)). Details: [docs/auto-publish.md](auto-publish.md).
+
+## Render history anchored in Bitcoin (23 Oct 2026)
+
+| What | Value |
+|---|---|
+| Statement | `anchor/1` JSON (hashes, versions, counts, one height, skiplist sha256, repo commit; no key, address, memo or txid), built by `python3 -m anchor statement` |
+| Kept on | branch `anchors` (append-only, content-addressed): `4522002-5e7a489d70dcc34c.json` (score `41530793…`, render `9b6c1b9d…`, g6 `c46dd5de…`) and `4527794-e4700837f6db640b.json` (render `6ae73985…`), each with its `.ots` proof |
+| Served | `https://choronzon.vercel.app/anchor.json` + `anchor.json.ots`; the GitHub runner built the same statement bytes as the laptop (sha256 `e4700837…`) |
+| CI | publish [run 39924480381](https://github.com/agadape/choronzon/actions/runs/39924480381) (stamp + persist), upgrade [run 39924774744](https://github.com/agadape/choronzon/actions/runs/39924774744) ("pending, nothing changed") |
+| Status on 23 Oct ~09:00 UTC | **pending**: `python3 -m anchor verify` on the served files says "proof commits to sha256 of this statement" and "PENDING: not in Bitcoin yet (4 calendar(s) hold it)", exit 3. Record the Bitcoin block here once upgraded |
+| Logs | `logs/anchor-spike/`, `logs/anchor-historic/` |

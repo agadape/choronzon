@@ -62,6 +62,8 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 ## Day 8 (27 Oct) — demo video + polish  [~12 h]
 - [ ] **C** Record demo video (real txs, explorer shown, two-laptop hash moment, whisper back if M2 done) (how: the shot list and pre-show checklist in `docs/demo-script.md`; explorer = ZecBlock after pre-show check 8; the link goes into `docs/submission-form.md`)
 - [ ] **B** Visual/audio polish only on the demo path
+- [x] **A** Bitcoin anchoring with OpenTimestamps (23 Oct, `7fcdc3c` + `886570b`: `anchor/` statement|stamp|upgrade|verify|persist; CI stamps every deploy and keeps proofs on the `anchors` branch; `anchor-upgrade.yml` every 3 h; live `/anchor.json` + `.ots` verified PENDING, exit 3, as expected; historic anchors 4522002 + 4527794 stamped)
+- [ ] **A** Upgrade the pending OTS proofs after ~14:00 UTC 23 Oct and record the Bitcoin block in `docs/anchoring.md` (`python3 -m anchor upgrade --branch`, then `verify` must exit 0); optional: show the anchor on the page (`web/`)
 - [x] **C** README final: what it is, setup, demo walkthrough, privacy model, limits, architecture diagram, spike evidence links (21–22 Oct: restructure into one document for a ten-minute judge `c283dd3`, network-fallback / visual-direction links `417793c`, explorer links switched to ZecBlock `efb600a`; generated from `docs/README.template.md`. Left for the user at submission: paste the full viewing key by hand at the placeholder under "The key", as decided 22 Oct; steps in `docs/submission-checklist.md`, "the publication act")
 
 ## Day 9 (28 Oct) — submit

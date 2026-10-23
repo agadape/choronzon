@@ -31,7 +31,7 @@ if [ "$RENDER" = 1 ]; then
   python3 -m renderer once --wallet wallets/test/V --sync --as-of last --out out >/dev/null
 fi
 echo "== build the static snapshot =="
-scripts/build_web.sh --out out --dist dist
+scripts/build_web.sh --out out --dist dist --stamp   # --stamp: anchor.json.ots; a failed stamp is only a warning
 
 read -r HEIGHT HASH < <(python3 -c "import json; d=json.load(open('dist/static.json')); print(d['as_of_height'], d['render_hash'])")
 LIVE_HEIGHT=$(curl -fsS --retry 2 --max-time 20 "https://$SLUG.vercel.app/static.json?t=$(date +%s)" 2>/dev/null \
@@ -61,3 +61,11 @@ if [ ! -d "$WSL_DIR/.vercel" ]; then
 fi
 (cd "$WSL_DIR" && cmd.exe /c "vercel deploy --prod --yes")
 echo "published snapshot at height $HEIGHT, render_hash $HASH"
+
+# keep the statement + proof on the append-only anchors branch, as the CI job does (docs/anchoring.md);
+# never fails the publish: the site is already live at this point
+if [ -f dist/anchor.json.ots ]; then
+  python3 -m anchor persist dist/anchor.json || echo "warning: could not persist the anchor (retry: python3 -m anchor persist dist/anchor.json)" >&2
+else
+  echo "warning: no anchor.json.ots (stamp failed); this snapshot is not anchored" >&2
+fi
