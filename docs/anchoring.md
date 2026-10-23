@@ -103,8 +103,8 @@ curl -fsSO https://<slug>.vercel.app/anchor.json && curl -fsSO https://<slug>.ve
 
 Then any one of:
 
-1. **No install**: drop `anchor.json.ots` and `anchor.json` on <https://opentimestamps.org> (its verifier checks
-   the Bitcoin attestation against public block explorers in the browser).
+1. **No install**: on <https://opentimestamps.org> (in-browser stamp & verify), drop `anchor.json.ots`, then
+   `anchor.json` when it asks for the stamped file. It says which Bitcoin block attests it, or that it is pending.
 2. **Our helper, no Bitcoin node** (`pip install --break-system-packages opentimestamps-client==0.7.2` once):
 
    ```bash
@@ -131,9 +131,9 @@ sha256sum`. A different hash for an anchored height means the history was change
 
 Stamped on 23 Oct 2026 from the laptop (wallet V, `renderer once --as-of <h>`), so they prove existence *no later
 than* their Bitcoin block, not at the time the hashes were first computed (that is in `SPIKE_LOG.md` and git
-history). Files on the `anchors` branch:
+history). Statements built by commit `7fcdc3c`; files on the `anchors` branch:
 
-| Height | What | score_hash | render_hash | g6_hash |
-|---|---|---|---|---|
-| 4,522,002 | the G6 / score/1 / render/1 regression anchors (7 accepted) | `41530793…` | `9b6c1b9d…` | `c46dd5de…` |
-| 4,527,794 | the seeded corpus, the render the page has served since 22 Oct (43 offerings) | `2649909b…` | `6ae73985…` | `747b446a…` |
+| Height | What | score_hash | render_hash | g6_hash | File |
+|---|---|---|---|---|---|
+| 4,522,002 | the G6 / score/1 / render/1 regression anchors (7 accepted) | `41530793…` | `9b6c1b9d…` | `c46dd5de…` | `4522002-5e7a489d70dcc34c.json` |
+| 4,527,794 | the seeded corpus, the render the page served from 22 Oct (43 offerings) | `2649909b…` | `6ae73985…` | `747b446a…` | `4527794-e4700837f6db640b.json` |
