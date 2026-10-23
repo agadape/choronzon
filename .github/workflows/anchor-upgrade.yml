@@ -1,0 +1,45 @@
+# Upgrade the OpenTimestamps proofs on the append-only `anchors` branch from "pending" to "in Bitcoin block N",
+# and stamp any statement whose deploy-time stamp failed (calendars down). What and why: docs/anchoring.md.
+#
+# No secrets: GITHUB_TOKEN with contents: write, used only to push to `anchors` (fast-forward, never forced).
+# Never add `set -x` to any step.
+name: anchor-upgrade
+
+on:
+  schedule:
+    - cron: "41 */3 * * *"   # calendars publish a Bitcoin transaction every few hours; 8 short runs a day
+  workflow_dispatch:
+
+concurrency:
+  group: anchor-upgrade
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install the OpenTimestamps client (hash-pinned wheels, own venv)
+        id: otsclient
+        run: scripts/ci_anchor.sh --venv "$RUNNER_TEMP/ots"
+
+      - name: Upgrade pending proofs on the anchors branch
+        env:
+          PY: ${{ steps.otsclient.outputs.python }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          "$PY" -m anchor upgrade --branch | tee "$RUNNER_TEMP/upgrade.txt"
+          { echo '```'; cat "$RUNNER_TEMP/upgrade.txt"; echo '```'; } >>"$GITHUB_STEP_SUMMARY"

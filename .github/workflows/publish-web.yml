@@ -1,5 +1,7 @@
 # Re-render the god from its published viewing key and deploy the static listener page to Vercel production,
 # only when the render changed. What it does, what it costs, how to pause it: docs/auto-publish.md.
+# Every deployed render is also stamped in Bitcoin (OpenTimestamps) and kept on the `anchors` branch by the `anchor`
+# job; anchor-upgrade.yml turns those pending proofs into Bitcoin-confirmed ones (docs/anchoring.md).
 #
 # Secrets (set by a person, never by a script): CHOIR_UFVK (the choir's full viewing key), VERCEL_TOKEN.
 # Variables (not secret): VERCEL_ORG_ID, VERCEL_PROJECT_ID; optional WATCHER_CACHE_GEN (change it to drop the
@@ -39,6 +41,10 @@ jobs:
   publish:
     runs-on: ubuntu-24.04   # same distro as the voice pins (espeak-ng 1.51, sox 14.4.2) and the codec2 build
     timeout-minutes: 60
+    outputs:
+      deployed: ${{ steps.handoff.outputs.deployed }}
+      statement: ${{ steps.handoff.outputs.statement }}
+      proof: ${{ steps.handoff.outputs.proof }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -180,9 +186,19 @@ jobs:
             echo "changed=true" >>"$GITHUB_OUTPUT"
           fi
 
+      - name: Install the OpenTimestamps client (hash-pinned wheels, own venv)
+        if: steps.compare.outputs.changed == 'true'
+        id: otsclient
+        continue-on-error: true    # no client = anchor.json ships without a proof; the deploy goes on
+        timeout-minutes: 3
+        run: scripts/ci_anchor.sh --venv "$RUNNER_TEMP/ots"
+
       - name: Build the static snapshot (allow-list)
         if: steps.compare.outputs.changed == 'true'
-        run: scripts/build_web.sh --out out --dist dist >/dev/null
+        env:
+          ANCHOR_OTS: ${{ steps.otsclient.outputs.ots }}
+        # --stamp: anchor.json.ots from the public calendars; a failed stamp is a warning (docs/anchoring.md)
+        run: scripts/build_web.sh --out out --dist dist --stamp >/dev/null
 
       - name: Deploy to Vercel production
         if: steps.compare.outputs.changed == 'true'
@@ -194,6 +210,18 @@ jobs:
           VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
           RENDER_HASH: ${{ steps.render.outputs.render_hash }}
         run: scripts/ci_deploy.sh --dist dist --expect "$RENDER_HASH"
+
+      - name: Hand the statement to the anchor job
+        if: steps.deploy.outcome == 'success'
+        id: handoff
+        run: |
+          # a few hundred bytes each: public hashes and an OpenTimestamps proof, nothing private
+          {
+            echo "deployed=true"
+            echo "statement=$(base64 -w0 dist/anchor.json)"
+            if [ -f dist/anchor.json.ots ]; then echo "proof=$(base64 -w0 dist/anchor.json.ots)"; else echo "proof="; fi
+          } >>"$GITHUB_OUTPUT"
+          echo "anchor.json sha256 $(sha256sum dist/anchor.json | cut -c1-64); proof: $([ -f dist/anchor.json.ots ] && echo pending in Bitcoin || echo none, stamp failed)"
 
       - name: Summary
         if: always()
@@ -211,4 +239,35 @@ jobs:
             if [ -n "$URL" ]; then echo "| deployed | $URL → https://$SLUG.vercel.app |"
             elif [ "$CHANGED" = false ]; then echo "| deployed | no new offering |"
             else echo "| deployed | – |"; fi
+            if [ -f dist/anchor.json ]; then
+              echo "| anchor.json | \`$(sha256sum dist/anchor.json | cut -c1-64)\` |"
+              echo "| proof | $([ -f dist/anchor.json.ots ] && echo 'anchor.json.ots (pending until Bitcoin confirms)' || echo 'none: stamp failed, anchor-upgrade stamps it later') |"
+            fi
           } >>"$GITHUB_STEP_SUMMARY"
+
+  # Persist every deployed statement + proof on the append-only `anchors` branch (a new deploy replaces the site).
+  # The only job with write access; it holds no secrets (GITHUB_TOKEN only) and runs no code from the render.
+  anchor:
+    needs: publish
+    if: needs.publish.outputs.deployed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Add the statement and its proof to the anchors branch
+        env:
+          STATEMENT: ${{ needs.publish.outputs.statement }}
+          PROOF: ${{ needs.publish.outputs.proof }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          d="$RUNNER_TEMP/anchor"; mkdir -p "$d"
+          printf '%s' "$STATEMENT" | base64 -d >"$d/anchor.json"
+          if [ -n "$PROOF" ]; then printf '%s' "$PROOF" | base64 -d >"$d/anchor.json.ots"; fi
+          python3 -m anchor persist "$d/anchor.json"

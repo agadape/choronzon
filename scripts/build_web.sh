@@ -1,26 +1,33 @@
 #!/usr/bin/env bash
 # Build a static snapshot of the listener page for a static host (Vercel): dist/ holds ONLY an allow-list.
 #
-#   scripts/build_web.sh [--out out] [--dist dist]     copy the allow-list, write static.json + vercel.json, verify
-#   scripts/build_web.sh --check [--dist dist]          only verify an existing dist/ against the allow-list
+#   scripts/build_web.sh [--out out] [--dist dist] [--stamp]   copy the allow-list, write static.json, vercel.json
+#                                                               and anchor.json, verify
+#   scripts/build_web.sh --check [--dist dist]                  only verify an existing dist/ against the allow-list
+#
+# anchor.json is the canonical statement of this render (python3 -m anchor statement: hashes, versions, counts, one
+# height; nothing private). --stamp also stamps it with OpenTimestamps -> anchor.json.ots, pending until Bitcoin
+# confirms (docs/anchoring.md). A failed stamp (calendars down, client missing) is a warning, never a failed build.
+# The statement's repo commit is $GITHUB_SHA in CI, else `git rev-parse HEAD`.
 #
 # Rendering is not this script's job (python3 -m renderer once ... --out out first); it refuses to run without
 # out/score.json. Anything outside the allow-list in dist/ (a .py, .age, .sqlite, wallets, logs, ...) fails the build.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-OUT=out; DIST=dist; CHECK=0
+OUT=out; DIST=dist; CHECK=0; STAMP=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --out) OUT=$2; shift 2;;
     --dist) DIST=$2; shift 2;;
     --check) CHECK=1; shift;;
-    *) echo "usage: $0 [--out DIR] [--dist DIR] [--check]" >&2; exit 2;;
+    --stamp) STAMP=1; shift;;
+    *) echo "usage: $0 [--out DIR] [--dist DIR] [--stamp] [--check]" >&2; exit 2;;
   esac
 done
 
 # The allow-list: every file dist/ may contain, as a path relative to dist/.
 allowed() {
-  printf "%s\n" index.html apparition.html static.json vercel.json config/brand.json out/score.json out/mix.wav out/render_hash logo.svg og.png
+  printf "%s\n" index.html apparition.html static.json vercel.json config/brand.json out/score.json out/mix.wav out/render_hash logo.svg og.png anchor.json anchor.json.ots
   for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || basename "$f"; done
   for f in web/*.css; do [ -e "$f" ] || continue; basename "$f"; done
   true
@@ -34,7 +41,7 @@ verify() {
     case "$rel" in *.py|*.age|*.sqlite|*.toml|wallets/*|logs/*|*/wallets/*|*/logs/*|.env*|*.pem|*.key|kiosk.js)
       echo "!! forbidden file type in dist: $rel" >&2; bad=1;; esac
   done < <(find "$DIST" -type f | sort)
-  for f in index.html apparition.html static.json vercel.json config/brand.json out/score.json out/mix.wav; do
+  for f in index.html apparition.html static.json vercel.json config/brand.json out/score.json out/mix.wav anchor.json; do
     [ -f "$DIST/$f" ] || { echo "!! missing from dist: $f" >&2; bad=1; }
   done
   grep -q "kiosk\.html\|kiosk\.js" "$DIST/index.html" "$DIST/apparition.html" && { echo "!! a page links the kiosk" >&2; bad=1; }
@@ -61,12 +68,19 @@ doc = {"static": True, "as_of_height": score["score"]["as_of_height"], "render_h
        "rendered_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
 json.dump(doc, open(sys.argv[2], "w"), indent=1); open(sys.argv[2], "a").write("\n")
 EOF
+python3 -m anchor statement --out "$OUT" --commit "${GITHUB_SHA:-}" --to "$DIST/anchor.json"
+if [ "$STAMP" = 1 ]; then
+  python3 -m anchor stamp "$DIST/anchor.json" --soft >&2   # --soft: a failure prints a warning and exits 0
+fi
 cat > "$DIST/vercel.json" <<'EOF'
 {
   "cleanUrls": true,
   "headers": [
     { "source": "/out/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
-    { "source": "/static.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] }
+    { "source": "/static.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
+    { "source": "/anchor.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
+    { "source": "/anchor.json.ots", "headers": [{ "key": "Cache-Control", "value": "no-store" },
+                                               { "key": "Content-Type", "value": "application/octet-stream" }] }
   ]
 }
 EOF

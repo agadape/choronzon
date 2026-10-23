@@ -36,6 +36,13 @@ and deploys a new static snapshot to Vercel production **only when the render ch
    CLI, `npx --yes vercel@62.7.0 deploy dist --prod --yes --token "$VERCEL_TOKEN"`, into the project named by the
    repo variables `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID` (`scripts/ci_deploy.sh`). It then polls the production
    domain until it serves the new `render_hash` (2 min at most) and fails otherwise.
+   Before the build, `scripts/ci_anchor.sh` installs the OpenTimestamps client from hash-pinned wheels into its
+   own venv; `build_web.sh --stamp` writes `anchor.json` (the canonical statement of this render) and stamps it
+   (`anchor.json.ots`). Neither can fail the deploy: no client or no calendar = a warning and no proof.
+9. **Anchor** (separate `anchor` job, only after a deploy): adds `anchor.json` + its proof to the append-only
+   `anchors` branch. It is the only job of this workflow with `contents: write`, and it holds no secrets.
+   `anchor-upgrade.yml` (every 3 h) turns pending proofs into Bitcoin-confirmed ones. See
+   [anchoring.md](anchoring.md).
 
 The console shows the height, the `render_hash` and, after a deploy, the deployment URL; the run's summary
 page shows the same three. A concurrency group (`publish-web`) makes sure two runs never overlap.
@@ -74,10 +81,12 @@ standard runners are free.
 | Run | Wall clock (measured 22 Oct, see below) | Billed minutes |
 |---|---|---|
 | tools cached, no new offering (almost every run) | 41 s | 1 |
-| tools cached, new offering → deploy | ~1.5 min | 2 |
+| tools cached, new offering → deploy | ~1.5 min (+ ~10 s client install and stamp) | 2 |
+| `anchor` job after a deploy | ~15 s | 1 |
+| `anchor-upgrade.yml` (8 a day) | ~20 s | 1 each |
 | cache miss (first run, or a pin/patch change): builds the devtool | 13.5 min | 14 |
 
-48 runs a day ≈ 50 min/day ≈ 300 min from 22 to 28 Oct. A whole month as a private repository would be
+48 runs a day ≈ 50 min/day ≈ 300 min from 22 to 28 Oct, plus ~8 min/day for `anchor-upgrade`. A whole month as a private repository would be
 ~1,500 min: inside GitHub Free's 2,000, but most of it. If the repository stays private and the quota matters,
 switch the cron to hourly (`"0 * * * *"`) or pause it. Vercel: each deploy is a static deployment of ~4.5 MB (mostly `out/mix.wav`), and
 deploys happen only when an offering arrives.
@@ -157,8 +166,11 @@ check, the allow-list build and the deploy all succeed.
   addresses) stays on the runner; only its last lines are printed when a render fails.
 - Logs of a public repository are public. They contain heights, txids and hashes, which the chain and the README
   already publish.
+- `anchor.json` / `anchor.json.ots` carry hashes, versions, counts and one height (no key, no address, no memo,
+  no txid); the calendars receive only a nonce-blinded sha256 of `anchor.json` and see the runner's IP.
 - `dist/` is the allow-list of `scripts/build_web.sh` (pages, scripts, `config/brand.json`, `out/score.json`,
-  `out/mix.wav`, `out/render_hash`, `static.json`, `vercel.json`): no kiosk, no Whisper Back, no key.
+  `out/mix.wav`, `out/render_hash`, `static.json`, `vercel.json`, `anchor.json`, `anchor.json.ots`): no kiosk,
+  no Whisper Back, no key.
 
 ## Measured (22 Oct 2026)
 
