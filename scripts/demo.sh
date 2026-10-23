@@ -3,6 +3,7 @@
 # Run it several times before the show; every run prints a timing table and exits non-zero on any failure.
 #
 #   ./scripts/demo.sh [--skip-summon]
+#   LWD_CONNECTION=direct ./scripts/demo.sh    deliberate fallback when Tor cannot connect from the venue
 #
 # Steps (each one is a product command, nothing is faked):
 #   1 evoke      render from the public-key wallet V (baseline hashes)
@@ -18,6 +19,9 @@ cd "$(dirname "$0")/.."
 export PATH="$PWD/bin:$PATH"
 
 V=wallets/test/V; B=wallets/test/B; A=wallets/test/A; L=wallets/test/L
+# every lightwalletd connection (kiosk, renderer, whisper, summon, the syncs below) goes over Tor unless the operator
+# chose direct; a Tor failure fails the step, it never retries direct (renderer/network.py)
+export LWD_CONNECTION="${LWD_CONNECTION:-tor}"
 mkdir -p logs out
 LOG="logs/demo_$(date -u +%Y%m%dT%H%M%SZ).log"
 exec > >(tee -a "$LOG") 2>&1
@@ -44,7 +48,7 @@ whisper_retry(){ # $1 offering txid (the listener pool has spare notes)
   local out attempt
   for attempt in $(seq 1 $ATTEMPTS); do
     out=$(python3 -m renderer whisper "$1" --wallet $V --text "you are not alone. (rehearsal)" --send-from $L 2>&1) \
-      && { echo "$out" | grep -E "^whisper sent|^\(the choir"; return 0; }
+      && { echo "$out" | grep -E "^route|^whisper sent|^\(the choir"; return 0; }
     echo "   whisper attempt $attempt failed: $(echo "$out" | tail -1 | cut -c1-200)" >&2
     [ $attempt -lt $ATTEMPTS ] && sleep "${PAUSES[$((attempt-1))]}"
   done
@@ -63,8 +67,9 @@ wait_seen(){ # $1 txid, $2 pattern (offering|skip), $3 max seconds -> renders V 
 }
 
 step "preflight"
+echo "   connection to lightwalletd: $LWD_CONNECTION"
 python3 -m kiosk session status | python3 -c 'import json,sys; s=json.load(sys.stdin); assert s.get("ready") and (s.get("notes_left") or 0)>=1, s; print("   session ready, notes left", s["notes_left"])' || die "no ready kiosk session (python3 -m kiosk session open)"
-for W in $B $A $L; do bin/devtool-aegis wallet -w $W sync -s zecrocks >/dev/null 2>&1 || die "sync $W failed"; done
+for W in $B $A $L; do bin/devtool-aegis wallet -w $W sync -s zecrocks --connection "$LWD_CONNECTION" >/dev/null 2>&1 || die "sync $W failed (over $LWD_CONNECTION)"; done
 [ -x bin/c2dec ] || die "pinned codec2 missing"
 python3 -m kiosk pool $L --notes 3 2>&1 | sed "s/^/   /" ; [ "${PIPESTATUS[0]}" = 0 ] || die "listener pool (python3 -m kiosk pool $L)"
 [ $fail = 0 ] || { echo "preflight failed"; exit 1; }
@@ -76,7 +81,7 @@ mark evoke
 
 step "2 offer: live, from the ephemeral session wallet, with a reply address"
 OFFER_OUT=$(printf 'rehearsal %s: i practised this secret until it stopped being one' "$(date -u +%H:%M)" | python3 -m kiosk offer - --reply --yes 2>&1) || die "offer failed: $(echo "$OFFER_OUT" | grep -E "^devtool|Error" | tail -1)"
-echo "$OFFER_OUT" | grep -E "^(ghost voice|text|sent)"
+echo "$OFFER_OUT" | grep -E "^(ghost voice|text|route|sent)"
 OFFER_TX=$(echo "$OFFER_OUT" | grep -oE "txid [0-9a-f]{64}" | cut -d' ' -f2)
 [ -n "$OFFER_TX" ] || die "no txid from the kiosk"
 mark offer

@@ -12,16 +12,20 @@
   python3 -m kiosk inbox                                 whispers that returned to this session's wallet
 
 Prints txids (display order) and sizes only. Never prints addresses, never writes the text anywhere.
+Every command that talks to lightwalletd goes over Tor (the devtool's built-in client) unless `--connection direct`
+or LWD_CONNECTION=direct is given on purpose; if Tor fails, the command fails (renderer/network.py).
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
 
 import protocol
+from renderer import network
 from renderer.decoder import Decoder
 from renderer.tts import Voice
 
@@ -163,6 +167,7 @@ def cmd_offer(a) -> None:
             sys.exit("no ready session: python3 -m kiosk session open")
         o, txid = s.offer(text, v, choir, a.reply)
         print(describe(o))
+    print(network.describe(os.environ[network.ENV]))
     print(sent(txid))
 
 
@@ -206,6 +211,7 @@ def cmd_speak(a) -> None:
             sys.exit(f"{wallet_dir.name} is not the choir wallet; use --forge to send a deliberate forgery")
         print("the god speaks: the choir wallet spends its own notes to itself")
     txid = w.pay(payment_uri(choir, o.memos))
+    print(network.describe(os.environ[network.ENV]))
     print(sent(txid))
 
 
@@ -300,7 +306,14 @@ def main(argv=None) -> None:
     s = sub.add_parser("pool", help="make sure a spending wallet holds at least N spendable notes")
     s.add_argument("wallet", help="wallet dir (its .age identity next to it)")
     s.add_argument("--notes", type=int, default=3)
+    for name in ("offer", "speak", "session", "inbox", "pool"):     # the subcommands that talk to lightwalletd
+        network.add_argument(sub.choices[name])
     a = p.parse_args(argv)
+    try:
+        # one setting for the whole process: every Devtool built below (session wallet, pool, named wallet) reads it
+        os.environ[network.ENV] = network.resolve(getattr(a, "connection", None))
+    except ValueError as e:
+        p.error(str(e))
     try:
         {"preview": cmd_preview, "offer": cmd_offer, "qr": cmd_qr, "speak": cmd_speak, "reveal": cmd_reveal,
          "session": cmd_session, "inbox": cmd_inbox, "pool": cmd_pool}[a.command](a)

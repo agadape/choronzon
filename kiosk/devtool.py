@@ -1,14 +1,18 @@
 """Thin wrapper around bin/devtool-aegis for the kiosk. Output is parsed, never echoed: it contains addresses.
 
 Only the patched build can broadcast on NU7 testnet. Every command takes the wallet directory; spend commands
-also take the age identity file that decrypts the wallet's mnemonic.
+also take the age identity file that decrypts the wallet's mnemonic. Every command that talks to lightwalletd
+goes over Tor unless the operator chose `direct` (renderer/network.py); a Tor failure is an error, never a retry
+over a direct connection.
 """
 from __future__ import annotations
 
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from renderer import network as network_mode
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_DEVTOOL = REPO / "bin" / "devtool-aegis"
@@ -36,13 +40,20 @@ class Devtool:
     binary: Path = DEFAULT_DEVTOOL
     server: str = "zecrocks"
     network: str = "test"
+    # tor unless LWD_CONNECTION / --connection say otherwise (renderer/network.py); added to every network command
+    connection: str = field(default_factory=network_mode.default_connection)
 
     def _run(self, *args: str, stdin: str | None = None, timeout: int = 900) -> str:
-        done = subprocess.run([str(self.binary), "wallet", "-w", str(self.wallet_dir), *args],
-                              input=stdin, capture_output=True, text=True, timeout=timeout)
+        extra = network_mode.args_for(args[0], self.connection)
+        hint = network_mode.failure_hint(self.connection) if extra else ""
+        try:
+            done = subprocess.run([str(self.binary), "wallet", "-w", str(self.wallet_dir), *args, *extra],
+                                  input=stdin, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            raise DevtoolError(f"devtool {args[0]} timed out after {timeout} s{hint}") from None
         if done.returncode != 0:
             tail = (done.stderr.strip().splitlines() or done.stdout.strip().splitlines() or [""])[-1]
-            raise DevtoolError(f"devtool {args[0]} exit {done.returncode}: {sanitize(tail)[:200]}")
+            raise DevtoolError(f"devtool {args[0]} exit {done.returncode}: {sanitize(tail)[:200]}{hint}")
         return done.stdout + done.stderr
 
     def _spend_args(self) -> list[str]:

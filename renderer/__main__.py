@@ -7,6 +7,8 @@
 
 `daemon` loops sync -> enhance -> render at the scanned height -> write out/score.json + out/render_hash.
 Only a view-only wallet is accepted (the public viewing key); --allow-spend-key exists for the V-vs-B check.
+Every lightwalletd connection (sync, enhance, the whisper send, summon's init-fvk) goes over Tor by default;
+`--connection direct` or LWD_CONNECTION=direct is the deliberate escape hatch (renderer/network.py).
 Logs carry txids, heights, reason codes and hashes only: never memo content, never addresses.
 """
 from __future__ import annotations
@@ -18,6 +20,7 @@ import sys
 import time
 from pathlib import Path
 
+from . import network
 from . import render as rnd
 from .decoder import REPO, Decoder
 from .tts import Voice
@@ -68,7 +71,10 @@ def _open_wallet(args) -> WalletDB:
 def cmd_once(args) -> None:
     db = _open_wallet(args)
     if args.sync:
-        sync_and_enhance(args.devtool, args.wallet, args.server)
+        try:
+            sync_and_enhance(args.devtool, args.wallet, args.server, connection=args.connection)
+        except RuntimeError as e:   # e.g. Tor cannot connect: say so and stop; never render a stale view as fresh
+            sys.exit(str(e))
     scanned = db.scanned_height()
     as_of = scanned if args.as_of == "tip" else db.newest_tx_height() if args.as_of == "last" else int(args.as_of)
     if as_of > scanned:
@@ -84,11 +90,12 @@ def cmd_once(args) -> None:
 def cmd_daemon(args) -> None:
     db, decoder, seen, last = _open_wallet(args), Decoder(args.c2dec), set(), None
     voice = _voice(decoder, args)
-    log.info("daemon start wallet=%s interval=%ss out=%s", args.wallet, args.interval, args.out)
+    log.info("daemon start wallet=%s interval=%ss out=%s connection=%s", args.wallet, args.interval, args.out,
+             args.connection)
     while True:
         try:
             try:
-                sync_and_enhance(args.devtool, args.wallet, args.server)
+                sync_and_enhance(args.devtool, args.wallet, args.server, connection=args.connection)
             except Exception as e:  # network hiccups must not stop the daemon; render what is already synced
                 log.warning("%s; rendering what is already synced", e)
             as_of, skiplist = db.scanned_height(), load_skiplist(args.skiplist)
@@ -117,12 +124,13 @@ def cmd_whisper(args) -> None:
     if args.send_from:
         from kiosk.devtool import Devtool, DevtoolError
         wallet_dir = Path(args.send_from)
-        w = Devtool(wallet_dir, wallet_dir.with_suffix(".age"), server=args.server)
+        w = Devtool(wallet_dir, wallet_dir.with_suffix(".age"), server=args.server, connection=args.connection)
         try:
             w.sync()
             txid = w.pay(uri)
         except DevtoolError as e:      # sanitized by the wrapper: exit code + last line, never an address
             sys.exit(f"cannot send the whisper from {wallet_dir.name}: {e}")
+        print(network.describe(args.connection))
         print(f"whisper sent directly to the offering's reply address. txid {txid}")
         print("(the choir's key holders cannot see this transaction)")
     else:
@@ -148,12 +156,15 @@ def cmd_summon(args) -> None:
     if not (wallet_dir / "data.sqlite").exists():
         log.info("summon: creating a view-only wallet from the key (birthday %s)", args.birthday)
         try:
-            Devtool(wallet_dir, server=args.server)._run("init-fvk", "--name", "watcher", "--fvk", key,
-                                                          "--birthday", str(args.birthday), "-s", args.server)
+            Devtool(wallet_dir, server=args.server, connection=args.connection)._run(
+                "init-fvk", "--name", "watcher", "--fvk", key, "--birthday", str(args.birthday), "-s", args.server)
         except DevtoolError as e:
             sys.exit(str(e))
-    log.info("summon: syncing (first time: a few minutes)")
-    sync_and_enhance(args.devtool, wallet_dir, args.server)
+    log.info("summon: syncing over %s (first time: a few minutes)", args.connection)
+    try:
+        sync_and_enhance(args.devtool, wallet_dir, args.server, connection=args.connection)
+    except RuntimeError as e:
+        sys.exit(str(e))
     args.sync, args.allow_spend_key = False, False
     cmd_once(args)
 
@@ -170,6 +181,7 @@ def main(argv: list[str] | None = None) -> None:
         s.add_argument("--c2dec", default=str(REPO / "bin" / "c2dec"))
         s.add_argument("--devtool", default=str(REPO / "bin" / "devtool-aegis"))
         s.add_argument("--server", default="zecrocks")
+        network.add_argument(s)
         s.add_argument("--allow-spend-key", action="store_true", help="only for comparing against the choir wallet")
     sub.choices["once"].add_argument("--as-of", default="tip", help="block height, 'tip' = scanned height, 'last' = height of the newest transaction the key sees")
     sub.choices["once"].add_argument("--sync", action="store_true", help="sync + enhance before rendering")
@@ -184,6 +196,10 @@ def main(argv: list[str] | None = None) -> None:
     w.add_argument("--phone", action="store_true", help="readable GC1R memo for a phone wallet")
     w.add_argument("--send-from", help="send the reply now from this wallet dir (its .age identity next to it)")
     args = p.parse_args(argv)
+    try:
+        args.connection = network.resolve(args.connection)
+    except ValueError as e:     # a bad LWD_CONNECTION value: refuse rather than guess
+        p.error(str(e))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", stream=sys.stderr)
     try:
         {"once": cmd_once, "daemon": cmd_daemon, "whisper": cmd_whisper, "summon": cmd_summon}[args.command](args)

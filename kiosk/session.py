@@ -71,6 +71,7 @@ class Session:
         s._save(opened=int(time.time()), notes=notes, offerings=[])
         log("creating the session wallet")
         pool.sync()
+        seed_tor_cache(pool.wallet_dir, s.wallet.wallet_dir)
         s.wallet.init("kiosk-session", birthday=pool.height())
         budget = notes * NOTE_ZAT + FEE_RESERVE_ZAT
         if pool.spendable_zat() < budget:
@@ -135,6 +136,21 @@ class Session:
             out.append({"contrib_id": r.contrib_id, "for_txid": mine.get(r.contrib_id), "codec": r.codec,
                         "text": r.data.decode("utf-8", "replace") if r.codec == protocol.CODEC_TEXT else None})
         return out
+
+
+def seed_tor_cache(src_wallet: Path, dst_wallet: Path) -> bool:
+    """Copy the public Tor directory cache (`tor/arti-cache`: consensus + relay descriptors) from a warm wallet.
+
+    A fresh wallet's first Tor contact downloads ~40 MB of directory first (93 s to 5+ min measured on 23 Oct);
+    with the copied cache it took 18 s. Only the cache is copied, never `tor/arti-data` (this wallet's guard
+    relays): the new wallet still picks its own guards. Arti checks the cache's freshness itself.
+    """
+    src, dst = Path(src_wallet) / "tor" / "arti-cache", Path(dst_wallet) / "tor" / "arti-cache"
+    if not src.is_dir() or dst.exists():
+        return False
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("*.lock"))
+    return True
 
 
 def _split_uri(address: str, notes: int) -> str:

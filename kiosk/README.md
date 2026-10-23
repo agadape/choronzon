@@ -24,6 +24,11 @@ python3 -m kiosk reveal --from wallets/test/B [--to key.txt]  # the Eye opens: p
 - `--reply` embeds a fresh diversified address of the session wallet; the kiosk keeps only `contrib_id → txid` in
   `state.json` so `inbox` can match replies while the session is open. The address itself is stored nowhere else.
 - The kiosk prints txids (display order) and byte counts only; never an address, never the text.
+- Every command that talks to lightwalletd (`session open`, `offer`, `speak`, `inbox`, `pool`, the web kiosk) goes
+  over Tor by default, so the server sees a Tor exit address, not the kiosk. `--connection direct` or
+  `LWD_CONNECTION=direct` is the deliberate escape hatch; a Tor failure is an error, never a silent switch to direct.
+  The first Tor contact of a fresh wallet downloads the Tor directory into `<wallet>/tor/` (minutes on a slow
+  network), which `session open` pays once; later offerings reuse it. Details and timings: `docs/network-fallback.md`.
 - Note pool: `session open --notes N` splits the funding into N × 0.002 TAZ so offerings can go out back-to-back
   (a rejected broadcast locks one note for ~40 blocks, not the whole balance). `session status` shows notes left.
   The same rule holds for any named wallet that must send back-to-back (the demo listener): `pool <wallet> --notes N`

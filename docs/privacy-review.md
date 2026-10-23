@@ -19,7 +19,8 @@ Scope: the product code (`protocol/`, `renderer/`, `kiosk/`, `web/`), its output
 | kiosk session | `wallets/kiosk/current/state.json` | `contrib_id → txid` for `inbox` matching, funding/split txids | Documented; wiped by `session close` |
 | kiosk inbox | stdout | the whisper's text | Intended: it is addressed to this wallet |
 | kiosk reveal | stdout (+ `--to` file on request) | the choir's full viewing key | The sanctioned publication act (M5) |
-| devtool wrapper errors | exception text | exit code + last line with addresses replaced by `<address>` | OK |
+| devtool wrapper errors | exception text | exit code + last line with addresses replaced by `<address>` (+ the Tor hint) | OK |
+| kiosk offer / speak | stdout | one `route to lightwalletd: Tor …` / `DIRECT …` line | OK: says what the server could see |
 
 ## Fixes made during the review
 
@@ -62,10 +63,25 @@ An independent review of the product code found **one DQ-class bug**, fixed the 
 - **`ps` on the kiosk during a send.** `devtool-aegis wallet pay --payment-uri …` carries the memo (base64) on its
   command line for the seconds the transaction is built. Only local processes on the kiosk can see it. Mitigation
   needs a devtool change (payment request on stdin); not done in the hackathon window.
+- **`ps` during a Watcher's first run.** `renderer summon` passes the full viewing key to `devtool-aegis wallet
+  init-fvk --fvk …` for the seconds of that command (found 23 Oct while checking the Tor runs). The key is meant
+  to be public, so this exposes nothing new to the world, but it is visible to local processes; same mitigation
+  as above (devtool change), not done.
+- **Tor state on disk.** Arti keeps the public Tor directory and this wallet's guard relays in `<wallet dir>/tor/`
+  (git-ignored with `wallets/`; no own IP, hostname or server name in it, checked 23 Oct). The kiosk session's copy
+  is deleted with the session.
 - **Temporary files.** TTS and Codec2 use a `tempfile.TemporaryDirectory()` per call (deleted on return); they live
   in `/tmp` for well under a second. A hardened kiosk can point `TMPDIR` at a tmpfs.
-- **lightwalletd sees the kiosk's and every renderer's IP** and which transactions `enhance` fetched. Tor mode exists
-  in devtool (`--connection tor`) and is on the roadmap, not enabled by default.
+- **lightwalletd and the client's IP: closed by default since 23 Oct.** Every connection the kiosk, Whisper Back
+  sends, the renderer and a Watcher make goes over Tor (`renderer/network.py`; measured in
+  `docs/network-fallback.md`), so lightwalletd sees a Tor exit address, not the machine. What remains: lightwalletd
+  still sees *what* is fetched and broadcast (a broadcast transaction; which transactions `enhance` fetched, so the
+  set fetched over one connection belongs to one client), and everyone sees *when* a transaction lands on chain.
+  An operator can still choose `--connection direct` / `LWD_CONNECTION=direct` (then the IP is visible again); a
+  Tor failure never falls back to direct by itself. The GitHub Actions publisher connects directly (a GitHub
+  machine's IP, rendering public data). `scripts/smoke.sh` health checks still sync V and B directly from the
+  operator machine (operator wallets, not a contributor's). **Not covered: phone contributions.** A phone wallet
+  (Zingo! via `kiosk qr`) connects to its own server with its own settings; our Tor default does not reach it.
 - **Reply addresses are public to every key holder** (they sit in the memo). Anyone can write to them. The renderer
   never persists them; it re-reads them from the wallet DB on demand.
 - **Everything a Watcher renders is public forever.** That is the design, stated on the kiosk before every send.
@@ -83,5 +99,7 @@ An independent review of the product code found **one DQ-class bug**, fixed the 
 
 - No `Math.random` / `random` in the renderer, composer or page (grep); the only randomness is the sender's
   `contrib_id` (`secrets.randbits`), chosen on the sender's machine.
-- No network calls other than lightwalletd through devtool; the web page fetches only its own server.
+- No network calls other than lightwalletd through devtool; the web page fetches only its own server. Only
+  `kiosk/devtool.py` and `renderer/wallet.py` start the devtool, so no call site can skip the Tor flag
+  (`kiosk/tests/test_connection.py` checks the spawners and the flag on every network command).
 - No viewing key, seed, `.age` identity or `wallets/` path is committed (`git log --all` scan on every push).

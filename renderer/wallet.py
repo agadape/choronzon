@@ -98,10 +98,35 @@ class WalletDB:
 
 
 def sync_and_enhance(devtool: str | Path, wallet_dir: str | Path, server: str = "zecrocks",
-                     timeout: int = 900) -> None:
-    """Fetch new blocks, then the full transactions (memos). Devtool output is not echoed: it can contain addresses."""
+                     timeout: int = 900, connection: str | None = None, attempts: int = 3,
+                     pause: float = 10.0) -> None:
+    """Fetch new blocks, then the full transactions (memos). Devtool output is not echoed: it can contain addresses.
+
+    `connection` None = the default (tor; LWD_CONNECTION overrides; see renderer/network.py). Both commands only
+    read and resume where they stopped, so a failed one is retried on the SAME route (a Tor circuit can break
+    during a long first sync; lightwalletd resets TLS now and then): up to `attempts` times, never over direct.
+    """
+    import logging
+    import time
+    from . import network
+    connection = network.resolve(connection)
     for command in ("sync", "enhance"):
-        done = subprocess.run([str(devtool), "wallet", "-w", str(wallet_dir), command, "-s", server],
-                              capture_output=True, timeout=timeout)
-        if done.returncode != 0:
-            raise RuntimeError(f"devtool {command} failed with exit code {done.returncode}")
+        cmd = [str(devtool), "wallet", "-w", str(wallet_dir), command, "-s", server,
+               *network.args_for(command, connection)]
+        for attempt in range(1, attempts + 1):
+            try:
+                done = subprocess.run(cmd, capture_output=True, timeout=timeout)
+            except subprocess.TimeoutExpired:
+                error = f"devtool {command} timed out after {timeout} s"
+            else:
+                if done.returncode == 0:
+                    break
+                from kiosk.devtool import sanitize      # the last line only, addresses and memo values removed
+                err = done.stderr.decode("utf-8", "replace").strip().splitlines() or [""]
+                error = f"devtool {command} failed with exit code {done.returncode}: {sanitize(err[-1].strip())[:200]}"
+            if attempt == attempts:
+                raise RuntimeError(f"{error} ({attempts} attempts over {connection})"
+                                   f"{network.failure_hint(connection)}")
+            logging.getLogger("renderer").warning("%s; retrying over %s (%d/%d)", error, connection, attempt + 1,
+                                                  attempts)
+            time.sleep(pause)
