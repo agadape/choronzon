@@ -110,3 +110,14 @@ This is a machine that never saw ours, reproducing the work from one key. It is 
 | CI | publish [run 39924480381](https://github.com/agadape/choronzon/actions/runs/39924480381) (stamp + persist), upgrade [run 39924774744](https://github.com/agadape/choronzon/actions/runs/39924774744) ("pending, nothing changed") |
 | Status on 23 Oct ~09:00 UTC | **pending**: `python3 -m anchor verify` on the served files says "proof commits to sha256 of this statement" and "PENDING: not in Bitcoin yet (4 calendar(s) hold it)", exit 3. Record the Bitcoin block here once upgraded |
 | Logs | `logs/anchor-spike/`, `logs/anchor-historic/` |
+
+## Tor by default (23 Oct 2026)
+
+| What | Value |
+|---|---|
+| Commit | `cd6c691`: every devtool network call from `kiosk/devtool.py` and `renderer/wallet.py` gets `--connection` (default `tor`; `direct` only on purpose or on GitHub Actions); fail-closed |
+| Same hashes | render/1 anchor `9b6c1b9d…` at 4,522,002 after a Tor sync; `6ae73985…` at 4,527,794 from V and two fresh Watchers (one Tor, one direct), `mix.wav` identical; `52fb6802…` at 4,531,929 over Tor and direct |
+| Kiosk session over Tor | funding `68653009…`, split `7157641b…` (from wallet A's note pool, 0.017 TAZ) |
+| Test offering over Tor | [`fc4dd939…`](https://testnet.zecblock.com/tx/fc4dd93977c8490fc70b0b43be2d23bb82bee7681aeb8ed157b0d1aae5f5103c) at 4,531,929, sent in 18 s, seen by V (synced over Tor) 34 s later; the Tor-layer test offering, approved by the user |
+| Self-send timing | Tor `5de38970…` mined at 4,531,909; one failed Tor send `f2a373a4…` was built but never mined (expired), so no double spend |
+| Details | `docs/network-fallback.md` (commands, outputs, timings, fail-closed tests), `docs/privacy-review.md` |

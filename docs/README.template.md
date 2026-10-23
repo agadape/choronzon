@@ -106,7 +106,7 @@ What you must know:
 - content and voice can identify you (hence text→TTS default)
 - **your own wallet stores what you sent** (`sent_notes`) — kiosk uses an ephemeral wallet
 - replies to a per-contribution address can be spammed by anyone holding the public key
-- lightwalletd sees your IP (Tor is on the roadmap)
+- lightwalletd sees a Tor exit, not your IP, when you use our kiosk (Tor is the default; an operator can choose direct on purpose, and then it sees the IP); a phone wallet connects to its server with its own settings; Tor does not hide timing
 - the choir's own spends are public (full viewing key)
 - order inside a block is miner order, not send order: the canonical order `(mined_height, tx_index, action_index)` is deterministic, but the offering you sent third may sing first
 
@@ -244,7 +244,7 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 - The sending wallet remembers: `sent_notes` holds the memo and the destination. The kiosk wallet is wiped after the session for that reason; a phone user's own wallet keeps what they sent.
 - While a transaction is built, the memo sits on the wallet tool's command line for a few seconds, visible to other local processes on the kiosk. Fixing this needs a change in the wallet tool, not done in the hackathon window.
 - TTS and Codec2 use a temporary directory per call, deleted on return; a hardened kiosk points `TMPDIR` at a tmpfs.
-- lightwalletd sees the kiosk's and every renderer's IP and which transactions were fetched. The wallet tool's Tor mode works against the same server (sync in ~7 s) and is off by default. On 21 Oct `testnet.zec.rocks` was the only public lightwalletd on the NU7 testnet chain, so there is no second server to fall back to ([docs/network-fallback.md](docs/network-fallback.md)).
+- lightwalletd sees which transactions were fetched and when. Since 23 Oct every connection the kiosk, the renderer, Whisper Back and `renderer summon` make goes through Tor by default (the wallet tool's built-in Arti client), so the server sees a Tor exit instead of the kiosk's or a Watcher's IP. It fails closed: if Tor cannot connect, the command stops and asks the operator to pass `--connection direct` deliberately; it never falls back on its own. Tor costs time (sync ~11–18 s instead of ~2 s) and sends over Tor fail more often (retried by the operator, never automatically). A phone wallet uses its own connection settings. The public web snapshot is rendered by a CI runner over a direct connection: its IP protects nobody. On 21 Oct `testnet.zec.rocks` was the only public lightwalletd on the NU7 testnet chain, so there is no second server to fall back to ([docs/network-fallback.md](docs/network-fallback.md)).
 - Reply addresses sit in the memo, so every key holder can write to them. The kiosk shows whispers; it does not trust them.
 - Everything a Watcher renders is public, forever; the order inside a block is the miner's, not the sender's. The kiosk says so before every send.
 - On stage the room sees who walked up to the kiosk. That is theatre; a random send delay for public deployments is on the roadmap.
@@ -266,7 +266,7 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 - Phone wallets send ZIP-321 memos as text, which is why the phone path uses an ASCII envelope.
 - One public testnet explorer follows a different testnet fork and shows none of our transactions; the links here go to ZecBlock, which is on our chain (see [Evidence](#evidence-zcash-testnet-nu7)). Either way the independent proof of a transaction is a wallet holding the public key, not a web page.
 
-Not built: Codec2 decoding in the browser (the page plays the offline mix), a séance mode on the listener page, Tor for lightwalletd, a random send delay, a real phone scan of the QR path (the envelope was proven with a laptop wallet standing in for the phone).
+Not built: Codec2 decoding in the browser (the page plays the offline mix), a séance mode on the listener page, a random send delay, a real phone scan of the QR path (the envelope was proven with a laptop wallet standing in for the phone).
 
 ## Status
 
@@ -281,6 +281,7 @@ Done:
 - [x] Listener page: Canvas 2D creature grown from the score + playback of the mix, both hashes on screen
 - [x] Whisper Back (limb click or `renderer whisper`, `kiosk inbox`), the god's own voice with forgeries refused, phone offerings by QR, the Séance (`kiosk reveal`, `renderer summon`)
 - [x] Fresh-clone proof with measured times, privacy review, eight failure drills, two unattended rehearsals of the 3-minute demo
+- [x] Tor by default for every lightwalletd connection the product makes (kiosk, renderer, Whisper Back, summon), fail-closed, same hashes over Tor and direct
 - [x] Every published render anchored in Bitcoin with OpenTimestamps (`anchor/`, `anchors` branch, verifiable without a node)
 
 Open:

@@ -63,6 +63,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [ ] **C** Record demo video (real txs, explorer shown, two-laptop hash moment, whisper back if M2 done) (how: the shot list and pre-show checklist in `docs/demo-script.md`; explorer = ZecBlock after pre-show check 8; the link goes into `docs/submission-form.md`)
 - [ ] **B** Visual/audio polish only on the demo path
 - [x] **A** Bitcoin anchoring with OpenTimestamps (23 Oct, `7fcdc3c` + `886570b`: `anchor/` statement|stamp|upgrade|verify|persist; CI stamps every deploy and keeps proofs on the `anchors` branch; `anchor-upgrade.yml` every 3 h; live `/anchor.json` + `.ots` verified PENDING, exit 3, as expected; historic anchors 4522002 + 4527794 stamped)
+- [x] **A** Tor by default for every lightwalletd connection (23 Oct, `cd6c691`: `renderer/network.py`, `--connection {tor,direct}` / `LWD_CONNECTION`, default tor, direct on GitHub Actions; fail-closed; render/1 anchor `9b6c1b9d…` and `6ae73985…` @4527794 identical over Tor and direct; kiosk session opened and offering `fc4dd939…` sent over Tor @4531929; numbers in `docs/network-fallback.md`)
 - [ ] **A** Upgrade the pending OTS proofs after ~14:00 UTC 23 Oct and record the Bitcoin block in `docs/anchoring.md` (`python3 -m anchor upgrade --branch`, then `verify` must exit 0); optional: show the anchor on the page (`web/`)
 - [x] **C** README final: what it is, setup, demo walkthrough, privacy model, limits, architecture diagram, spike evidence links (21–22 Oct: restructure into one document for a ten-minute judge `c283dd3`, network-fallback / visual-direction links `417793c`, explorer links switched to ZecBlock `efb600a`; generated from `docs/README.template.md`. Left for the user at submission: paste the full viewing key by hand at the placeholder under "The key", as decided 22 Oct; steps in `docs/submission-checklist.md`, "the publication act")
 
@@ -72,4 +73,4 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [x] **C** Test clone-and-run on a fresh machine with a fresh wallet (21 Oct, `docs/fresh-clone.md`: clean clone, `setup.sh` 9 m 34 s, pytest 121 passed / 2 skipped, `renderer summon` from the key alone in 50 s -> same render_hash as wallet V at 4525294; a second physical laptop is still worth doing before the show)
 
 ## Post-hackathon (not now)
-- [ ] Grant proposal (ZCG / zkSNARKs holder season) · Zcon installation email · Tor for lightwalletd · Piper TTS
+- [ ] Grant proposal (ZCG / zkSNARKs holder season) · Zcon installation email · Piper TTS
