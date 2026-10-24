@@ -140,8 +140,10 @@ function mount(canvas, doc, opts = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;           // the composite pass does tone + gamma itself
   renderer.toneMapping = THREE.NoToneMapping;
-  const DPR_CAP = Math.min(devicePixelRatio || 1, PHONE ? 1 : 1.25);
-  let dpr = DPR_CAP;
+  // resolution: adaptive both ways with hysteresis (web/dpr.js); ?dpr=N pins it. Resolution only, never the form.
+  const LIM = DprAdapter.limits(devicePixelRatio, PHONE, new URLSearchParams(location.search).get("dpr"));
+  const DPR = DprAdapter.create(LIM), FORCED = LIM.forced, DPR_CAP = LIM.cap, DPR_FLOOR = LIM.floor;
+  let dpr = DPR.dpr;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
@@ -583,12 +585,14 @@ function mount(canvas, doc, opts = {}) {
     NARROW = narrow; VW = w; VH = h; if (narrow) camera.setViewOffset(w, h, 0, h * 0.06, w, h); else camera.setViewOffset(w, h, offX, 0, w, h);
     camera.updateProjectionMatrix();
   }
-  addEventListener("resize", size); size();
-  let ema = 16, lastT = 0, running = !document.hidden, alive = true, fps = 0;
-  function adapt(dt) { ema = ema * 0.95 + dt * 0.05;
-    const next = ema > 22 ? Math.max(0.55, dpr - 0.1) : ema < 13 ? Math.min(DPR_CAP, dpr + 0.05) : dpr;
-    if (Math.abs(next - dpr) > 0.01) { dpr = next; size(); } }
-  const onVis = () => { running = !document.hidden; if (running && alive) { lastT = 0; requestAnimationFrame(tick); } };
+  size();
+  let lastT = 0, running = !document.hidden, alive = true, fps = 0;
+  const settle = (ms) => DPR.settle(performance.now(), ms);
+  function adapt(now, dt) { const next = DPR.frame(now, dt); if (next !== null) { dpr = next; size(); } }
+  settle(2500);
+  const onResize = () => { size(); settle(1000); };
+  addEventListener("resize", onResize);
+  const onVis = () => { running = !document.hidden; if (running && alive) { lastT = 0; settle(1000); requestAnimationFrame(tick); } };
   document.addEventListener("visibilitychange", onVis);
 
   // ================================================================ frame
@@ -601,7 +605,8 @@ function mount(canvas, doc, opts = {}) {
   const eyeLook = eyeList.map(() => null);
   function tick(now, once) {
     if ((!running && !once) || !alive) return;
-    if (lastT && now > lastT) { const dt = now - lastT; adapt(dt); fps = fps ? fps * 0.9 + (1000 / dt) * 0.1 : 1000 / dt; } lastT = now;
+    if (lastT && now > lastT && !once) { const dt = now - lastT; adapt(now, dt); fps = fps ? fps * 0.9 + (1000 / dt) * 0.1 : 1000 / dt; }
+    if (!once) lastT = now;
     const time = ((now - T0) / 1000) * (CALM ? 0.35 : 1) + 30;
     const t = playT;
     placeCamera(time, px, py); U.uTime.value = time;
@@ -691,11 +696,12 @@ function mount(canvas, doc, opts = {}) {
     setViewOffset(pxOff) { wantOff = pxOff || 0; },
     pick,
     wasDrag() { return moved > 6; },
-    stats() { return { calls: lastCalls, triangles: lastTris, fps: Math.round(fps), dpr: Number(dpr.toFixed(2)), eyes: NE, phone: PHONE }; },
+    stats() { return { calls: lastCalls, triangles: lastTris, fps: Math.round(fps), dpr: Number(dpr.toFixed(2)), cap: DPR_CAP, floor: DPR_FLOOR,
+                       forced: !!FORCED, eyes: NE, phone: PHONE }; },
     measure() { tick(performance.now(), true); return this.stats(); },   // one forced frame (a hidden tab draws none)
     dispose() {
       alive = false;
-      removeEventListener("resize", size); removeEventListener("pointermove", onPointer); document.removeEventListener("visibilitychange", onVis);
+      removeEventListener("resize", onResize); removeEventListener("pointermove", onPointer); document.removeEventListener("visibilitychange", onVis);
       canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerup", onUp);
       for (const d of disposables) { try { d.dispose(); } catch (_) { /* already gone */ } }
       renderer.dispose();

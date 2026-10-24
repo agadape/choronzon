@@ -242,7 +242,7 @@ function frame(now) {
     god.setPlayT(t); god.setEyeOpen(lids);
     if (STATS && now - statsAt > 500) {                   // ?stats: draw calls, triangles, fps, DPR (budget: spec §3)
       statsAt = now; const s = god.stats();
-      STATS.textContent = `${s.calls} calls · ${fmt(s.triangles)} tris · ${s.fps || 0} fps · dpr ${s.dpr}${s.phone ? " · phone path" : ""}`;
+      STATS.textContent = `${s.calls} calls · ${fmt(s.triangles)} tris · ${s.fps || 0} fps · dpr ${s.dpr}${s.forced ? " (pinned)" : ` (${s.floor}–${s.cap})`}${s.phone ? " · phone path" : ""}`;
     }
   } else {
     const c = $("creature");
