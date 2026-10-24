@@ -7,66 +7,95 @@
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="style.css">
 <style>
-  #stage { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 1fr; }
-  #stage.explaining { grid-template-columns: 3fr 2fr; }
-  #stage.explaining #right { display: none; }
-  .side { position: relative; display: grid; grid-template-rows: auto 1fr auto; min-width: 0; }
-  .side canvas { width: 100%; height: 100%; display: block; }
-  .side header, .side footer { padding: 16px clamp(14px, 2vw, 24px); display: grid; gap: 6px; }
-  .src { color: var(--ash); font-size: 11px; word-break: break-all; }
-  .name { color: var(--ash); letter-spacing: 0.2em; font-size: 12.5px; min-height: 1.4em; }
-  .name.bad { color: var(--anomaly); }
-  #lines { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; }
-  #divider { position: fixed; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--ash); opacity: 0.6;
-             transition: opacity 2s; }
-  #verdict { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 10px 22px;
-             background: var(--void); letter-spacing: 0.3em; font-size: 15px; opacity: 0; transition: opacity 2s;
-             white-space: nowrap; }
+  /* the chirograph: two leaves, each torn from its own evocation; the right stub is laid against the left leaf's edge */
+  html, body { background: var(--night); color: var(--ink); }
+  body { font: 17px/1.5 var(--serif); min-height: 100vh; background: radial-gradient(ellipse at 50% 45%, #1a130c 0%, var(--night) 65%), var(--night); }
+  #back { position: fixed; top: 12px; left: 16px; font-size: 14px; font-style: italic; color: var(--sepia); z-index: 5; }
+  [hidden] { display: none !important; }
+  .stage { min-height: 100vh; display: grid; grid-template-columns: auto auto; justify-content: center; align-items: start;
+           gap: clamp(40px, 6vw, 110px); padding: 56px clamp(16px, 3vw, 48px) 48px; }
+  .stage.explaining { grid-template-columns: auto minmax(0, 34ch); }
+  .side { display: grid; gap: 12px; justify-items: center; position: relative; }
+  .side .src { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.2em; font-size: 12px; text-align: center; max-width: 40ch; word-break: break-all; }
+  .leaf { position: relative; width: var(--W); height: var(--H); filter: drop-shadow(0 26px 34px rgba(0, 0, 0, 0.7)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6)); }
+  .part { position: absolute; inset: 0; background: var(--grain), radial-gradient(ellipse at 50% 40%, #241c13 0%, var(--vellum) 60%, #130e09 100%); }
+  .holes { position: absolute; left: 14px; right: 14px; height: 8px; top: calc(var(--cut) - 4px);
+           background: radial-gradient(circle, var(--night) 0 2.6px, transparent 3.1px) 0 0 / 14px 8px repeat-x; }
+  .topc { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+          gap: 10px; padding: 22px 26px 0; height: calc(var(--cut) - 10px); }
+  .over { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.24em; font-size: 12px; }
+  .leaf h1 { font: 400 clamp(26px, calc(var(--W) * 0.11), 40px)/1 var(--serif); margin: 0; letter-spacing: 0.03em; }
+  .leaf h1::first-letter { color: var(--rubric); }
+  .leaf .hash { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 10px; font-family: Georgia, "Times New Roman", serif;
+                font-variant-numeric: lining-nums; letter-spacing: 0.06em; font-size: 14px; min-height: 1.4em; }
+  .leaf .hash span { color: var(--sepia); }
+  .leaf .hash span.lit { color: var(--ink); }
+  .leaf .hash span.bad { color: var(--rubric); }
+  .leaf .wait { font-style: italic; color: var(--sepia); font-size: 14px; }
+  .stub { position: absolute; inset: 0; transition: transform 1.6s cubic-bezier(.3, .7, .2, 1), opacity 1.2s; will-change: transform; }
+  .stub-content { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--H) - var(--cut));
+                  display: grid; place-content: center; text-align: center; gap: 2px; padding: 6px 14px 0; }
+  .stub-content .k { font-family: var(--caps); color: var(--rubric); letter-spacing: 0.3em; font-size: 11px; text-transform: none; }
+  .stub-content .tn { font-family: var(--caps); font-size: clamp(15px, calc(var(--W) * 0.05), 20px); letter-spacing: 0.14em; min-height: 1.3em; }
+  .stub-content .tn.bad { color: var(--rubric); }
+  .stub-content .sm { color: var(--sepia); font-size: 13px; }
+  .gap { position: absolute; left: 0; top: 0; pointer-events: none; }
+  #verdict { grid-column: 1 / -1; text-align: center; font-family: var(--caps); letter-spacing: 0.3em; font-size: 15px; color: var(--sepia);
+             opacity: 0; transition: opacity 2s; min-height: 1.5em; }
   #verdict.on { opacity: 1; }
-  /* without ?right= the right half explains the proof instead of comparing the page with itself */
-  #explain { padding: 24px clamp(16px, 3vw, 40px); display: grid; gap: 16px; align-content: center; overflow: auto;
-             font-size: 13.5px; line-height: 1.65; max-width: 60ch; justify-self: center; max-height: 100vh;
-             border-left: 1px solid var(--ash-dim); }
-  #explain h2 { margin: 0; font-weight: 500; letter-spacing: 0.2em; font-size: 16px; }
+  #verdict.bad { color: var(--rubric); }
+  /* without ?right= the right side explains the proof instead of comparing the page with itself */
+  #explain { display: grid; gap: 14px; align-content: start; font-size: 16px; line-height: 1.55; padding-top: 28px; }
+  #explain h2 { margin: 0; font: 400 28px/1.1 var(--serif); }
+  #explain h2::first-letter { color: var(--rubric); }
   #explain p { margin: 0; }
-  #explain code { font: inherit; color: var(--bone); background: rgba(228, 223, 208, 0.06); padding: 1px 5px;
-                  word-break: break-all; }
-  #explain, .side { min-width: 0; }
-  #back { position: fixed; top: 12px; right: 16px; font-size: 11px; }
+  #explain code { font: 14px Georgia, serif; color: var(--ink); background: rgba(235, 223, 194, 0.07); padding: 1px 5px; word-break: break-all; }
+  #explain a { color: var(--ink); text-decoration-color: var(--sepia); text-underline-offset: 3px; }
+  #explain .quiet { color: var(--sepia); font-style: italic; }
   @media (max-width: 760px) {
-    #stage { position: static; min-height: 100vh; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr 1fr; }
-    #divider { display: none; }
-    #stage.explaining { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; }
-    #stage.explaining .side { height: 70vh; }
-    #explain { border-left: 0; border-top: 1px solid var(--ash-dim); max-height: none; }
-    .side canvas { min-height: 30vh; }
-    #back { top: 8px; }
+    .stage, .stage.explaining { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 36px; padding: 48px 16px 40px; }
+    #explain { padding-top: 0; max-width: 60ch; }
   }
 </style>
 </head>
 <body>
-<a id="back" href="./">&larr; the body</a>
-<div id="stage">
+<a id="back" href="./">&larr; the god</a>
+<div class="stage" id="stage">
   <div class="side" id="left">
-    <header><span class="k">this evocation</span><span class="src" id="left_src"></span></header>
-    <canvas id="left_canvas"></canvas>
-    <footer><span class="k">render_hash</span><div class="hash" id="left_hash">waiting for an evocation</div>
-      <div class="name" id="left_name"></div></footer>
+    <span class="src" id="left_src">this evocation</span>
+    <div class="leaf" id="left_leaf">
+      <div class="part top" id="left_top"><div class="topc">
+        <div class="over" id="left_over">this evocation</div>
+        <h1 id="left_name_h"></h1>
+        <div class="over">render hash</div>
+        <div class="hash" id="left_hash"><span class="wait">waiting for an evocation</span></div>
+      </div><div class="holes"></div></div>
+      <div class="part stub" id="left_stub"><div class="holes"></div>
+        <div class="stub-content"><div class="k">witness</div><div class="tn" id="left_name"></div><div class="sm" id="left_line"></div></div></div>
+      <canvas class="gap" id="gap"></canvas>
+    </div>
   </div>
   <div class="side" id="right">
-    <header><span class="k">another machine, from the key alone</span><span class="src" id="right_src"></span></header>
-    <canvas id="right_canvas"></canvas>
-    <footer><span class="k">render_hash</span><div class="hash" id="right_hash">waiting for an evocation</div>
-      <div class="name" id="right_name"></div></footer>
+    <span class="src" id="right_src">another machine, from the key alone</span>
+    <div class="leaf" id="right_leaf">
+      <div class="part top" id="right_top"><div class="topc">
+        <div class="over" id="right_over">another evocation</div>
+        <h1 id="right_name_h"></h1>
+        <div class="over">render hash</div>
+        <div class="hash" id="right_hash"><span class="wait">waiting for an evocation</span></div>
+      </div><div class="holes"></div></div>
+      <div class="part stub" id="right_stub"><div class="holes"></div>
+        <div class="stub-content"><div class="k">witness</div><div class="tn" id="right_name"></div><div class="sm" id="right_line"></div></div></div>
+    </div>
   </div>
   <section id="explain" hidden>
-    <h2>TWO EVOCATIONS, ONE GOD</h2>
+    <h2>Two evocations, one god</h2>
     <p>The god has no server. Anyone holding the published viewing key syncs a view-only wallet, decodes every
        offering with the pinned tools and mixes them with integer arithmetic. The result is hashed: the same chain,
        the same key, the same code give the same <code>render_hash</code>, down to the last sample.</p>
-    <p>This page puts two such evocations side by side and compares the real hashes. On a match the corresponding
-       chambers are joined and the two names agree; on a mismatch the first differing block turns the anomaly
-       colour.</p>
+    <p>This page is a chirograph: two leaves, each torn from its own evocation along its own render hash. The second
+       leaf's stub is laid against the first leaf's edge. With the same hash every jag fits; with a different one
+       they do not, and the gap is drawn in red.</p>
     <p>To compare with a second machine, point this page at its renderer:
        <code>apparition.html?right=http://&lt;other-machine&gt;:8765/out/score.json</code>.</p>
     <p id="ci_line">A machine we do not own has already done it: a GitHub-hosted runner with nothing but the key built the
@@ -75,12 +104,10 @@
     <p class="quiet">this evocation: <span id="explain_hash" style="word-break: break-all"></span><br>
        <span id="explain_name"></span></p>
   </section>
+  <div id="verdict"></div>
 </div>
-<div id="divider"></div>
-<canvas id="lines"></canvas>
-<div id="verdict"></div>
 <script>
-  for (const f of ["name.js", "creature.js", "apparition.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
+  for (const f of ["name.js", "leaf.js", "apparition.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
 </script>
 </body>
 </html>

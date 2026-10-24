@@ -29,6 +29,24 @@ window.Leaf = (() => {
     layout();
   }
 
+  // The cuts of one leaf of size W×H torn at CUT: deckle from the score hash, the tear line from the render hash.
+  // Returns clip-path polygons (leaf coordinates) and the tear line itself, for any page that draws a leaf.
+  function cuts(renderHash, scoreHash, W, H, CUT) {
+    const rb = bytes(renderHash), sb = bytes(scoreHash);
+    const d = (i) => (sb[i % 32] / 255) * 2.4;
+    const edge = (n, fn) => Array.from({ length: n + 1 }, (_, i) => fn(i / n, d(i * 7 + n)));
+    const dk = { top: edge(24, (u, o) => [u * W, o]), right: (y0, y1) => edge(16, (u, o) => [W - o, y0 + (y1 - y0) * u]),
+                 bottom: edge(24, (u, o) => [W - u * W, H - o]), left: (y0, y1) => edge(16, (u, o) => [o, y0 + (y1 - y0) * u]) };
+    const cut = [];
+    for (let i = 0; i <= 64; i++) { const main = i % 2 === 0, b = main ? rb[(i / 2) % 32] : sb[((i - 1) / 2) % 32]; cut.push([(i / 64) * W, CUT + (b / 255 - 0.5) * 2 * (main ? 5 : 2.2)]); }
+    const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(",")})`;
+    const topPts = [...dk.top, ...dk.right(0, cut[64][1]), ...[...cut].reverse(), ...dk.left(cut[0][1], 0)];
+    const stubPts = [...cut, ...dk.right(cut[64][1], H), ...dk.bottom, ...dk.left(H, cut[0][1])];
+    const mirror = (pts) => pts.map(([x, y]) => [W - x, y]);
+    return { cut, top: poly(topPts), stub: poly(stubPts), whole: poly([...dk.top, ...dk.right(0, H), ...dk.bottom, ...dk.left(H, 0)]),
+             versoWhole: poly(mirror([...dk.top, ...dk.right(0, H), ...dk.bottom, ...dk.left(H, 0)])), versoTorn: poly(mirror(topPts)) };
+  }
+
   function layout() {
     if (!el || !RB) return;
     const vw = document.documentElement.clientWidth || innerWidth, narrow = vw <= 900;   // the layout viewport, never the overflow
@@ -36,21 +54,11 @@ window.Leaf = (() => {
     H = narrow ? Math.round(W * 1.62) : Math.round(Math.min(innerHeight * 0.82, 720));
     CUT = H - (narrow ? 104 : 116);
     el.leaf.style.setProperty("--W", W + "px"); el.leaf.style.setProperty("--H", H + "px"); el.leaf.style.setProperty("--cut", CUT + "px");
-    const d = (i) => (SB[i % 32] / 255) * 2.4;
-    const edge = (n, fn) => Array.from({ length: n + 1 }, (_, i) => fn(i / n, d(i * 7 + n)));
-    deckle = { top: edge(24, (u, o) => [u * W, o]), right: (y0, y1) => edge(16, (u, o) => [W - o, y0 + (y1 - y0) * u]),
-               bottom: edge(24, (u, o) => [W - u * W, H - o]), left: (y0, y1) => edge(16, (u, o) => [o, y0 + (y1 - y0) * u]) };
-    const cut = [];
-    for (let i = 0; i <= 64; i++) { const main = i % 2 === 0, b = main ? RB[(i / 2) % 32] : SB[((i - 1) / 2) % 32]; cut.push([(i / 64) * W, CUT + (b / 255 - 0.5) * 2 * (main ? 5 : 2.2)]); }
-    const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(",")})`;
-    const topPts = [...deckle.top, ...deckle.right(0, cut[64][1]), ...[...cut].reverse(), ...deckle.left(cut[0][1], 0)];
-    const stubPts = [...cut, ...deckle.right(cut[64][1], H), ...deckle.bottom, ...deckle.left(H, cut[0][1])];
-    el.top.style.clipPath = poly(topPts); el.stub.style.clipPath = poly(stubPts);
-    const mirror = (pts) => pts.map(([x, y]) => [W - x, y]);
-    deckle.versoWhole = poly(mirror([...deckle.top, ...deckle.right(0, H), ...deckle.bottom, ...deckle.left(H, 0)]));
-    deckle.versoTorn = poly(mirror(topPts));
-    el.verso.style.clipPath = gone ? deckle.versoTorn : deckle.versoWhole;
-    el.stub.style.transformOrigin = `${W}px ${cut[64][1]}px`;
+    const c = cuts(RB.map((b) => b.toString(16).padStart(2, "0")).join(""), SB.map((b) => b.toString(16).padStart(2, "0")).join(""), W, H, CUT);
+    deckle = c;
+    el.top.style.clipPath = c.top; el.stub.style.clipPath = c.stub;
+    el.verso.style.clipPath = gone ? c.versoTorn : c.versoWhole;
+    el.stub.style.transformOrigin = `${W}px ${c.cut[64][1]}px`;
     dispatchEvent(new Event("leaf-layout"));
   }
 
@@ -77,5 +85,5 @@ window.Leaf = (() => {
     } else el.stub.style.transform = `rotate(${(-f * 4.5).toFixed(2)}deg) translateY(${(f * 3).toFixed(2)}px)`;
   }
 
-  return { init, setHashes, layout, frame, turn, tear, reprint, isGone: () => gone, isVerso: () => flip === 1, width: () => W };
+  return { init, setHashes, layout, frame, turn, tear, reprint, cuts, isGone: () => gone, isVerso: () => flip === 1, width: () => W };
 })();
