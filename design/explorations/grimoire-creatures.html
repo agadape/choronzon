@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>three bodies</title>
+<!-- EXPLORATION ONLY: Google Fonts is loaded here to judge the type. The real site must self-host (OFL) files. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap">
+<style>
+  :root {
+    --vellum: #14100b;      /* page: soot on old vellum */
+    --ink: #e8dcbc;         /* primary lines and type: aged parchment */
+    --sepia: #8c7552;       /* secondary lines, hatching */
+    --gilt: #d4a64a;        /* the sounding part only */
+    --rubric: #c4401f;      /* minium red: exceptional states, figure numbers */
+    --serif: "IM Fell English", "Palatino Linotype", Palatino, Georgia, serif;
+    --caps: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--vellum); color: var(--ink); }
+  body {
+    font: 17px/1.5 var(--serif); padding: 40px clamp(16px, 4vw, 56px) 56px;
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(70, 52, 30, 0.35), transparent 70%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='7'/><feColorMatrix values='0 0 0 0 0.9  0 0 0 0 0.8  0 0 0 0 0.6  0 0 0 0.07 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>"),
+      var(--vellum);
+  }
+  header { text-align: center; margin-bottom: 34px; }
+  header .over { font-family: var(--caps); letter-spacing: 0.3em; color: var(--sepia); font-size: 14px; }
+  header h1 { font-weight: 400; font-size: clamp(40px, 6vw, 72px); margin: 4px 0 0; letter-spacing: 0.04em; }
+  header h1::first-letter { color: var(--rubric); }
+  header p { font-style: italic; color: var(--sepia); margin: 6px 0 0; font-size: 19px; }
+  .plates { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 36px; max-width: 1500px; margin: 0 auto; }
+  figure { margin: 0; border: 1px solid rgba(140, 117, 82, 0.55); outline: 1px solid rgba(140, 117, 82, 0.25); outline-offset: 5px; padding: 18px 18px 20px; }
+  canvas { width: 100%; aspect-ratio: 1; display: block; }
+  figcaption { margin-top: 12px; text-align: center; }
+  figcaption .fig { font-family: var(--caps); color: var(--rubric); letter-spacing: 0.2em; font-size: 14px; }
+  figcaption .title { font-size: 26px; display: block; margin-top: 2px; }
+  figcaption .what { font-style: italic; color: var(--ink); opacity: 0.85; display: block; margin: 6px auto 0; max-width: 34ch; }
+  figcaption .map { font-family: var(--caps); color: var(--sepia); font-size: 13px; letter-spacing: 0.06em; display: block; margin-top: 10px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<header>
+  <div class="over">three bodies for</div>
+  <h1 id="name"></h1>
+  <p>each figure is drawn from the same 43 offerings, in chain order, nothing invented</p>
+</header>
+<div class="plates">
+  <figure>
+    <canvas id="seal"></canvas>
+    <figcaption>
+      <span class="fig">Fig. I.</span><span class="title">The Seal</span>
+      <span class="what">After Dee's Sigillum Dei Aemeth. Every offering is a sigil written into a cell of the seal; rings fill outward and are never rewritten. The render hash is the inscription round its rim.</span>
+      <span class="map">order → ring &amp; cell · duration → sigil size · energy → stroke · brightness → strokes in the sigil · pan → tilt · the god's own voice → the heptagram</span>
+    </figcaption>
+  </figure>
+  <figure>
+    <canvas id="mouths"></canvas>
+    <figcaption>
+      <span class="fig">Fig. II.</span><span class="title">The Many-Mouthed</span>
+      <span class="what">"We are many." Every offering is a mouth, set in a rosette by the golden angle around one great mouth that speaks the god's own lines. A silenced offering is a mouth sewn shut.</span>
+      <span class="map">order → spiral position · duration → width · energy → how far it opens · brightness → teeth · pan → tilt · the god's own voice → the central mouth</span>
+    </figcaption>
+  </figure>
+  <figure>
+    <canvas id="coil"></canvas>
+    <figcaption>
+      <span class="fig">Fig. III.</span><span class="title">The Coil</span>
+      <span class="what">An ouroboros that never reaches its own tail. It begins at the Abyss in the centre; each offering adds one engraved segment to the end, so the body is literally the chain, in order.</span>
+      <span class="map">order → position along the coil · duration → segment length · energy → girth · brightness → engraved ribs · pan → spine side · the god's own voice → dark collars</span>
+    </figcaption>
+  </figure>
+</div>
+<script src="brand-sample.js"></script>
+<script src="score-sample.js"></script>
+<script>
+"use strict";
+document.getElementById("name").textContent = BRAND.name;
+document.title = BRAND.name + ": three bodies";
+const TAU = Math.PI * 2, GA = Math.PI * (3 - Math.sqrt(5));
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = { ink: css("--ink"), sepia: css("--sepia"), gilt: css("--gilt"), rubric: css("--rubric"), vellum: css("--vellum"), deep: "#070504" };
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+// deterministic 0..1 values from contrib_id (same splitmix-style hash as web/creature.js)
+function genes(seed, n, count) {
+  let h = (seed ^ Math.imul(n + 1, 0x9e3779b1)) >>> 0; const out = [];
+  for (let i = 0; i < count; i++) {
+    h = (h + 0x9e3779b9) >>> 0; let z = h;
+    z = Math.imul(z ^ (z >>> 16), 0x85ebca6b) >>> 0; z = Math.imul(z ^ (z >>> 13), 0xc2b2ae35) >>> 0;
+    out.push(((z ^ (z >>> 16)) >>> 0) / 4294967296);
+  }
+  return out;
+}
+// fixed caps (never relative to the current corpus, so old parts never change shape when new ones arrive)
+function feat(p, n) {
+  return { loud: clamp01((p.energy - 500) / 1000), bright: clamp01((p.zero_crossings - 1500) / 1700),
+           secs: clamp01((p.samples / 8000 - 2) / 6), pan: (p.pan - 8) / 8, layer: p.pitch_layer,
+           g: genes(p.contrib_id, n, 12), start: p.start, end: p.start + p.samples, silent: p.silent, tx: p.tx };
+}
+const conductorTx = new Set(SCORE.offerings.filter((o) => o.conductor).map((o) => o.tx));
+const items = SCORE.timeline.map((p, n) => ({ ...feat(p, n), god: conductorTx.has(p.tx) }));
+const regular = items.filter((i) => !i.god), gods = items.filter((i) => i.god);
+const total = Math.max(...items.map((i) => i.end));
+const q = new URLSearchParams(location.search);
+const sounding = (it, t) => t >= it.start && t < it.end;
+
+function setup(id) {
+  const cv = document.getElementById(id), dpr = devicePixelRatio || 1;
+  const s = cv.clientWidth; cv.width = s * dpr; cv.height = s * dpr;
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  return { ctx, S: s };
+}
+// engraving: parallel lines clipped to the current path
+function hatch(ctx, makePath, angle, spacing, extent, color, width, alpha) {
+  ctx.save(); makePath(); ctx.clip();
+  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.globalAlpha = alpha;
+  const dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
+  ctx.beginPath();
+  for (let o = -extent.r; o <= extent.r; o += spacing) {
+    ctx.moveTo(extent.x + nx * o - dx * extent.r, extent.y + ny * o - dy * extent.r);
+    ctx.lineTo(extent.x + nx * o + dx * extent.r, extent.y + ny * o + dy * extent.r);
+  }
+  ctx.stroke(); ctx.restore();
+}
+
+/* ---------------- Fig. I: the Seal ---------------- */
+function drawSeal(t) {
+  const { ctx, S } = setup("seal"); const cx = S / 2, cy = S / 2, R = S * 0.48;
+  ctx.clearRect(0, 0, S, S);
+  const caps = []; let left = regular.length;
+  for (let r = 0; left > 0; r++) { caps.push(7 * (r + 1)); left -= 7 * (r + 1); }
+  const rim0 = R * 0.86, r0 = R * 0.26, w = (rim0 - r0) / caps.length;
+  // rings
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1.4;
+  for (const rr of [R, R * 0.975, rim0, rim0 - 3]) { ctx.beginPath(); ctx.arc(cx, cy, rr, 0, TAU); ctx.stroke(); }
+  ctx.strokeStyle = C.sepia; ctx.lineWidth = 1;
+  for (let r = 0; r <= caps.length; r++) { ctx.beginPath(); ctx.arc(cx, cy, r0 + r * w, 0, TAU); ctx.stroke(); }
+  // cells + sigils
+  let k = 0;
+  caps.forEach((cap, r) => {
+    for (let j = 0; j < cap; j++) {
+      const a0 = -Math.PI / 2 + (j / cap) * TAU, a1 = a0 + TAU / cap, am = (a0 + a1) / 2;
+      const ri = r0 + r * w, ro = ri + w, rm = (ri + ro) / 2;
+      ctx.strokeStyle = C.sepia; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a0) * ri, cy + Math.sin(a0) * ri); ctx.lineTo(cx + Math.cos(a0) * ro, cy + Math.sin(a0) * ro); ctx.stroke();
+      ctx.globalAlpha = 1;
+      const it = regular[k++];
+      if (!it) {   // a cell not yet written: one faint point
+        ctx.fillStyle = C.sepia; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(cx + Math.cos(am) * rm, cy + Math.sin(am) * rm, 1.2, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+        continue;
+      }
+      const sing = sounding(it, t);
+      if (sing) {
+        ctx.fillStyle = C.gilt; ctx.globalAlpha = 0.16; ctx.beginPath();
+        ctx.arc(cx, cy, ro, a0, a1); ctx.arc(cx, cy, ri, a1, a0, true); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      const arc = rm * (TAU / cap), box = Math.min(w, arc) * (0.48 + 0.3 * it.secs);
+      ctx.save(); ctx.translate(cx + Math.cos(am) * rm, cy + Math.sin(am) * rm); ctx.rotate(am + Math.PI / 2 + it.pan * 0.35);
+      const n = 3 + Math.round(it.bright * 4), pts = []; let prev = -1;
+      for (let i = 0; i < n; i++) {
+        let idx = Math.floor(it.g[i] * 9); if (idx === prev) idx = (idx + 4) % 9; prev = idx;
+        pts.push([((idx % 3) - 1) * box / 2, (Math.floor(idx / 3) - 1) * box / 2]);
+      }
+      ctx.strokeStyle = sing ? C.gilt : C.ink; ctx.lineWidth = 0.9 + it.loud * 1.9;
+      ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+      ctx.beginPath(); ctx.arc(pts[0][0], pts[0][1], box * 0.09, 0, TAU); ctx.stroke();          // sigil start: a ring
+      const [ex, ey] = pts[n - 1], [px, py] = pts[n - 2], L = Math.hypot(ex - px, ey - py) || 1;   // sigil end: a bar
+      ctx.beginPath(); ctx.moveTo(ex - (ey - py) / L * box * 0.12, ey + (ex - px) / L * box * 0.12); ctx.lineTo(ex + (ey - py) / L * box * 0.12, ey - (ex - px) / L * box * 0.12); ctx.stroke();
+      ctx.fillStyle = C.sepia;                                                                      // pitch layer: dots
+      for (let d = 0; d < it.layer; d++) { ctx.beginPath(); ctx.arc((d - (it.layer - 1) / 2) * 5, -box * 0.5 - 6, 1.3, 0, TAU); ctx.fill(); }
+      ctx.restore();
+    }
+  });
+  // centre: heptagon + heptagram {7/3}; each of the god's own lines fills one vertex
+  const godSing = gods.some((g) => sounding(g, t));
+  const hv = (i, rr) => [cx + Math.cos(-Math.PI / 2 + i * TAU / 7) * rr, cy + Math.sin(-Math.PI / 2 + i * TAU / 7) * rr];
+  ctx.strokeStyle = godSing ? C.gilt : C.ink; ctx.lineWidth = 1.6;
+  ctx.beginPath(); for (let i = 0; i <= 7; i++) { const [x, y] = hv(i, r0 * 0.86); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+  ctx.beginPath(); for (let i = 0; i <= 7; i++) { const [x, y] = hv(i * 3, r0 * 0.86); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+  ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, r0 * 0.3, 0, TAU); ctx.stroke();
+  gods.forEach((g, i) => {
+    const [x, y] = hv(i, r0 * 0.86 + (i >= 7 ? 7 : 0));
+    ctx.fillStyle = sounding(g, t) ? C.gilt : C.ink; ctx.beginPath(); ctx.arc(x, y, 3.2, 0, TAU); ctx.fill();
+  });
+  ctx.fillStyle = C.deep; ctx.beginPath(); ctx.arc(cx, cy, r0 * 0.12, 0, TAU); ctx.fill(); ctx.stroke();
+  // inscription: the render hash round the rim, in 8-character words
+  const text = SCORE.render_hash.match(/.{8}/g).join(" · ").toUpperCase() + " · ";
+  ctx.fillStyle = C.ink; ctx.font = `${Math.round(R * 0.05)}px ${css("--caps")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const rt = (R * 0.975 + rim0) / 2 + 1;
+  [...text].forEach((ch, i) => {
+    const a = -Math.PI / 2 + (i / text.length) * TAU;
+    ctx.save(); ctx.translate(cx + Math.cos(a) * rt, cy + Math.sin(a) * rt); ctx.rotate(a + Math.PI / 2); ctx.fillText(ch, 0, 0); ctx.restore();
+  });
+}
+
+/* ---------------- Fig. II: the Many-Mouthed ---------------- */
+function mouth(ctx, w, open, teeth, sing, sewn, lines) {
+  const h = w * 0.2, gap = open;
+  const upper = () => { ctx.beginPath(); ctx.moveTo(-w / 2, 0);
+    ctx.quadraticCurveTo(-w * 0.36, -h * 0.9, -w * 0.17, -h); ctx.quadraticCurveTo(-w * 0.06, -h * 1.05, 0, -h * 0.68);
+    ctx.quadraticCurveTo(w * 0.06, -h * 1.05, w * 0.17, -h); ctx.quadraticCurveTo(w * 0.36, -h * 0.9, w / 2, 0);
+    ctx.quadraticCurveTo(0, -gap, -w / 2, 0); ctx.closePath(); };
+  const lower = () => { ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.quadraticCurveTo(0, gap, w / 2, 0);
+    ctx.bezierCurveTo(w * 0.3, h * 1.7, -w * 0.3, h * 1.7, -w / 2, 0); ctx.closePath(); };
+  const cavity = () => { ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.quadraticCurveTo(0, -gap, w / 2, 0); ctx.quadraticCurveTo(0, gap, -w / 2, 0); ctx.closePath(); };
+  const line = sing ? C.gilt : C.ink;
+  ctx.fillStyle = C.deep; cavity(); ctx.fill();
+  if (!sewn && gap > 3) {
+    ctx.strokeStyle = C.ink; ctx.globalAlpha = 0.7; ctx.lineWidth = 0.9; ctx.beginPath();
+    for (let i = 0; i < teeth; i++) { const x = -w * 0.3 + (i + 0.5) * (w * 0.6 / teeth); ctx.moveTo(x, -gap * 0.42); ctx.lineTo(x, -gap * 0.05); }
+    ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  ctx.fillStyle = C.vellum; upper(); ctx.fill(); lower(); ctx.fill();
+  hatch(ctx, lower, 0.35, 2.6, { x: 0, y: h * 0.6, r: w }, C.sepia, 0.8, 0.9);
+  hatch(ctx, upper, -0.35, 3.4, { x: 0, y: -h * 0.6, r: w }, C.sepia, 0.7, 0.55);
+  ctx.strokeStyle = line; ctx.lineWidth = sing ? 1.8 : 1.2; upper(); ctx.stroke(); lower(); ctx.stroke();
+  for (let i = 1; i <= (lines || 0); i++) {   // engraved outlines round the great mouth: one per god line
+    ctx.globalAlpha = 0.65 - i * 0.05; ctx.lineWidth = 0.9; ctx.beginPath();
+    ctx.ellipse(0, h * 0.2, w / 2 + i * 7, h * 1.5 + i * 7, 0, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  if (sewn) { ctx.strokeStyle = C.ink; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 5; i++) { const x = -w * 0.3 + i * w * 0.15; ctx.moveTo(x - 3, -h * 0.5); ctx.lineTo(x + 3, h * 0.5); ctx.moveTo(x + 3, -h * 0.5); ctx.lineTo(x - 3, h * 0.5); }
+    ctx.stroke(); }
+}
+function drawMouths(t) {
+  const { ctx, S } = setup("mouths"); const cx = S / 2, cy = S / 2, R = S * 0.47, n0 = 5;
+  ctx.clearRect(0, 0, S, S);
+  const k = R * 0.86 / Math.sqrt(regular.length - 1 + n0);
+  // faint construction: the golden spiral the mouths sit on
+  ctx.strokeStyle = C.sepia; ctx.globalAlpha = 0.35; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy, R - 6, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1;
+  regular.forEach((it, n) => {
+    const th = (n + n0) * GA, r = k * Math.sqrt(n + n0), sing = sounding(it, t);
+    const w = k * (0.95 + 0.7 * it.secs);
+    let open = w * (0.03 + 0.12 * it.loud);
+    if (sing) open *= 1.6 + 0.4 * Math.sin((t - it.start) / 8000 * TAU * 2.2);
+    ctx.save(); ctx.translate(cx + Math.cos(th) * r, cy + Math.sin(th) * r); ctx.rotate(th + Math.PI / 2 + it.pan * 0.25);
+    mouth(ctx, w, open, 3 + Math.round(it.bright * 6), sing, it.silent, 0);
+    ctx.restore();
+  });
+  const godSing = gods.some((g) => sounding(g, t));
+  ctx.save(); ctx.translate(cx, cy);
+  mouth(ctx, k * 2.6, k * 2.6 * (godSing ? 0.2 : 0.08), 9, godSing, false, gods.length);
+  ctx.restore();
+}
+
+/* ---------------- Fig. III: the Coil ---------------- */
+function drawCoil(t) {
+  const { ctx, S } = setup("coil");
+  ctx.clearRect(0, 0, S, S);
+  // segments in body units, laid along an Archimedean spiral from the Abyss outward
+  const segs = items.map((it) => ({ it, len: it.god ? 0.55 : 0.75 + 0.9 * it.secs, th: it.god ? 0.7 : 0.45 + 0.5 * it.loud }));
+  const a = 1.5, b = 1.75 / TAU, need = segs.reduce((s, x) => s + x.len, 0) + 0.5;
+  const spine = []; let phi = 0, s = 0;
+  while (s < need) { const r = a + b * phi, x = Math.cos(phi) * r, y = Math.sin(phi) * r;
+    if (spine.length) { const p = spine[spine.length - 1]; s += Math.hypot(x - p.x, y - p.y); }
+    spine.push({ x, y, s, phi }); phi += 0.01; }
+  const at = (sv) => { let i = spine.findIndex((p) => p.s >= sv); if (i < 1) i = 1; const p = spine[i], q0 = spine[i - 1];
+    const tx = p.x - q0.x, ty = p.y - q0.y, L = Math.hypot(tx, ty) || 1; return { x: p.x, y: p.y, nx: -ty / L, ny: tx / L }; };
+  let S0 = 0; segs.forEach((g) => { g.s0 = S0; S0 += g.len; });
+  const girth = (sv) => {   // smooth girth along the body: interpolate between segment centres, taper at both ends
+    let i = segs.findIndex((g) => sv < g.s0 + g.len); if (i < 0) i = segs.length - 1;
+    const g = segs[i], u = (sv - g.s0) / g.len, nb = u < 0.5 ? segs[i - 1] : segs[i + 1];
+    let th = g.th; if (nb) { const m = Math.abs(u - 0.5); th = g.th + (nb.th - g.th) * m * m * 2; }
+    const head = Math.min(1, 0.35 + sv / 1.2), tail = Math.min(1, (S0 - sv) / 1.6 + 0.08);
+    return th * head * tail;
+  };
+  const scale = S * 0.47 / (a + b * phi + 0.9), cx = S / 2, cy = S / 2;
+  const X = (x) => cx + x * scale, Y = (y) => cy + y * scale;
+  // the Abyss: where the body begins
+  ctx.fillStyle = C.deep; ctx.strokeStyle = C.sepia; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, a * 0.7 * scale, 0, TAU); ctx.fill(); ctx.stroke();
+  for (let i = 1; i < 4; i++) { ctx.globalAlpha = 0.5 / i; ctx.beginPath(); ctx.arc(cx, cy, a * (0.7 - i * 0.14) * scale, 0, TAU); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  segs.forEach((g, n) => {
+    const it = g.it, sing = sounding(it, t), m = 10, L = [], Rt = [];
+    for (let i = 0; i <= m; i++) { const sv = g.s0 + (g.len * i) / m, p = at(sv), hw = girth(sv) / 2;
+      L.push([X(p.x + p.nx * hw), Y(p.y + p.ny * hw)]); Rt.push([X(p.x - p.nx * hw), Y(p.y - p.ny * hw)]); }
+    const outline = () => { ctx.beginPath(); L.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      for (let i = Rt.length - 1; i >= 0; i--) ctx.lineTo(Rt[i][0], Rt[i][1]); ctx.closePath(); };
+    ctx.fillStyle = it.god ? C.deep : C.vellum; outline(); ctx.fill();
+    if (sing) { ctx.fillStyle = C.gilt; ctx.globalAlpha = 0.28; outline(); ctx.fill(); ctx.globalAlpha = 1; }
+    const mid = at(g.s0 + g.len / 2), ang = Math.atan2(mid.ny, mid.nx);
+    if (it.god) hatch(ctx, outline, ang + 0.6, 2.4, { x: X(mid.x), y: Y(mid.y), r: g.len * scale * 1.5 }, C.sepia, 0.7, 0.9);
+    // engraved ribs across the segment (brightness), shading on the inner flank
+    const ribs = it.god ? 0 : 2 + Math.round(it.bright * 6);
+    ctx.strokeStyle = sing ? C.gilt : C.sepia; ctx.lineWidth = 0.9;
+    for (let r = 1; r <= ribs; r++) { const i = Math.round((r / (ribs + 1)) * m), [x1, y1] = L[i], [x2, y2] = Rt[i];
+      ctx.beginPath(); ctx.moveTo(x1 + (x2 - x1) * 0.12, y1 + (y2 - y1) * 0.12); ctx.lineTo(x1 + (x2 - x1) * 0.62, y1 + (y2 - y1) * 0.62); ctx.stroke(); }
+    // edges + the joint that closes this segment
+    ctx.strokeStyle = sing ? C.gilt : C.ink; ctx.lineWidth = 1.2 + it.loud * 1.2;
+    ctx.beginPath(); L.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+    ctx.beginPath(); Rt.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(...L[m]); ctx.lineTo(...Rt[m]); ctx.stroke();
+    if (it.god) { ctx.beginPath(); ctx.moveTo(...L[0]); ctx.lineTo(...Rt[0]); ctx.stroke(); }
+    // spine on the side the voice was panned to (outer = right of centre)
+    if (!it.god && Math.abs(it.pan) > 0.15) {
+      const side = it.pan > 0 ? L : Rt, sgn = it.pan > 0 ? 1 : -1, [bx, by] = side[Math.floor(m / 2)];
+      const len = (0.25 + Math.abs(it.pan) * 0.45) * scale;
+      const [ax, ay] = side[Math.floor(m / 2) - 2], [dx, dy] = side[Math.floor(m / 2) + 2];
+      ctx.fillStyle = C.vellum; ctx.strokeStyle = sing ? C.gilt : C.ink; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx + mid.nx * sgn * len, by + mid.ny * sgn * len); ctx.lineTo(dx, dy); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  });
+}
+
+function frame() {
+  const t = q.has("t") ? Number(q.get("t")) : ((performance.now() / 1000) * 8000) % total;
+  drawSeal(t); drawMouths(t); drawCoil(t);
+  if (!q.has("t")) requestAnimationFrame(frame);
+}
+document.fonts.ready.then(frame);
+addEventListener("resize", () => q.has("t") && frame());
+</script>
+</body>
+</html>

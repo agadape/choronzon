@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BRAND = json.loads((ROOT / "config" / "brand.json").read_text(encoding="utf-8"))
 GENERATED = {"config/brand.json", "README.md", "package.json", "package-lock.json", "docs/brand/banner.svg"}
-HISTORICAL = ("docs/", "spikes/", "logs/", "ai/", "radio/", "topeng-spike/", "SPIKE_LOG.md")
+HISTORICAL = ("docs/", "spikes/", "logs/", "ai/", "radio/", "topeng-spike/", "SPIKE_LOG.md",
+              "design/explorations/")  # mockups: a frozen copy of brand.json, never served or built
 PRODUCT_DOCS = {"docs/README.template.md", "docs/lore.md", "docs/brand/banner.template.svg", "docs/brand/logo.svg",
                 "docs/brand/banner.svg"}  # inside docs/ but product copy
 HANDOFF = {"CLAUDE.md", "TODO.md"}                           # explain the rename, so they cite the old title

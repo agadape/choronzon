@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>folio</title>
+<!-- EXPLORATION ONLY: Google Fonts is loaded here to judge the type. The real site must self-host the OFL files. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --night: #0b0806;       /* the table the leaf lies on */
+    --vellum: #1d1710;      /* the leaf: black-stained vellum (the Black Hours) */
+    --ink: #ebdfc2;         /* primary lines and type */
+    --sepia: #8f7956;       /* secondary lines, hatching, quiet type */
+    --gilt: #d6a94c; --gilt-hi: #f8e1a0; --gilt-lo: #6f501c;   /* gold leaf: the sounding part, the true name */
+    --rubric: #c8431f;      /* minium red: one initial per page + exceptional states */
+    --serif: "IM Fell English", "Palatino Linotype", Palatino, Georgia, serif;
+    --caps: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
+    --sx: 50;               /* sheen position on gold leaf, follows the tilt */
+    --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='11'/><feColorMatrix values='0 0 0 0 0.92  0 0 0 0 0.82  0 0 0 0 0.62  0 0 0 0.09 0'/></filter><rect width='260' height='260' filter='url(%23n)'/></svg>");
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--night); color: var(--ink); }
+  body { font: 17px/1.5 var(--serif); overflow-x: hidden; min-height: 100vh;
+         background: radial-gradient(ellipse at 50% 45%, #1a130c 0%, var(--night) 65%), var(--night); }
+  button { font: 15px var(--caps); letter-spacing: 0.12em; color: var(--ink); background: transparent; border: 1px solid var(--sepia);
+           padding: 8px 16px; cursor: pointer; border-radius: 1px; }
+  button:hover { border-color: var(--ink); }
+  .caps { font-family: var(--caps); letter-spacing: 0.14em; }
+  .quiet { color: var(--sepia); }
+  .gilt { background: linear-gradient(100deg, var(--gilt-lo) 0%, var(--gilt) 28%, var(--gilt-hi) calc(var(--sx) * 1%), var(--gilt) calc(var(--sx) * 1% + 16%), var(--gilt-lo) 100%);
+          -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: clamp(24px, 3vw, 56px);
+          align-items: center; min-height: 100vh; padding: 3vh clamp(16px, 3vw, 48px); }
+  .gloss { max-width: 30ch; font-size: 17px; }
+  .gloss.left { justify-self: end; text-align: right; }
+  .gloss .lede::first-letter { font-size: 1.6em; line-height: 1; color: var(--rubric); }
+  .gloss .lede { font-size: 19px; line-height: 1.55; margin: 0; }
+  .gloss .privacy { font-style: italic; color: var(--sepia); margin-top: 22px; font-size: 16px; }
+  .gloss dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; margin: 0; font-size: 18px; }
+  .gloss dt { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.1em; text-align: right; font-size: 15px; padding-top: 2px; }
+  .gloss dd { margin: 0; }
+  .gloss .controls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+  .gloss .note { margin-top: 18px; font-style: italic; color: var(--ink); min-height: 4.5em; font-size: 16px; }
+
+  .scene { perspective: 1700px; }
+  .leaf { position: relative; transform-style: preserve-3d; width: var(--W); height: var(--H); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+          filter: drop-shadow(0 26px 34px rgba(0, 0, 0, 0.7)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6)); }
+  .verso { transform: rotateY(180deg); }
+  .part { position: absolute; inset: 0; background: var(--grain),
+          radial-gradient(ellipse at 50% 40%, #241c13 0%, var(--vellum) 60%, #130e09 100%); }
+  .holes { position: absolute; left: 14px; right: 14px; height: 8px; top: calc(var(--cut) - 4px);
+           background: radial-gradient(circle, var(--night) 0 2.6px, transparent 3.1px) 0 0 / 14px 8px repeat-x; }
+  .topc { display: flex; flex-direction: column; align-items: center; text-align: center;
+          padding: calc(var(--H) * 0.035) calc(var(--W) * 0.07) 0; height: calc(var(--cut) - 10px); }
+  .over { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.24em; font-size: 13px; }
+  h1 { font-weight: 400; margin: 2px 0 0; font-size: clamp(30px, calc(var(--W) * 0.1), 62px); line-height: 1; letter-spacing: 0.03em; }
+  h1::first-letter { color: var(--rubric); }
+  .tagline { font-style: italic; color: var(--sepia); font-size: clamp(14px, calc(var(--W) * 0.032), 19px); margin-top: 4px; }
+  .sealbox { flex: 1; width: 100%; min-height: 0; display: grid; place-items: center; margin: 6px 0; }
+  .sealbox canvas { display: block; }
+  #bodycv { position: absolute; left: 0; top: 0; display: none; }
+  .topc { position: relative; }
+  body.full #bodycv { display: block; }
+  body.full #seal { visibility: hidden; }
+  body.full .topc > :not(.sealbox) { text-shadow: 0 0 6px var(--vellum), 0 0 14px var(--vellum), 0 0 22px var(--vellum); }
+  .switch { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 26px; }
+  .switch button { padding: 5px 10px; font-size: 13px; }
+  .switch button.on { border-color: var(--gilt); color: var(--gilt); }
+  .tally { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.12em; font-size: 14px; }
+  .listen { margin: 10px 0 0; border-color: var(--gilt); padding: 9px 30px; font-size: 16px; }
+  .listen.on { background: var(--gilt); color: var(--vellum); }
+  .stub-content { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--H) - var(--cut));
+                  display: grid; place-content: center; text-align: center; gap: 2px; padding: 6px 16px 0; }
+  .stub-content .k { font-family: var(--caps); color: var(--rubric); letter-spacing: 0.3em; font-size: 12px; }
+  .stub-content .tn { font-family: var(--caps); font-size: clamp(18px, calc(var(--W) * 0.05), 28px); letter-spacing: 0.16em; }
+  .stub-content .sm { color: var(--sepia); font-size: 14px; }
+  .stub { cursor: grab; touch-action: none; }
+  .stub:active { cursor: grabbing; }
+
+  .verso .part { padding: calc(var(--H) * 0.06) calc(var(--W) * 0.09); display: flex; flex-direction: column; gap: 14px; }
+  .verso h2 { font-weight: 400; margin: 0; font-size: 34px; }
+  .verso h2::first-letter { color: var(--rubric); }
+  .verso p { margin: 0; }
+  .hash { display: flex; flex-wrap: wrap; gap: 2px 12px; font-family: var(--caps); letter-spacing: 0.08em; font-size: 17px; }
+  .verso .links { display: flex; gap: 18px; flex-wrap: wrap; font-style: italic; }
+  .verso a { color: var(--ink); text-decoration-color: var(--sepia); text-underline-offset: 3px; }
+
+  @media (max-width: 1000px) {
+    .page { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 28px; padding: 18px 16px 40px; }
+    .scene { order: 0; } .gloss.left { order: 1; } .gloss.right { order: 2; }
+    .gloss, .gloss.left { justify-self: stretch; text-align: left; max-width: 60ch; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <aside class="gloss left">
+    <p class="lede" id="lede"></p>
+    <p class="privacy">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</p>
+  </aside>
+
+  <div class="scene"><div class="leaf" id="leaf">
+    <section class="face recto">
+      <div class="part top" id="top"><canvas id="bodycv"></canvas><div class="topc">
+        <div class="over" id="over"></div>
+        <h1 id="name"></h1>
+        <div class="tagline" id="tagline"></div>
+        <div class="sealbox" id="sealbox"><canvas id="seal"></canvas></div>
+        <div class="tally" id="tally"></div>
+        <button class="listen" id="listen">Listen</button>
+        </div><div class="holes"></div>
+      </div>
+      <div class="part stub" id="stub">
+        <div class="holes"></div>
+        <div class="stub-content">
+          <div class="k">witness · tear along the line</div>
+          <div class="tn">it is now called <span class="gilt" id="tn"></span></div>
+          <div class="sm" id="stubline"></div>
+        </div>
+      </div>
+    </section>
+    <section class="face verso">
+      <div class="part" id="versopart">
+        <div class="over">colophon</div>
+        <h2>How this leaf was made</h2>
+        <p id="colophon"></p>
+        <div><div class="over">render hash</div><div class="hash" id="rh"></div></div>
+        <div><div class="over">score hash</div><div class="hash" id="sh"></div></div>
+        <p class="quiet" id="pins"></p>
+        <div class="links"><a href="#">how to verify</a><a href="#" id="blocklink">this block on ZecBlock</a><a href="#">two evocations</a></div>
+        <p class="quiet" style="font-style: italic">A whisper may return to you. Whisper Back works at the installation: it reads the reply address from a wallet, never from this page.</p>
+      </div>
+    </section>
+  </div></div>
+
+  <aside class="gloss right">
+    <dl id="marg"></dl>
+    <div class="controls"><button id="flip">turn the leaf · F</button><button id="tear">tear the stub · T</button></div>
+    <div class="switch" id="switch"></div>
+    <div class="note" id="note"></div>
+  </aside>
+</div>
+<audio id="audio" src="../../out/mix.wav" preload="none"></audio>
+<script src="brand-sample.js"></script>
+<script src="score-sample.js"></script>
+<script src="seal.js"></script>
+<script src="bodies.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const q = new URLSearchParams(location.search);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+
+// the true name (copy of web/name.js)
+function trueName(h) {
+  const ON = ["", "K", "T", "R", "N", "M", "S", "Z", "ZH", "KH", "TH", "V", "L", "D", "G", "SH"], NU = ["A", "E", "I", "O", "U", "AI", "OR", "UN"], CO = ["", "", "N", "R", "TH", "L", "M", "S"];
+  const b = []; for (let i = 0; i < 32; i++) b.push(parseInt(h.slice(2 * i, 2 * i + 2), 16));
+  const count = 3 + (b[0] & 1), breath = 1 + ((b[0] >> 1) % (count - 1)); let name = "";
+  for (let i = 0; i < count; i++) { const x = b[1 + 2 * i], y = b[2 + 2 * i]; let s = ON[x >> 4] + NU[x & 7]; if (i === count - 1) s += CO[y & 7]; if (i === breath) name += "'"; name += s; }
+  return name;
+}
+const bytes = (h) => Array.from({ length: 32 }, (_, i) => parseInt(h.slice(2 * i, 2 * i + 2), 16));
+const RB = bytes(SCORE.render_hash), SB = bytes(SCORE.score_hash);
+
+// ---- text -----------------------------------------------------------------------------------------------------
+$("name").textContent = BRAND.name; document.title = BRAND.name;
+$("tagline").textContent = BRAND.tagline; $("lede").textContent = BRAND.one_liner;
+$("over").textContent = `evoked at height ${fmt(SCORE.as_of_height)}`;
+const forged = SCORE.skipped.filter((s) => s.reason === "forged-conductor").length;
+const silenced = SCORE.skipped.filter((s) => s.reason === "flagged").length;
+const godLines = SCORE.offerings.filter((o) => o.conductor).length;
+$("tally").textContent = `${SCORE.offerings.length} offerings · ${forged} refused · ${silenced} silenced`;
+$("tn").textContent = trueName(SCORE.render_hash);
+const blocks = (h) => h.match(/.{8}/g);
+$("stubline").textContent = `height ${fmt(SCORE.as_of_height)} · ${blocks(SCORE.render_hash)[0]} … ${blocks(SCORE.render_hash)[7]}`;
+for (const [id, h] of [["rh", SCORE.render_hash], ["sh", SCORE.score_hash]]) $(id).innerHTML = blocks(h).map((b) => `<span>${b}</span>`).join("");
+$("colophon").textContent = `Evoked from the public viewing key at height ${fmt(SCORE.as_of_height)}. Anyone holding the key re-renders the whole work and gets these same two hashes: the score from chain data alone, the render from the score, the pinned decoder and the composer.`;
+$("pins").textContent = `composer ${SCORE.composer} · codec2 ${SCORE.codec2_tag} · espeak-ng ${SCORE.espeak_ng} · sox ${SCORE.sox}`;
+$("marg").innerHTML = [["offerings", SCORE.offerings.length], ["the god's own", godLines], ["refused", forged], ["silenced", silenced], ["height", fmt(SCORE.as_of_height)]]
+  .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+
+// ---- geometry: leaf size, deckled edges, the cut (from the render hash) ------------------------------------------
+const leaf = $("leaf"), topEl = $("top"), stub = $("stub"), verso = $("versopart");
+let W = 0, H = 0, CUT = 0, deckle = null;
+function layout() {
+  const narrow = innerWidth <= 1000;
+  W = narrow ? Math.min(innerWidth - 32, 520) : Math.round(Math.min(innerHeight * 0.94, 900) * 0.66);
+  H = narrow ? Math.round(W * 1.6) : Math.round(W / 0.66);
+  CUT = H - (narrow ? 104 : 124);
+  leaf.style.setProperty("--W", W + "px"); leaf.style.setProperty("--H", H + "px"); leaf.style.setProperty("--cut", CUT + "px");
+  // outer deckle: small inward offsets from the score hash, so every edge is irregular but reproducible
+  const d = (i) => (SB[i % 32] / 255) * 2.4;
+  const edge = (n, f) => Array.from({ length: n + 1 }, (_, i) => f(i / n, d(i * 7 + n)));
+  deckle = {
+    top: edge(24, (u, o) => [u * W, o]),
+    right: (y0, y1) => edge(16, (u, o) => [W - o, y0 + (y1 - y0) * u]),
+    bottom: edge(24, (u, o) => [W - u * W, H - o]),
+    left: (y0, y1) => edge(16, (u, o) => [o, y0 + (y1 - y0) * u]),
+  };
+  // the cut: 32 fibres, one per render-hash byte, with finer score-hash fibres between them
+  const amp = 5, cut = [];
+  for (let i = 0; i <= 64; i++) {
+    const main = i % 2 === 0, b = main ? RB[(i / 2) % 32] : SB[(i - 1) / 2 % 32];
+    cut.push([(i / 64) * W, CUT + (b / 255 - 0.5) * 2 * (main ? amp : amp * 0.45)]);
+  }
+  deckle.cut = cut;
+  const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(",")})`;
+  const topPts = [...deckle.top, ...deckle.right(0, cut[64][1]), ...[...cut].reverse(), ...deckle.left(cut[0][1], 0).slice(0)];
+  const stubPts = [...cut, ...deckle.right(cut[64][1], H), ...deckle.bottom, ...deckle.left(H, cut[0][1])];
+  topEl.style.clipPath = poly(topPts); stub.style.clipPath = poly(stubPts);
+  // the verso is the mirror image; once the stub is gone it loses the stub too
+  const mirror = (pts) => pts.map(([x, y]) => [W - x, y]);
+  deckle.versoWhole = poly(mirror([...deckle.top, ...deckle.right(0, H), ...deckle.bottom, ...deckle.left(H, 0)]));
+  deckle.versoTorn = poly(mirror(topPts));
+  verso.style.clipPath = gone ? deckle.versoTorn : deckle.versoWhole;
+  stub.style.transformOrigin = `${W}px ${cut[64][1]}px`;
+  sizeSeal();
+}
+
+// ---- the seal ------------------------------------------------------------------------------------------------------
+const body = Seal.build(SCORE), cv = $("seal"), ctx = cv.getContext("2d");
+const C = { ink: css("--ink"), sepia: css("--sepia"), gilt: css("--gilt"), deep: "#070504", caps: css("--caps") };
+let S = 0, KIND = q.get("body") || "eye";
+const bodies = Bodies.build(SCORE), bcv = $("bodycv"), bctx = bcv.getContext("2d");
+C.vellum = css("--vellum"); C.rubric = css("--rubric");
+let BW = 0, BH = 0, BC = [0, 0, 0];
+function setKind(k) {
+  KIND = k; document.body.classList.toggle("full", k !== "seal");
+  for (const b of $("switch").children) b.classList.toggle("on", b.dataset.k === k);
+}
+$("switch").innerHTML = [["seal", "the seal"], ["sun", "the black sun"], ["eye", "the eye"], ["throat", "the throat"]]
+  .map(([k, l]) => `<button data-k="${k}">${l}</button>`).join("");
+for (const b of $("switch").children) b.onclick = () => setKind(b.dataset.k);
+function sizeSeal() {
+  // full-bleed canvas over the whole upper part of the leaf; the body is centred on the seal box
+  const dpr = devicePixelRatio || 1; BW = W; BH = CUT + 8;
+  bcv.style.width = BW + "px"; bcv.style.height = BH + "px"; bcv.width = BW * dpr; bcv.height = BH * dpr;
+  bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const sb = $("sealbox");
+  BC = [sb.offsetLeft + sb.offsetWidth / 2, sb.offsetTop + sb.offsetHeight / 2, Math.min(sb.clientWidth, sb.clientHeight) / 2];
+  S = Math.floor(Math.min(sb.clientWidth, sb.clientHeight));
+  cv.style.width = cv.style.height = S + "px"; cv.width = cv.height = S * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+// ---- listening: the pre-mixed buffer only; the seal gilds the cells whose voices are sounding -------------------------
+const audio = $("audio");
+$("listen").onclick = () => { if (audio.paused) audio.play().catch(() => {}); else audio.pause(); };
+audio.onplay = () => $("listen").classList.add("on"); audio.onpause = () => $("listen").classList.remove("on");
+
+// ---- tilt, turn, tear --------------------------------------------------------------------------------------------
+let tx = 0, ty = 0, cx = 0, cy = 0, flip = q.has("verso") ? 1 : 0, fl = flip, f = Number(q.get("tear") || 0), gone = false, fall = null;
+const hover = matchMedia("(hover: hover)").matches;
+addEventListener("pointermove", (e) => { if (!hover || dragging) return; tx = (e.clientX / innerWidth - 0.5); ty = (e.clientY / innerHeight - 0.5); });
+const turn = () => { flip = 1 - flip; };
+$("flip").onclick = turn; leaf.ondblclick = turn;
+let dragging = null;
+stub.addEventListener("pointerdown", (e) => { if (gone || fall) return; dragging = { y: e.clientY, f }; stub.setPointerCapture(e.pointerId); });
+stub.addEventListener("pointermove", (e) => { if (dragging) f = Math.max(f, Math.min(1, dragging.f + (e.clientY - dragging.y) / 150)); });
+stub.addEventListener("pointerup", () => { dragging = null; });
+const tearAll = () => { if (!gone && !fall) { const go = () => { f = Math.min(1, f + 0.035); if (f < 1) requestAnimationFrame(go); }; go(); } };
+$("tear").onclick = tearAll;
+function reprint() {
+  gone = false; fall = null; f = 0; stub.style.display = ""; stub.style.opacity = 1; verso.style.clipPath = deckle.versoWhole;
+  $("tear").textContent = "tear the stub · T"; $("note").textContent = "";
+}
+addEventListener("keydown", (e) => {
+  if (e.key === "f" || e.key === "F") turn();
+  if (e.key === "t" || e.key === "T") (gone ? reprint() : tearAll());
+  if (e.key === "r" || e.key === "R") reprint();
+});
+$("tear").addEventListener("click", () => { if (gone) reprint(); });
+
+function frame(now) {
+  // easing toward the pointer (interaction only; the drawing below never depends on it)
+  cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08; fl += (flip - fl) * 0.09;
+  leaf.style.transform = `rotateX(${(-cy * 9).toFixed(2)}deg) rotateY(${(cx * 12 + fl * 180).toFixed(2)}deg)`;
+  document.documentElement.style.setProperty("--sx", (50 + cx * 90).toFixed(1));
+  // the tear: fibres snap left to right; the stub hinges on the last fibres still holding
+  if (!gone) {
+    if (f >= 1 && !fall) fall = { t0: now, dir: RB[5] & 1 ? 1 : -1 };
+    if (fall) {
+      const s = (now - fall.t0) / 1000;
+      const y = 40 * s + 900 * s * s, x = fall.dir * 60 * s, r = -4 - fall.dir * (30 * s + 40 * s * s);
+      stub.style.transform = `translate(${x}px, ${y}px) rotate(${r}deg)`;
+      stub.style.opacity = Math.max(0, 1 - s / 1.3);
+      if (s > 1.3) {
+        gone = true; stub.style.display = "none"; verso.style.clipPath = deckle.versoTorn;
+        $("tear").textContent = "reprint the stub · R";
+        $("note").textContent = "Torn along the render hash: every jag of this edge is one of its bytes. A stub from any other evocation of this god fits this leaf exactly; a stub from a different god does not.";
+      }
+    } else stub.style.transform = `rotate(${(-f * 4.5).toFixed(2)}deg) translateY(${(f * 3).toFixed(2)}px)`;
+  }
+  const t = !audio.paused ? audio.currentTime * 8000 : q.has("t") ? Number(q.get("t")) : -1;
+  if (KIND === "seal") Seal.draw(ctx, body, S, t, C);
+  else Bodies.draw(bctx, bodies, BW, BH, BC[0], BC[1], BC[2], t, C, KIND, { gx: cx * 2, gy: cy * 2 });
+  requestAnimationFrame(frame);
+}
+addEventListener("resize", layout);
+document.fonts.ready.then(() => { setKind(KIND); layout(); requestAnimationFrame(frame); });
+</script>
+</body>
+</html>

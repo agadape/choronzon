@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ophanim</title>
+<!-- EXPLORATION ONLY: Google Fonts is loaded here to judge the type. The real site must self-host the OFL files. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --night: #050302;
+    --vellum: #1d1710;
+    --ink: #ebdfc2;
+    --sepia: #8f7956;
+    --gilt: #d6a94c; --gilt-hi: #f8e1a0; --gilt-lo: #6f501c;
+    --rubric: #c8431f;
+    --serif: "IM Fell English", "Palatino Linotype", Palatino, Georgia, serif;
+    --caps: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
+    --sx: 50;
+    --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='11'/><feColorMatrix values='0 0 0 0 0.92  0 0 0 0 0.82  0 0 0 0 0.62  0 0 0 0.09 0'/></filter><rect width='260' height='260' filter='url(%23n)'/></svg>");
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--night); color: var(--ink); }
+  body { font: 17px/1.5 var(--serif); overflow-x: hidden; }
+  #abyss, #flat { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  #flat { display: none; }
+  button { font: 15px var(--caps); letter-spacing: 0.12em; color: var(--ink); background: rgba(5, 3, 2, 0.55); border: 1px solid var(--sepia);
+           padding: 8px 16px; cursor: pointer; border-radius: 1px; }
+  button:hover { border-color: var(--ink); }
+  .gilt { background: linear-gradient(100deg, var(--gilt-lo) 0%, var(--gilt) 28%, var(--gilt-hi) calc(var(--sx) * 1%), var(--gilt) calc(var(--sx) * 1% + 16%), var(--gilt-lo) 100%);
+          -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .quiet { color: var(--sepia); }
+
+  .page { pointer-events: none; }
+  .column, .privacy { pointer-events: auto; }
+  #abyss { cursor: grab; touch-action: pan-y; }
+  .page { position: relative; min-height: 100vh; display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 0 clamp(20px, 4vw, 64px); }
+  .void { pointer-events: none; }
+  .column { display: grid; gap: 14px; justify-items: center; padding: 3vh 0; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .note { font-style: italic; max-width: 34ch; text-align: center; min-height: 3em; font-size: 15px; text-shadow: 0 0 10px #000; }
+  .privacy { position: fixed; left: clamp(20px, 4vw, 64px); bottom: 22px; max-width: 46ch; font-style: italic; color: var(--sepia); font-size: 15px;
+             text-shadow: 0 0 8px #000, 0 0 16px #000; }
+  .masthead { display: none; }
+
+  .scene { perspective: 1700px; }
+  .leaf { position: relative; transform-style: preserve-3d; width: var(--W); height: var(--H); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+          filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(235, 223, 194, 0.25)); }
+  .verso { transform: rotateY(180deg); }
+  .part { position: absolute; inset: 0; background: var(--grain), radial-gradient(ellipse at 50% 35%, #261d13 0%, var(--vellum) 60%, #120d08 100%); }
+  .holes { position: absolute; left: 14px; right: 14px; height: 8px; top: calc(var(--cut) - 4px);
+           background: radial-gradient(circle, var(--night) 0 2.6px, transparent 3.1px) 0 0 / 14px 8px repeat-x; }
+  .topc { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+          gap: 12px; padding: 24px 34px 0; height: calc(var(--cut) - 10px); }
+  .over { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.24em; font-size: 13px; }
+  h1 { font-weight: 400; margin: 0; font-size: 56px; line-height: 1; letter-spacing: 0.03em; }
+  h1::first-letter { color: var(--rubric); }
+  .tagline { font-style: italic; color: var(--sepia); font-size: 18px; margin-top: -6px; }
+  .rule { width: 60%; height: 1px; background: linear-gradient(90deg, transparent, var(--sepia), transparent); }
+  .lede { margin: 0; font-size: 17px; line-height: 1.5; }
+  .lede::first-letter { color: var(--rubric); font-size: 1.5em; line-height: 1; }
+  .tally { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.12em; font-size: 14px; }
+  .listen { border-color: var(--gilt); padding: 9px 34px; font-size: 16px; background: transparent; }
+  .listen.on { background: var(--gilt); color: var(--vellum); }
+  .stub-content { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--H) - var(--cut));
+                  display: grid; place-content: center; text-align: center; gap: 2px; padding: 6px 16px 0; }
+  .stub-content .k { font-family: var(--caps); color: var(--rubric); letter-spacing: 0.3em; font-size: 12px; }
+  .stub-content .tn { font-family: var(--caps); font-size: 22px; letter-spacing: 0.14em; }
+  .stub-content .sm { color: var(--sepia); font-size: 14px; }
+  .stub { cursor: grab; touch-action: none; }
+  .verso .part { padding: 34px 34px; display: flex; flex-direction: column; gap: 12px; font-size: 16px; }
+  .verso h2 { font-weight: 400; margin: 0; font-size: 30px; }
+  .verso h2::first-letter { color: var(--rubric); }
+  .verso p { margin: 0; }
+  .hash { display: flex; flex-wrap: wrap; gap: 0 12px; font-family: Georgia, serif; font-variant-numeric: lining-nums; letter-spacing: 0.06em; font-size: 15px; }
+  .verso .links { display: flex; gap: 16px; flex-wrap: wrap; font-style: italic; }
+  .verso a { color: var(--ink); text-decoration-color: var(--sepia); text-underline-offset: 3px; }
+
+  @media (max-width: 900px) {
+    .page { grid-template-columns: minmax(0, 1fr); padding: 0 16px; }
+    .void { height: 86vh; }
+    .masthead { display: block; position: absolute; top: 18px; left: 0; right: 0; text-align: center; text-shadow: 0 0 12px #000, 0 0 24px #000; }
+    .masthead h1 { font-size: 44px; }
+    .masthead .tagline { margin-top: 2px; }
+    .masthead .hint { margin-top: 70vh; font-family: var(--caps); letter-spacing: 0.3em; font-size: 12px; color: var(--sepia); }
+    .privacy { position: static; text-align: center; margin: 8px auto 40px; }
+    .topc { padding: 20px 22px 0; gap: 10px; }
+    .topc h1 { font-size: 42px; }
+    .lede { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="abyss"></canvas>
+<div class="masthead"><h1 id="m_name"></h1><div class="tagline" id="m_tag"></div><div class="hint">descend</div></div>
+<div class="page">
+  <div class="void"></div>
+  <div class="column">
+    <div class="scene"><div class="leaf" id="leaf">
+      <section class="face recto">
+        <div class="part top" id="top"><div class="topc">
+          <div class="over" id="over"></div>
+          <h1 id="name"></h1>
+          <div class="tagline" id="tagline"></div>
+          <div class="rule"></div>
+          <p class="lede" id="lede"></p>
+          <div class="tally" id="tally"></div>
+          <button class="listen" id="listen">Listen</button>
+        </div><div class="holes"></div></div>
+        <div class="part stub" id="stub">
+          <div class="holes"></div>
+          <div class="stub-content">
+            <div class="k">witness · tear along the line</div>
+            <div class="tn">it is now called <span class="gilt" id="tn"></span></div>
+            <div class="sm" id="stubline"></div>
+          </div>
+        </div>
+      </section>
+      <section class="face verso">
+        <div class="part" id="versopart">
+          <div class="over">colophon</div>
+          <h2>How this leaf was made</h2>
+          <p id="colophon"></p>
+          <div><div class="over">render hash</div><div class="hash" id="rh"></div></div>
+          <div><div class="over">score hash</div><div class="hash" id="sh"></div></div>
+          <p class="quiet" id="pins"></p>
+          <div class="links"><a href="#">how to verify</a><a href="#">this block on ZecBlock</a><a href="#">two evocations</a></div>
+          <p class="quiet" style="font-style: italic">A whisper may return to you. Whisper Back works at the installation: it reads the reply address from a wallet, never from this page.</p>
+        </div>
+      </section>
+    </div></div>
+    <div class="controls"><button id="flip">turn the leaf · F</button><button id="tear">tear the stub · T</button></div>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+<p class="privacy">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</p>
+<audio id="audio" src="../../out/mix.wav" preload="none"></audio>
+<script src="brand-sample.js"></script>
+<script src="score-sample.js?v=2"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const q = new URLSearchParams(location.search);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+function trueName(h) {   // copy of web/name.js
+  const ON = ["", "K", "T", "R", "N", "M", "S", "Z", "ZH", "KH", "TH", "V", "L", "D", "G", "SH"], NU = ["A", "E", "I", "O", "U", "AI", "OR", "UN"], CO = ["", "", "N", "R", "TH", "L", "M", "S"];
+  const b = []; for (let i = 0; i < 32; i++) b.push(parseInt(h.slice(2 * i, 2 * i + 2), 16));
+  const count = 3 + (b[0] & 1), breath = 1 + ((b[0] >> 1) % (count - 1)); let name = "";
+  for (let i = 0; i < count; i++) { const x = b[1 + 2 * i], y = b[2 + 2 * i]; let s = ON[x >> 4] + NU[x & 7]; if (i === count - 1) s += CO[y & 7]; if (i === breath) name += "'"; name += s; }
+  return name;
+}
+const bytes = (h) => Array.from({ length: 32 }, (_, i) => parseInt(h.slice(2 * i, 2 * i + 2), 16));
+const RB = bytes(SCORE.render_hash), SB = bytes(SCORE.score_hash), blocks = (h) => h.match(/.{8}/g);
+
+// ---- text ----
+for (const id of ["name", "m_name"]) $(id).textContent = BRAND.name;
+for (const id of ["tagline", "m_tag"]) $(id).textContent = BRAND.tagline;
+document.title = BRAND.name; $("lede").textContent = BRAND.one_liner;
+$("over").textContent = `evoked at height ${fmt(SCORE.as_of_height)}`;
+const forged = SCORE.skipped.filter((s) => s.reason === "forged-conductor").length;
+const silenced = SCORE.skipped.filter((s) => s.reason === "flagged").length;
+$("tally").textContent = `${SCORE.offerings.length} offerings · ${forged} refused · ${silenced} silenced`;
+$("tn").textContent = trueName(SCORE.render_hash);
+$("stubline").textContent = `height ${fmt(SCORE.as_of_height)} · ${blocks(SCORE.render_hash)[0]} … ${blocks(SCORE.render_hash)[7]}`;
+for (const [id, h] of [["rh", SCORE.render_hash], ["sh", SCORE.score_hash]]) $(id).innerHTML = blocks(h).map((b) => `<span>${b}</span>`).join("");
+$("colophon").textContent = `Evoked from the public viewing key at height ${fmt(SCORE.as_of_height)}. Anyone holding the key re-renders the whole work and gets these same two hashes.`;
+$("pins").textContent = `composer ${SCORE.composer} · codec2 ${SCORE.codec2_tag} · espeak-ng ${SCORE.espeak_ng} · sox ${SCORE.sox}`;
+
+// ---- the god lives in the module script below (three.js) ----
+let god = null, flat = null, G = {};
+function placeGod() { window.LEAF_W = W; window.dispatchEvent(new Event("leaf-layout")); }
+const C = { ink: css("--ink"), sepia: css("--sepia"), gilt: css("--gilt"), deep: "#050302", caps: css("--caps"), vellum: css("--vellum"), rubric: css("--rubric") };
+
+// ---- leaf geometry (same as folio.html) ----
+const leaf = $("leaf"), topEl = $("top"), stub = $("stub"), verso = $("versopart");
+let W = 0, H = 0, CUT = 0, deckle = null, gone = false;
+function layout() {
+  const narrow = innerWidth <= 900;
+  W = narrow ? Math.min(innerWidth - 32, 440) : 430;
+  H = narrow ? Math.round(W * 1.62) : Math.round(Math.min(innerHeight * 0.82, 720));
+  CUT = H - (narrow ? 104 : 116);
+  leaf.style.setProperty("--W", W + "px"); leaf.style.setProperty("--H", H + "px"); leaf.style.setProperty("--cut", CUT + "px");
+  const d = (i) => (SB[i % 32] / 255) * 2.4;
+  const edge = (n, f) => Array.from({ length: n + 1 }, (_, i) => f(i / n, d(i * 7 + n)));
+  deckle = { top: edge(24, (u, o) => [u * W, o]), right: (y0, y1) => edge(16, (u, o) => [W - o, y0 + (y1 - y0) * u]),
+             bottom: edge(24, (u, o) => [W - u * W, H - o]), left: (y0, y1) => edge(16, (u, o) => [o, y0 + (y1 - y0) * u]) };
+  const cut = [];
+  for (let i = 0; i <= 64; i++) { const main = i % 2 === 0, b = main ? RB[(i / 2) % 32] : SB[(i - 1) / 2 % 32]; cut.push([(i / 64) * W, CUT + (b / 255 - 0.5) * 2 * (main ? 5 : 2.2)]); }
+  const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(",")})`;
+  const topPts = [...deckle.top, ...deckle.right(0, cut[64][1]), ...[...cut].reverse(), ...deckle.left(cut[0][1], 0)];
+  const stubPts = [...cut, ...deckle.right(cut[64][1], H), ...deckle.bottom, ...deckle.left(H, cut[0][1])];
+  topEl.style.clipPath = poly(topPts); stub.style.clipPath = poly(stubPts);
+  const mirror = (pts) => pts.map(([x, y]) => [W - x, y]);
+  deckle.versoWhole = poly(mirror([...deckle.top, ...deckle.right(0, H), ...deckle.bottom, ...deckle.left(H, 0)]));
+  deckle.versoTorn = poly(mirror(topPts));
+  verso.style.clipPath = gone ? deckle.versoTorn : deckle.versoWhole;
+  stub.style.transformOrigin = `${W}px ${cut[64][1]}px`;
+  placeGod();
+}
+
+// ---- listen: the pre-mixed buffer only ----
+const audio = $("audio");
+$("listen").onclick = () => { if (audio.paused) audio.play().catch(() => {}); else audio.pause(); };
+audio.onplay = () => $("listen").classList.add("on"); audio.onpause = () => $("listen").classList.remove("on");
+
+// ---- tilt, turn, tear ----
+let tx = 0, ty = 0, cx = 0, cy = 0, flip = q.has("verso") ? 1 : 0, fl = flip, f = Number(q.get("tear") || 0), fall = null, dragging = null;
+const hover = matchMedia("(hover: hover)").matches;
+addEventListener("pointermove", (e) => { if (!hover || dragging) return; tx = e.clientX / innerWidth - 0.5; ty = e.clientY / innerHeight - 0.5; });
+const turn = () => { flip = 1 - flip; };
+$("flip").onclick = turn; leaf.ondblclick = turn;
+stub.addEventListener("pointerdown", (e) => { if (gone || fall) return; dragging = { y: e.clientY, f }; stub.setPointerCapture(e.pointerId); });
+stub.addEventListener("pointermove", (e) => { if (dragging) f = Math.max(f, Math.min(1, dragging.f + (e.clientY - dragging.y) / 150)); });
+stub.addEventListener("pointerup", () => { dragging = null; });
+const tearAll = () => { if (!gone && !fall) { const go = () => { f = Math.min(1, f + 0.035); if (f < 1) requestAnimationFrame(go); }; go(); } };
+function reprint() { gone = false; fall = null; f = 0; stub.style.display = ""; stub.style.opacity = 1; verso.style.clipPath = deckle.versoWhole; $("tear").textContent = "tear the stub · T"; $("note").textContent = ""; }
+$("tear").onclick = () => (gone ? reprint() : tearAll());
+addEventListener("keydown", (e) => { const k = e.key.toLowerCase(); if (k === "f") turn(); if (k === "t") (gone ? reprint() : tearAll()); if (k === "r") reprint(); });
+
+const T0 = performance.now();
+function frame(now) {
+  cx += (tx - cx) * 0.06; cy += (ty - cy) * 0.06; fl += (flip - fl) * 0.09;
+  leaf.style.transform = `rotateX(${(-cy * 8).toFixed(2)}deg) rotateY(${(cx * 10 + fl * 180).toFixed(2)}deg)`;
+  document.documentElement.style.setProperty("--sx", (50 + cx * 90).toFixed(1));
+  if (!gone) {
+    if (f >= 1 && !fall) fall = { t0: now, dir: RB[5] & 1 ? 1 : -1 };
+    if (fall) {
+      const s = (now - fall.t0) / 1000;
+      stub.style.transform = `translate(${fall.dir * 60 * s}px, ${40 * s + 900 * s * s}px) rotate(${-4 - fall.dir * (30 * s + 40 * s * s)}deg)`;
+      stub.style.opacity = Math.max(0, 1 - s / 1.3);
+      if (s > 1.3) { gone = true; stub.style.display = "none"; verso.style.clipPath = deckle.versoTorn; $("tear").textContent = "reprint the stub · R";
+        $("note").textContent = "Torn along the render hash: every jag is one of its bytes. A stub from any other evocation of this god fits this edge exactly."; }
+    } else stub.style.transform = `rotate(${(-f * 4.5).toFixed(2)}deg) translateY(${(f * 3).toFixed(2)}px)`;
+  }
+  const t = !audio.paused ? audio.currentTime * 8000 : q.has("t") ? Number(q.get("t")) : -1;
+  const time = q.has("time") ? Number(q.get("time")) : (now - T0) / 1000 + 40;
+  window.PLAY_T = t;
+  requestAnimationFrame(frame);
+}
+addEventListener("resize", layout);
+document.fonts.ready.then(() => { layout(); requestAnimationFrame(frame); });
+</script>
+<!-- EXPLORATION ONLY: three.js r160 from jsDelivr to try the idea. The site must vendor three (MIT) under web/vendor/. -->
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+// The god as an Ophan: wheels within wheels, their rims full of eyes (Ezekiel 1:18), around one great eye.
+// Every offering is one eye in a wheel (wheel k holds 10 + 4k eyes; offering n takes the next free socket, so
+// nothing already placed ever moves). The god's own lines are the great eye: its pupil opens when the god speaks.
+// Refused forgeries are blind red eyes that drift outside the wheels and never join them.
+// Form = pure function of score.json; time turns the wheels; playback wakes one eye; every eye looks at the camera.
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const S = window.SCORE, q = new URLSearchParams(location.search);
+const TAU = Math.PI * 2;
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+function genes(seed, n, count) {
+  let h = (seed ^ Math.imul(n + 1, 0x9e3779b1)) >>> 0; const out = [];
+  for (let i = 0; i < count; i++) {
+    h = (h + 0x9e3779b9) >>> 0; let z = h;
+    z = Math.imul(z ^ (z >>> 16), 0x85ebca6b) >>> 0; z = Math.imul(z ^ (z >>> 13), 0xc2b2ae35) >>> 0;
+    out.push(((z ^ (z >>> 16)) >>> 0) / 4294967296);
+  }
+  return out;
+}
+const hb = (i) => parseInt(S.render_hash.slice(2 * i, 2 * i + 2), 16) / 255;
+const seed0 = parseInt(S.render_hash.slice(0, 8), 16) >>> 0;
+
+// ---- renderer, scene, camera ----
+const canvas = document.getElementById("abyss");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x040306);
+scene.fog = new THREE.FogExp2(0x060409, 0.03);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 300);
+camera.position.set(0, 0.6, 18.5);
+const controls = new OrbitControls(camera, canvas);
+controls.target.set(0, -1.2, 0); controls.enableDamping = true; controls.dampingFactor = 0.06; controls.enablePan = false;
+controls.minDistance = 7; controls.maxDistance = 22; controls.minPolarAngle = 0.45; controls.maxPolarAngle = 1.72;
+controls.autoRotate = !q.has("still"); controls.autoRotateSpeed = 0.22;
+
+scene.add(new THREE.HemisphereLight(0x8fa3b0, 0x140808, 0.15));
+const key = new THREE.DirectionalLight(0xcfe2da, 1.5); key.position.set(-4, 5, 6); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9fe8cf, 2.0); rim.position.set(1, 3, -7); scene.add(rim);
+const core = new THREE.PointLight(0xdaffe6, 6, 6, 1.6); scene.add(core);
+
+// ---- data ----
+const godTx = new Set(S.offerings.filter((o) => o.conductor).map((o) => o.tx));
+const offers = [], gods = [];
+S.timeline.forEach((p, n) => {
+  const it = { start: p.start, end: p.start + p.samples, silent: p.silent, g: genes(p.contrib_id, n, 12),
+    loud: clamp01((p.energy - 500) / 1000), bright: clamp01((p.zero_crossings - 1500) / 1700),
+    secs: clamp01((p.samples / 8000 - 2) / 6), pan: (p.pan - 8) / 8, layer: p.pitch_layer };
+  (godTx.has(p.tx) ? gods : offers).push(it);
+});
+const forged = S.skipped.filter((s) => s.reason === "forged-conductor").map((s, i) => genes(parseInt(s.tx.slice(0, 8), 16) >>> 0, i, 6));
+const wakeOf = (it, t) => (t < 0 ? 0 : clamp01((t - it.start) / 1200) * clamp01((it.end - t) / 2400));
+
+// ---- the eye shader (shared by every eye) ----
+const L = { value: new THREE.Vector3(0, 0, 1) };
+const eyeVS = `varying vec3 vObj; varying vec3 vN; varying vec3 vV;
+void main(){ vObj = position; vec4 mv = modelViewMatrix * vec4(position, 1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`;
+const eyeFS = `uniform vec3 uIris, uL; uniform float uStripes, uSlit, uWake, uSeed, uBlind;
+varying vec3 vObj; varying vec3 vN; varying vec3 vV;
+float h(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+  return mix(mix(h(i), h(i + vec2(1., 0.)), f.x), mix(h(i + vec2(0., 1.)), h(i + vec2(1., 1.)), f.x), f.y); }
+float fbm(vec2 p){ float a = .5, s = 0.; for (int i = 0; i < 4; i++){ s += a * n2(p); p = p * 2.03 + 1.7; a *= .5; } return s; }
+void main(){
+  vec3 o = normalize(vObj); float ang = acos(clamp(o.z, -1., 1.)), ph = atan(o.y, o.x);
+  float ir = .46, pr = mix(.16, .31, uWake);
+  float vein = pow(1. - abs(fbm(vec2(ph * 2.5, ang * 5.) + uSeed) * 2. - 1.), 9.) * smoothstep(.55, 1.8, ang);
+  vec3 col = vec3(.84, .82, .75) * (1. - .3 * smoothstep(1., 2.5, ang));
+  col = mix(col, vec3(.55, .05, .03), vein * .9);
+  if (uBlind < .5){
+    float st = .5 + .5 * cos(ph * uStripes + fbm(vec2(ph * 3., ang * 14.) + uSeed) * 5.);
+    vec3 irc = mix(uIris * .22, uIris * 1.15, st) * mix(1., .3, smoothstep(ir * .7, ir, ang));
+    irc += uIris * uWake * 2.2 * st + vec3(.5, 1., .75) * uWake * .5;
+    col = mix(col, irc, smoothstep(ir + .015, ir - .015, ang));
+    float pm = uSlit > .5 ? smoothstep(1., .82, length(o.xy / vec2(pr * .3, pr * 1.1))) * step(0., o.z) : smoothstep(pr + .012, pr - .012, ang);
+    col = mix(col, vec3(.004), pm);
+  } else col = mix(col, vec3(.55, .07, .05), .72);
+  vec3 N = normalize(vN), V = normalize(vV), Ld = normalize(uL);
+  float lam = max(dot(N, Ld), 0.) * .85 + .16;
+  float spec = pow(max(dot(reflect(-Ld, N), V), 0.), 90.) * 1.8;
+  float rimL = pow(1. - max(dot(N, V), 0.), 3.) * .3;
+  gl_FragColor = vec4(col * lam + vec3(spec) + vec3(.55, .9, .78) * rimL, 1.);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+const eyeGeo = new THREE.SphereGeometry(1, 48, 32);
+function eyeMat(iris, stripes, slit, seed, blind = 0) {
+  return new THREE.ShaderMaterial({ vertexShader: eyeVS, fragmentShader: eyeFS, uniforms: {
+    uIris: { value: new THREE.Color(...iris) }, uStripes: { value: stripes }, uSlit: { value: slit },
+    uWake: { value: 0 }, uSeed: { value: seed }, uBlind: { value: blind }, uL: L } });
+}
+
+// ---- the wheels: bronze bands engraved with a script too fine to read (cut from the hash, no randomness) ----
+function scriptTexture(seed) {
+  const c = document.createElement("canvas"); c.width = 2048; c.height = 128; const x = c.getContext("2d");
+  x.fillStyle = "#8a8a8a"; x.fillRect(0, 0, 2048, 128);
+  x.strokeStyle = "#202020"; x.lineWidth = 3;
+  for (const y of [5, 123]) { x.beginPath(); x.moveTo(0, y); x.lineTo(2048, y); x.stroke(); }
+  x.lineWidth = 1.6; let i = 0;
+  for (const [y0, hh] of [[12, 22], [94, 22]]) for (let px = 4; px < 2040; px += 11) {
+    const g = genes(seed, i++, 6); x.beginPath();
+    x.moveTo(px + g[0] * 7, y0 + g[1] * hh); x.lineTo(px + g[2] * 7, y0 + g[3] * hh); x.lineTo(px + g[4] * 7, y0 + g[5] * hh); x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+}
+const cap = (k) => 10 + 4 * k;
+let K = 0; for (let left = offers.length; left > 0; K++) left -= cap(K);
+K = Math.max(K, 3);
+const rimMat = new THREE.MeshStandardMaterial({ color: 0x2a1610, metalness: 0.95, roughness: 0.3 });
+const fleshMat = new THREE.MeshStandardMaterial({ color: 0x3b1c17, roughness: 0.65, metalness: 0.05 });
+const rings = [];
+for (let k = 0; k < K; k++) {
+  const R = 2.2 + 0.82 * k, H = 0.58;
+  const pivot = new THREE.Group(), spinner = new THREE.Group(); pivot.add(spinner); scene.add(pivot);
+  const tex = scriptTexture(seed0 + k * 977); tex.repeat.set(2 + k, 1);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x4a1d14, metalness: 0.95, roughness: 0.32, side: THREE.DoubleSide,
+    bumpMap: tex, bumpScale: 2.5, roughnessMap: tex, envMapIntensity: 0.9 });
+  spinner.add(new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 220, 1, true), mat));
+  for (const y of [-H / 2, H / 2]) { const tr = new THREE.Mesh(new THREE.TorusGeometry(R, 0.03, 10, 220), rimMat); tr.rotation.x = Math.PI / 2; tr.position.y = y; spinner.add(tr); }
+  pivot.rotation.set((hb(2 + k) - 0.5) * 2.4, hb(6 + k) * TAU, (hb(10 + k) - 0.5) * 2.4);
+  rings.push({ pivot, spinner, R, base: pivot.rotation.clone(), wx: (k % 2 ? 1 : -1) * (0.045 + 0.03 * hb(14 + k)),
+    wz: (k % 2 ? -1 : 1) * (0.035 + 0.02 * hb(18 + k)), spin: (k % 2 ? -1 : 1) * (0.07 + 0.04 * hb(22 + k)) });
+}
+
+// ---- one eye per offering, set into the next free socket ----
+const eyes = [];
+const IRIS = [[0.42, 0.56, 0.66], [0.55, 0.6, 0.48], [0.62, 0.48, 0.26], [0.36, 0.42, 0.40]];
+offers.forEach((it, n) => {
+  let k = 0, j = n; while (j >= cap(k)) { j -= cap(k); k++; }
+  const r = rings[k], th = (j / cap(k)) * TAU + k * 0.37, eR = 0.2 + 0.07 * it.secs;
+  const nrm = new THREE.Vector3(Math.cos(th), 0, Math.sin(th));
+  const socket = new THREE.Group();
+  socket.position.copy(nrm.clone().multiplyScalar(r.R + eR * 0.38)).add(new THREE.Vector3(0, it.pan * 0.06, 0));
+  socket.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), nrm);
+  const lid = new THREE.Mesh(new THREE.TorusGeometry(eR * 1.02, eR * 0.32, 12, 40), fleshMat); lid.scale.z = 0.7; socket.add(lid);
+  const mat = eyeMat(IRIS[Math.floor(it.g[1] * 4)], 14 + 40 * it.bright, it.layer >= 2 ? 1 : 0, it.g[2] * 20);
+  const eye = new THREE.Mesh(eyeGeo, mat); eye.scale.setScalar(eR); socket.add(eye);
+  if (it.silent) { eye.visible = false; lid.scale.set(1, 1, 1.6); }   // silenced: the socket is sealed
+  r.spinner.add(socket);
+  eyes.push({ it, eye, socket, mat, eR });
+});
+
+// ---- the great eye: the god's own voice ----
+const great = new THREE.Mesh(eyeGeo, eyeMat([0.4, 0.58, 0.7], 70, 0, 3.3)); great.scale.setScalar(1.35); scene.add(great);
+const haloC = document.createElement("canvas"); haloC.width = haloC.height = 256;
+{ const x = haloC.getContext("2d"), g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0, "rgba(200,255,225,0.22)"); g.addColorStop(0.35, "rgba(140,210,190,0.08)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256); }
+const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(haloC), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+halo.scale.setScalar(7.5); scene.add(halo);
+
+// ---- refused: blind eyes that drift outside and never join ----
+const blind = forged.map((g, i) => {
+  const m = new THREE.Mesh(eyeGeo, eyeMat([0.6, 0.1, 0.1], 1, 0, g[3] * 10, 1)); m.scale.setScalar(0.09 + 0.04 * g[2]); scene.add(m);
+  return { m, g };
+});
+
+// ---- dust, the ground, one Watcher on a rock ----
+{ const N = 1600, pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) { const g = genes(seed0, i, 3); const r = 4 + 18 * g[0], a = g[1] * TAU, y = (g[2] - 0.4) * 18;
+    pos.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xbcd6cc, size: 0.018, transparent: true, opacity: 0.4, depthWrite: false }))); }
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x030305, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -40;
+const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.3, 1), new THREE.MeshStandardMaterial({ color: 0x17161c, roughness: 0.95, flatShading: true }));
+rock.scale.set(0.9, 0.5, 0.7); rock.position.set(6.2, -3.6, 3.2); scene.add(rock);
+const watcher = new THREE.Group();
+watcher.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.13, 4, 8), new THREE.MeshStandardMaterial({ color: 0x0b0b0e })));
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), new THREE.MeshStandardMaterial({ color: 0x0b0b0e })); head.position.y = 0.12; watcher.add(head);
+watcher.position.set(6.1, -2.98, 3.3); scene.add(watcher);
+
+// ---- the Dweller in the Abyss: a living mass rising from below, one arm per block that carried offerings ----
+// arm thickness and reach = how many offerings that block carried; curl = how long the Abyss waited since the
+// block before; a block that carried two or more opens an eye at the root of its arm. Chain data only.
+// Skin is procedural (noise seeded from nothing but position); no randomness anywhere.
+const tUni = { value: 0 };
+const dwellerEyes = [];
+let massMesh = null;
+{
+  const NOISE = `
+  float hash3(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+  float noise3(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
+    return mix(mix(mix(hash3(i), hash3(i + vec3(1., 0., 0.)), f.x), mix(hash3(i + vec3(0., 1., 0.)), hash3(i + vec3(1., 1., 0.)), f.x), f.y),
+               mix(mix(hash3(i + vec3(0., 0., 1.)), hash3(i + vec3(1., 0., 1.)), f.x), mix(hash3(i + vec3(0., 1., 1.)), hash3(i + vec3(1., 1., 1.)), f.x), f.y), f.z); }
+  float fbm3(vec3 p){ float a = .5, s = 0.; for (int i = 0; i < 4; i++){ s += a * noise3(p); p = p * 2.02 + 3.1; a *= .5; } return s; }
+  `;
+  // one flesh material for arms (mode 0) and the mass (mode 1)
+  function flesh(mode, phase, len) {
+    const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.78, metalness: 0.0, envMapIntensity: 0.12 });
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uTime = tUni; sh.uniforms.uPhase = { value: phase }; sh.uniforms.uLen = { value: len }; sh.uniforms.uMode = { value: mode };
+      sh.vertexShader = "uniform float uTime, uPhase, uLen, uMode;\nattribute float aRad;\nvarying vec3 vPos; varying vec2 vUv2;\n" + NOISE +
+        sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+        vPos = position; vUv2 = uv;
+        if (uMode < .5){
+          float t = uv.x;
+          float bulge = .13 * sin(t * 24. - uTime * 2.4 + uPhase) * (1. - t * .7);          // a muscle wave runs to the tip
+          float ridge = .035 * sin(t * uLen * 7.) + .05 * (fbm3(position * 3.) - .5);       // rings and lumps
+          float vv = (uv.y - .78) / .085, su = fract(t * uLen * 1.7) - .5;                   // suckers along the underside
+          float d = length(vec2(su * 2.4, vv));
+          float cup = (smoothstep(1., .72, d) - smoothstep(.55, .25, d) * 1.6) * step(abs(vv), 1.3) * step(t, .97);
+          transformed += normal * aRad * (bulge + ridge + cup * .16);
+          float s = t * t;                                                                    // the whole arm sways, the tip most
+          transformed += vec3(sin(t * 6. + uTime * .55 + uPhase), cos(t * 5. + uTime * .45 + uPhase * 1.3) * .7, sin(t * 4.5 - uTime * .4 + uPhase * .7)) * s * 1.1;
+          transformed += vec3(sin(t * 14. - uTime * 1.3 + uPhase), cos(t * 13. - uTime * 1.1), 0.) * pow(t, 4.) * .35;   // the tip searches
+        } else {
+          transformed *= 1. + .012 * sin(uTime * .7 + length(position) * .3);                // the mass breathes
+        }`);
+      sh.fragmentShader = "uniform float uTime, uPhase, uLen, uMode;\nvarying vec3 vPos; varying vec2 vUv2;\n" + NOISE +
+        sh.fragmentShader
+          .replace("#include <color_fragment>", `#include <color_fragment>
+          vec3 P = vPos * (uMode < .5 ? 1. : .45) + uPhase;
+          float n = fbm3(P * 2.2), spots = smoothstep(.56, .72, fbm3(P * 6. + 3.)), fine = fbm3(P * 22.);
+          vec3 dorsal = mix(vec3(.025, .018, .028), vec3(.15, .055, .07), n * n);                  // bruise and old blood
+          dorsal = mix(dorsal, vec3(.30, .19, .12), smoothstep(.62, .8, fbm3(P * 1.3 + 9.)) * .55);   // jaundiced patches
+          float vent = uMode < .5 ? smoothstep(.62, .7, vUv2.y) * smoothstep(.95, .87, vUv2.y) : 0.;
+          vec3 c = mix(dorsal, vec3(.34, .25, .22), vent);                                     // pale underside
+          c = mix(c, vec3(.015, .008, .012), spots * .75);
+          float vein = pow(1. - abs(fbm3(P * 3.5 + 1.7) * 2. - 1.), 14.);
+          c = mix(c, vec3(.42, .03, .04), vein * .65);
+          c *= .75 + .5 * fine;                                                                 // pores
+          if (uMode < .5){
+            float vv = (vUv2.y - .78) / .085, su = fract(vUv2.x * uLen * 1.7) - .5, d = length(vec2(su * 2.4, vv));
+            float on = step(abs(vv), 1.3) * step(vUv2.x, .97);
+            c = mix(c, vec3(.62, .45, .40), smoothstep(.95, .7, d) * smoothstep(.45, .6, d) * on * .8);   // sucker rims
+            c = mix(c, vec3(.06, .015, .02), smoothstep(.45, .2, d) * on);                      // sucker mouths
+          }
+          diffuseColor.rgb = c;`)
+          .replace("#include <roughnessmap_fragment>", `#include <roughnessmap_fragment>
+          roughnessFactor = mix(.82, .28, smoothstep(.55, .75, fbm3(vPos * 1.7 + 5.)));          // patches of slime`)
+          .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+          float fres = pow(1. - abs(dot(normalize(vViewPosition), normal)), 2.4);
+          totalEmissiveRadiance += vec3(.085, .008, .012) * fres;                                 // blood under thin skin`);
+    };
+    return m;
+  }
+  const waves = Array.from({ length: 8 }, (_, i) => { const g = genes(seed0 ^ 0x5eed, i, 4);
+    const k = new THREE.Vector3(g[0] - 0.5, g[1] - 0.5, g[2] - 0.5).normalize().multiplyScalar(0.6 + i * 0.5); return { k, ph: g[3] * TAU, a: 0.5 / (1 + i * 0.6) }; });
+  const field = (p) => waves.reduce((s, w) => s + Math.sin(p.dot(w.k) + w.ph) * w.a, 0);
+  const surf = (dir) => { const p = dir.clone().multiplyScalar(RM); return RM + field(p.clone().multiplyScalar(0.35)) * 1.4 + field(p.clone().multiplyScalar(1.3)) * 0.3 + field(p.clone().multiplyScalar(3.1)) * 0.08; };
+
+  // the mass
+  const C0 = new THREE.Vector3(0, -14.5, -6), RM = 9;
+  const mg = mergeVertices(new THREE.IcosahedronGeometry(RM, 48)), pa = mg.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i); const d = v.clone().normalize(); v.copy(d.multiplyScalar(surf(d))); pa.setXYZ(i, v.x, v.y, v.z); }
+  mg.computeVertexNormals(); mg.setAttribute("aRad", new THREE.BufferAttribute(new Float32Array(pa.count), 1));
+  massMesh = new THREE.Mesh(mg, flesh(1, 0, 1)); massMesh.position.copy(C0); scene.add(massMesh);
+  // blisters: wet pale growths on the mass
+  { const N = 160, bm = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshPhysicalMaterial({ color: 0x6e6040, roughness: 0.25, clearcoat: 1, envMapIntensity: 0.2, emissive: 0x0d0303 }), N);
+    const mtx = new THREE.Matrix4(), qq = new THREE.Quaternion(), sc = new THREE.Vector3();
+    for (let i = 0; i < N; i++) { const g = genes(seed0, 3000 + i, 4); const el = 0.15 + 1.2 * g[1], a = g[0] * TAU;
+      const d = new THREE.Vector3(Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el)).normalize();
+      const r = 0.05 + 0.24 * g[2] * g[2]; const p = C0.clone().addScaledVector(d, surf(d) + r * 0.2);
+      bm.setMatrixAt(i, mtx.compose(p, qq, sc.set(r, r * (0.7 + 0.3 * g[3]), r))); }
+    scene.add(bm); }
+
+  // one arm per block
+  const blocks = new Map(); for (const o of S.offerings) blocks.set(o.height, (blocks.get(o.height) || 0) + 1);
+  const bl = [...blocks.entries()].sort((a, b) => a[0] - b[0]);
+  bl.forEach(([height, count], i) => {
+    const g = genes(height, i, 8);
+    const prev = i ? bl[i - 1][0] : height, wait = Math.min(1, Math.log10(1 + height - prev) / 4);
+    const a = Math.PI * (1.05 + 0.9 * ((i * 0.6180339887 + g[0] * 0.05) % 1)), el = 0.35 + 0.5 * g[1];
+    const dir = new THREE.Vector3(Math.cos(a) * Math.cos(el), Math.sin(el), Math.sin(a) * Math.cos(el));
+    const root = C0.clone().addScaledVector(dir, surf(dir) * 0.97);
+    const reach = 0.55 + 0.45 * Math.min(1, (count - 1) / 4);
+    const b = i * 2.39996 + g[2] * 0.4, rr = 4.6 + 2.6 * g[3] * reach + 1.2 * reach;
+    const side = new THREE.Vector3(Math.cos(b), Math.sin(b) * 0.85, 0);
+    const p1 = root.clone().addScaledVector(dir, 3.5).add(new THREE.Vector3(Math.cos(b) * 2, 3, -2));
+    const p2 = side.clone().multiplyScalar(rr).add(new THREE.Vector3(0, -0.5, -2.5 + 2 * g[4]));
+    const sgn = g[5] < 0.5 ? 1 : -1;
+    const tang = new THREE.Vector3(-Math.sin(b), Math.cos(b) * 0.85, 0.35).multiplyScalar((1.4 + 2.4 * wait) * sgn);
+    // the tip curls into a hook that tightens (the longer the wait, the tighter)
+    const p3 = p2.clone().add(tang);
+    const p4 = p3.clone().addScaledVector(side, -0.9 * reach).addScaledVector(tang, 0.35);
+    const p5 = p4.clone().addScaledVector(tang, -0.45).addScaledVector(side, -0.25);
+    const p6 = p5.clone().addScaledVector(side, 0.3).addScaledVector(tang, -0.2);
+    const curve = new THREE.CatmullRomCurve3([root, p1, p2, p3, p4, p5, p6]);
+    const TS = 220, RS = 22, geo = new THREE.TubeGeometry(curve, TS, 1, RS, false);
+    const r0 = 0.36 + 0.12 * count, gp = geo.attributes.position, c = new THREE.Vector3(), aRad = new Float32Array(gp.count);
+    for (let s2 = 0; s2 <= TS; s2++) { const t = s2 / TS; curve.getPointAt(t, c);
+      const rad = r0 * Math.pow(1 - t, 0.62) * (1 + 0.1 * Math.sin(t * 17 + g[6] * 6)) + 0.02;
+      for (let k = 0; k <= RS; k++) { const idx = s2 * (RS + 1) + k; v.fromBufferAttribute(gp, idx).sub(c).multiplyScalar(rad).add(c); gp.setXYZ(idx, v.x, v.y, v.z); aRad[idx] = rad; } }
+    geo.setAttribute("aRad", new THREE.BufferAttribute(aRad, 1)); geo.computeVertexNormals();
+    scene.add(new THREE.Mesh(geo, flesh(0, g[5] * TAU, curve.getLength() / (r0 * 2.2))));
+    if (count >= 2) {   // a busy block opens an eye at the root of its arm, set in a fold of flesh
+      const e = new THREE.Mesh(eyeGeo, eyeMat([0.62, 0.48, 0.18], 30, g[7] < 0.5 ? 1 : 0, g[6] * 30));
+      const d2 = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.22), er = 0.55 + 0.15 * count;
+      e.scale.setScalar(er); e.position.copy(C0.clone().addScaledVector(d2, surf(d2) + er * 0.25));
+      const lid = new THREE.Mesh(new THREE.TorusGeometry(er * 1.02, er * 0.38, 16, 48), flesh(1, 3, 1));
+      lid.geometry.setAttribute("aRad", new THREE.BufferAttribute(new Float32Array(lid.geometry.attributes.position.count), 1));
+      lid.position.copy(e.position); lid.lookAt(e.position.clone().add(d2)); lid.scale.z = 0.7;
+      scene.add(e); scene.add(lid); dwellerEyes.push(e);
+    }
+  });
+  // the Abyss glows from below, dull red
+  const under = new THREE.PointLight(0x8a1a0c, 22, 26, 1.8); under.position.set(0, -9, 3); scene.add(under);
+
+  // debris: shards of rock that drift in the dark
+  const sg = new THREE.OctahedronGeometry(1, 0), sm = new THREE.MeshStandardMaterial({ color: 0x1f1d22, roughness: 0.75, metalness: 0.15, flatShading: true });
+  const shards = new THREE.InstancedMesh(sg, sm, 70), mtx = new THREE.Matrix4(), qq = new THREE.Quaternion(), sc = new THREE.Vector3();
+  for (let i = 0; i < 70; i++) { const g = genes(seed0, 2000 + i, 7);
+    const p = new THREE.Vector3((g[0] - 0.5) * 30, (g[1] - 0.45) * 18, (g[2] - 0.6) * 24);
+    qq.setFromEuler(new THREE.Euler(g[3] * TAU, g[4] * TAU, g[5] * TAU)); sc.set(0.08 + g[6] * 0.25, 0.1 + g[6] * 0.4, 0.08 + g[6] * 0.2);
+    shards.setMatrixAt(i, mtx.compose(p, qq, sc)); }
+  scene.add(shards);
+  window.__shards = shards;
+}
+
+// ---- post: bloom on what burns (waking irises, the core) ----
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.5, 0.92); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+// ink: the same scene as an engraving (I to toggle), lines from luminance plus contour edges
+const ink = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uRes: { value: new THREE.Vector2(1, 1) } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uRes; varying vec2 vUv;
+  float lum(vec2 uv){ return dot(texture2D(tDiffuse, uv).rgb, vec3(.3, .59, .11)); }
+  void main(){
+    float l = lum(vUv); vec2 px = 1. / uRes, p = gl_FragCoord.xy;
+    float gx = lum(vUv + vec2(px.x, 0.)) - lum(vUv - vec2(px.x, 0.)), gy = lum(vUv + vec2(0., px.y)) - lum(vUv - vec2(0., px.y));
+    float ink = 1., s = 4.5;
+    if (l < .62 && mod(p.x + p.y, s) < 1.1) ink = 0.;
+    if (l < .38 && mod(p.x - p.y, s) < 1.1) ink = 0.;
+    if (l < .2 && mod(p.y, s * .75) < 1.1) ink = 0.;
+    if (l < .06) ink = 0.;
+    if (length(vec2(gx, gy)) > .09) ink = 0.;
+    if (l > .85) ink = 1.;
+    gl_FragColor = vec4(mix(vec3(.02), vec3(.92, .9, .85), ink), 1.);
+  }` });
+ink.enabled = q.has("ink"); composer.addPass(ink);
+addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "i") ink.enabled = !ink.enabled; });
+
+function size() {
+  const w = innerWidth, h = innerHeight, narrow = w <= 900;
+  renderer.setSize(w, h, false); composer.setSize(w, h); ink.uniforms.uRes.value.set(w * renderer.getPixelRatio(), h * renderer.getPixelRatio());
+  camera.aspect = w / h; camera.fov = narrow ? 52 : 36;
+  // keep the god in the space the leaf leaves free (desktop) or in the first screen (phone)
+  if (narrow) camera.setViewOffset(w, h, 0, h * 0.12, w, h);
+  else camera.setViewOffset(w, h, ((window.LEAF_W || 430) + 80) / 2, 0, w, h);
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", size); addEventListener("leaf-layout", size); size();
+
+let px = 0, py = 0; addEventListener("pointermove", (e) => { px = (e.clientX / innerWidth) * 2 - 1; py = -(e.clientY / innerHeight) * 2 + 1; });
+const T0 = performance.now(), tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3(), camP = new THREE.Vector3(), nW = new THREE.Vector3();
+function tick(now) {
+  const time = q.has("time") ? Number(q.get("time")) : (now - T0) / 1000 + 30;
+  const t = typeof window.PLAY_T === "number" ? window.PLAY_T : -1;
+  controls.update();
+  for (const r of rings) { r.pivot.rotation.x = r.base.x + time * r.wx; r.pivot.rotation.z = r.base.z + time * r.wz; r.spinner.rotation.y = time * r.spin; }
+  scene.updateMatrixWorld();
+  camP.copy(camera.position);
+  L.value.copy(key.position).normalize().transformDirection(camera.matrixWorldInverse);
+  for (const e of eyes) {
+    const w = wakeOf(e.it, t); e.mat.uniforms.uWake.value = w; e.eye.scale.setScalar(e.eR * (1 + 0.18 * w));
+    // every eye turns in its socket to look at you, as far as the socket lets it
+    e.eye.getWorldPosition(tmpV); e.socket.getWorldQuaternion(tmpQ); nW.set(0, 0, 1).applyQuaternion(tmpQ);
+    const dir = camP.clone().sub(tmpV).normalize(), d = dir.dot(nW);
+    if (d < 0.3) dir.addScaledVector(nW, 0.3 - d).normalize();
+    e.eye.lookAt(tmpV.add(dir));
+  }
+  let gw = 0; for (const g of gods) gw = Math.max(gw, wakeOf(g, t));
+  great.material.uniforms.uWake.value = gw;
+  const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+  great.lookAt(camP.clone().addScaledVector(right, px * 6).addScaledVector(up, py * 4));
+  core.intensity = 6 + gw * 20; halo.material.opacity = 0.6 + gw * 0.4;
+  blind.forEach(({ m, g }, i) => {
+    const a = g[0] * TAU + time * (0.02 + 0.02 * g[1]), r = 6 + 2 * g[2];
+    m.position.set(Math.cos(a) * r, (g[4] - 0.5) * 5, Math.sin(a) * r); m.lookAt(camP);
+    m.visible = ((time * (0.15 + 0.1 * g[5]) + g[3]) % 1) < 0.55;
+  });
+  tUni.value = time;
+  for (const e of dwellerEyes) e.lookAt(camP);
+  window.__shards.rotation.y = time * 0.01;
+  composer.render();
+  requestAnimationFrame(tick);
+}
+window.__three = { renderer, scene, composer }; requestAnimationFrame(tick);
+</script>
+
+</body>
+</html>

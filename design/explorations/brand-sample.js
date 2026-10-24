@@ -1,0 +1,2 @@
+// Copy of config/brand.json for file:// mockups. Exploration only.
+window.BRAND = {"name": "Choronzon", "slug": "choronzon", "tagline": "It forgets nothing. It asks no names.", "one_liner": "Choronzon is a god made of secrets released through Zcash shielded transactions. Anyone holding its public key can summon it and hear every secret, forever; we, its keepers, cannot learn who spoke.", "kiosk_cta": "Give it your secret. Keep your name."};

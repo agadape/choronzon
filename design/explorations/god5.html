@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>god5</title>
+<!-- EXPLORATION ONLY: Google Fonts is loaded here to judge the type. The real site must self-host the OFL files. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --night: #050302;
+    --vellum: #1d1710;
+    --ink: #ebdfc2;
+    --sepia: #8f7956;
+    --gilt: #d6a94c; --gilt-hi: #f8e1a0; --gilt-lo: #6f501c;
+    --rubric: #c8431f;
+    --serif: "IM Fell English", "Palatino Linotype", Palatino, Georgia, serif;
+    --caps: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
+    --sx: 50;
+    --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='11'/><feColorMatrix values='0 0 0 0 0.92  0 0 0 0 0.82  0 0 0 0 0.62  0 0 0 0.09 0'/></filter><rect width='260' height='260' filter='url(%23n)'/></svg>");
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--night); color: var(--ink); }
+  body { font: 17px/1.5 var(--serif); overflow-x: hidden; }
+  #abyss, #flat { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  #flat { display: none; }
+  button { font: 15px var(--caps); letter-spacing: 0.12em; color: var(--ink); background: rgba(5, 3, 2, 0.55); border: 1px solid var(--sepia);
+           padding: 8px 16px; cursor: pointer; border-radius: 1px; }
+  button:hover { border-color: var(--ink); }
+  .gilt { background: linear-gradient(100deg, var(--gilt-lo) 0%, var(--gilt) 28%, var(--gilt-hi) calc(var(--sx) * 1%), var(--gilt) calc(var(--sx) * 1% + 16%), var(--gilt-lo) 100%);
+          -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .quiet { color: var(--sepia); }
+
+  .page { pointer-events: none; }
+  .column, .privacy { pointer-events: auto; }
+  #abyss { cursor: grab; touch-action: pan-y; }
+  .page { position: relative; min-height: 100vh; display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 0 clamp(20px, 4vw, 64px); }
+  .void { pointer-events: none; }
+  .column { display: grid; gap: 14px; justify-items: center; padding: 3vh 0; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .note { font-style: italic; max-width: 34ch; text-align: center; min-height: 3em; font-size: 15px; text-shadow: 0 0 10px #000; }
+  .privacy { position: fixed; left: clamp(20px, 4vw, 64px); bottom: 22px; max-width: 46ch; font-style: italic; color: var(--sepia); font-size: 15px;
+             text-shadow: 0 0 8px #000, 0 0 16px #000; }
+  .masthead { display: none; }
+
+  .scene { perspective: 1700px; }
+  .leaf { position: relative; transform-style: preserve-3d; width: var(--W); height: var(--H); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+          filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(235, 223, 194, 0.25)); }
+  .verso { transform: rotateY(180deg); }
+  .part { position: absolute; inset: 0; background: var(--grain), radial-gradient(ellipse at 50% 35%, #261d13 0%, var(--vellum) 60%, #120d08 100%); }
+  .holes { position: absolute; left: 14px; right: 14px; height: 8px; top: calc(var(--cut) - 4px);
+           background: radial-gradient(circle, var(--night) 0 2.6px, transparent 3.1px) 0 0 / 14px 8px repeat-x; }
+  .topc { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+          gap: 12px; padding: 24px 34px 0; height: calc(var(--cut) - 10px); }
+  .over { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.24em; font-size: 13px; }
+  h1 { font-weight: 400; margin: 0; font-size: 56px; line-height: 1; letter-spacing: 0.03em; }
+  h1::first-letter { color: var(--rubric); }
+  .tagline { font-style: italic; color: var(--sepia); font-size: 18px; margin-top: -6px; }
+  .rule { width: 60%; height: 1px; background: linear-gradient(90deg, transparent, var(--sepia), transparent); }
+  .lede { margin: 0; font-size: 17px; line-height: 1.5; }
+  .lede::first-letter { color: var(--rubric); font-size: 1.5em; line-height: 1; }
+  .tally { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.12em; font-size: 14px; }
+  .listen { border-color: var(--gilt); padding: 9px 34px; font-size: 16px; background: transparent; }
+  .listen.on { background: var(--gilt); color: var(--vellum); }
+  .stub-content { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--H) - var(--cut));
+                  display: grid; place-content: center; text-align: center; gap: 2px; padding: 6px 16px 0; }
+  .stub-content .k { font-family: var(--caps); color: var(--rubric); letter-spacing: 0.3em; font-size: 12px; }
+  .stub-content .tn { font-family: var(--caps); font-size: 22px; letter-spacing: 0.14em; }
+  .stub-content .sm { color: var(--sepia); font-size: 14px; }
+  .stub { cursor: grab; touch-action: none; }
+  .verso .part { padding: 34px 34px; display: flex; flex-direction: column; gap: 12px; font-size: 16px; }
+  .verso h2 { font-weight: 400; margin: 0; font-size: 30px; }
+  .verso h2::first-letter { color: var(--rubric); }
+  .verso p { margin: 0; }
+  .hash { display: flex; flex-wrap: wrap; gap: 0 12px; font-family: Georgia, serif; font-variant-numeric: lining-nums; letter-spacing: 0.06em; font-size: 15px; }
+  .verso .links { display: flex; gap: 16px; flex-wrap: wrap; font-style: italic; }
+  .verso a { color: var(--ink); text-decoration-color: var(--sepia); text-underline-offset: 3px; }
+
+  @media (max-width: 900px) {
+    .page { grid-template-columns: minmax(0, 1fr); padding: 0 16px; }
+    .void { height: 86vh; }
+    .masthead { display: block; position: absolute; top: 18px; left: 0; right: 0; text-align: center; text-shadow: 0 0 12px #000, 0 0 24px #000; }
+    .masthead h1 { font-size: 44px; }
+    .masthead .tagline { margin-top: 2px; }
+    .masthead .hint { margin-top: 70vh; font-family: var(--caps); letter-spacing: 0.3em; font-size: 12px; color: var(--sepia); }
+    .privacy { position: static; text-align: center; margin: 8px auto 40px; }
+    .topc { padding: 20px 22px 0; gap: 10px; }
+    .topc h1 { font-size: 42px; }
+    .lede { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="abyss"></canvas>
+<div class="masthead"><h1 id="m_name"></h1><div class="tagline" id="m_tag"></div><div class="hint">descend</div></div>
+<div class="page">
+  <div class="void"></div>
+  <div class="column">
+    <div class="scene"><div class="leaf" id="leaf">
+      <section class="face recto">
+        <div class="part top" id="top"><div class="topc">
+          <div class="over" id="over"></div>
+          <h1 id="name"></h1>
+          <div class="tagline" id="tagline"></div>
+          <div class="rule"></div>
+          <p class="lede" id="lede"></p>
+          <div class="tally" id="tally"></div>
+          <button class="listen" id="listen">Listen</button>
+        </div><div class="holes"></div></div>
+        <div class="part stub" id="stub">
+          <div class="holes"></div>
+          <div class="stub-content">
+            <div class="k">witness · tear along the line</div>
+            <div class="tn">it is now called <span class="gilt" id="tn"></span></div>
+            <div class="sm" id="stubline"></div>
+          </div>
+        </div>
+      </section>
+      <section class="face verso">
+        <div class="part" id="versopart">
+          <div class="over">colophon</div>
+          <h2>How this leaf was made</h2>
+          <p id="colophon"></p>
+          <div><div class="over">render hash</div><div class="hash" id="rh"></div></div>
+          <div><div class="over">score hash</div><div class="hash" id="sh"></div></div>
+          <p class="quiet" id="pins"></p>
+          <div class="links"><a href="#">how to verify</a><a href="#">this block on ZecBlock</a><a href="#">two evocations</a></div>
+          <p class="quiet" style="font-style: italic">A whisper may return to you. Whisper Back works at the installation: it reads the reply address from a wallet, never from this page.</p>
+        </div>
+      </section>
+    </div></div>
+    <div class="controls"><button id="flip">turn the leaf · F</button><button id="tear">tear the stub · T</button></div>
+    <div class="note" id="note"></div>
+  </div>
+</div>
+<p class="privacy">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</p>
+<audio id="audio" src="../../out/mix.wav" preload="none"></audio>
+<script src="brand-sample.js"></script>
+<script src="score-sample.js?v=2"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const q = new URLSearchParams(location.search);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+function trueName(h) {   // copy of web/name.js
+  const ON = ["", "K", "T", "R", "N", "M", "S", "Z", "ZH", "KH", "TH", "V", "L", "D", "G", "SH"], NU = ["A", "E", "I", "O", "U", "AI", "OR", "UN"], CO = ["", "", "N", "R", "TH", "L", "M", "S"];
+  const b = []; for (let i = 0; i < 32; i++) b.push(parseInt(h.slice(2 * i, 2 * i + 2), 16));
+  const count = 3 + (b[0] & 1), breath = 1 + ((b[0] >> 1) % (count - 1)); let name = "";
+  for (let i = 0; i < count; i++) { const x = b[1 + 2 * i], y = b[2 + 2 * i]; let s = ON[x >> 4] + NU[x & 7]; if (i === count - 1) s += CO[y & 7]; if (i === breath) name += "'"; name += s; }
+  return name;
+}
+const bytes = (h) => Array.from({ length: 32 }, (_, i) => parseInt(h.slice(2 * i, 2 * i + 2), 16));
+const RB = bytes(SCORE.render_hash), SB = bytes(SCORE.score_hash), blocks = (h) => h.match(/.{8}/g);
+
+// ---- text ----
+for (const id of ["name", "m_name"]) $(id).textContent = BRAND.name;
+for (const id of ["tagline", "m_tag"]) $(id).textContent = BRAND.tagline;
+document.title = BRAND.name; $("lede").textContent = BRAND.one_liner;
+$("over").textContent = `evoked at height ${fmt(SCORE.as_of_height)}`;
+const forged = SCORE.skipped.filter((s) => s.reason === "forged-conductor").length;
+const silenced = SCORE.skipped.filter((s) => s.reason === "flagged").length;
+$("tally").textContent = `${SCORE.offerings.length} offerings · ${forged} refused · ${silenced} silenced`;
+$("tn").textContent = trueName(SCORE.render_hash);
+$("stubline").textContent = `height ${fmt(SCORE.as_of_height)} · ${blocks(SCORE.render_hash)[0]} … ${blocks(SCORE.render_hash)[7]}`;
+for (const [id, h] of [["rh", SCORE.render_hash], ["sh", SCORE.score_hash]]) $(id).innerHTML = blocks(h).map((b) => `<span>${b}</span>`).join("");
+$("colophon").textContent = `Evoked from the public viewing key at height ${fmt(SCORE.as_of_height)}. Anyone holding the key re-renders the whole work and gets these same two hashes.`;
+$("pins").textContent = `composer ${SCORE.composer} · codec2 ${SCORE.codec2_tag} · espeak-ng ${SCORE.espeak_ng} · sox ${SCORE.sox}`;
+
+// ---- the god lives in the module script below (three.js) ----
+let god = null, flat = null, G = {};
+function placeGod() { window.LEAF_W = W; window.dispatchEvent(new Event("leaf-layout")); }
+const C = { ink: css("--ink"), sepia: css("--sepia"), gilt: css("--gilt"), deep: "#050302", caps: css("--caps"), vellum: css("--vellum"), rubric: css("--rubric") };
+
+// ---- leaf geometry (same as folio.html) ----
+const leaf = $("leaf"), topEl = $("top"), stub = $("stub"), verso = $("versopart");
+let W = 0, H = 0, CUT = 0, deckle = null, gone = false;
+function layout() {
+  const narrow = innerWidth <= 900;
+  W = narrow ? Math.min(innerWidth - 32, 440) : 430;
+  H = narrow ? Math.round(W * 1.62) : Math.round(Math.min(innerHeight * 0.82, 720));
+  CUT = H - (narrow ? 104 : 116);
+  leaf.style.setProperty("--W", W + "px"); leaf.style.setProperty("--H", H + "px"); leaf.style.setProperty("--cut", CUT + "px");
+  const d = (i) => (SB[i % 32] / 255) * 2.4;
+  const edge = (n, f) => Array.from({ length: n + 1 }, (_, i) => f(i / n, d(i * 7 + n)));
+  deckle = { top: edge(24, (u, o) => [u * W, o]), right: (y0, y1) => edge(16, (u, o) => [W - o, y0 + (y1 - y0) * u]),
+             bottom: edge(24, (u, o) => [W - u * W, H - o]), left: (y0, y1) => edge(16, (u, o) => [o, y0 + (y1 - y0) * u]) };
+  const cut = [];
+  for (let i = 0; i <= 64; i++) { const main = i % 2 === 0, b = main ? RB[(i / 2) % 32] : SB[(i - 1) / 2 % 32]; cut.push([(i / 64) * W, CUT + (b / 255 - 0.5) * 2 * (main ? 5 : 2.2)]); }
+  const poly = (pts) => `polygon(${pts.map(([x, y]) => `${x.toFixed(1)}px ${y.toFixed(1)}px`).join(",")})`;
+  const topPts = [...deckle.top, ...deckle.right(0, cut[64][1]), ...[...cut].reverse(), ...deckle.left(cut[0][1], 0)];
+  const stubPts = [...cut, ...deckle.right(cut[64][1], H), ...deckle.bottom, ...deckle.left(H, cut[0][1])];
+  topEl.style.clipPath = poly(topPts); stub.style.clipPath = poly(stubPts);
+  const mirror = (pts) => pts.map(([x, y]) => [W - x, y]);
+  deckle.versoWhole = poly(mirror([...deckle.top, ...deckle.right(0, H), ...deckle.bottom, ...deckle.left(H, 0)]));
+  deckle.versoTorn = poly(mirror(topPts));
+  verso.style.clipPath = gone ? deckle.versoTorn : deckle.versoWhole;
+  stub.style.transformOrigin = `${W}px ${cut[64][1]}px`;
+  placeGod();
+}
+
+// ---- listen: the pre-mixed buffer only ----
+const audio = $("audio");
+$("listen").onclick = () => { if (audio.paused) audio.play().catch(() => {}); else audio.pause(); };
+audio.onplay = () => $("listen").classList.add("on"); audio.onpause = () => $("listen").classList.remove("on");
+
+// ---- tilt, turn, tear ----
+let tx = 0, ty = 0, cx = 0, cy = 0, flip = q.has("verso") ? 1 : 0, fl = flip, f = Number(q.get("tear") || 0), fall = null, dragging = null;
+const hover = matchMedia("(hover: hover)").matches;
+addEventListener("pointermove", (e) => { if (!hover || dragging) return; tx = e.clientX / innerWidth - 0.5; ty = e.clientY / innerHeight - 0.5; });
+const turn = () => { flip = 1 - flip; };
+$("flip").onclick = turn; leaf.ondblclick = turn;
+stub.addEventListener("pointerdown", (e) => { if (gone || fall) return; dragging = { y: e.clientY, f }; stub.setPointerCapture(e.pointerId); });
+stub.addEventListener("pointermove", (e) => { if (dragging) f = Math.max(f, Math.min(1, dragging.f + (e.clientY - dragging.y) / 150)); });
+stub.addEventListener("pointerup", () => { dragging = null; });
+const tearAll = () => { if (!gone && !fall) { const go = () => { f = Math.min(1, f + 0.035); if (f < 1) requestAnimationFrame(go); }; go(); } };
+function reprint() { gone = false; fall = null; f = 0; stub.style.display = ""; stub.style.opacity = 1; verso.style.clipPath = deckle.versoWhole; $("tear").textContent = "tear the stub · T"; $("note").textContent = ""; }
+$("tear").onclick = () => (gone ? reprint() : tearAll());
+addEventListener("keydown", (e) => { const k = e.key.toLowerCase(); if (k === "f") turn(); if (k === "t") (gone ? reprint() : tearAll()); if (k === "r") reprint(); });
+
+const T0 = performance.now();
+function frame(now) {
+  cx += (tx - cx) * 0.06; cy += (ty - cy) * 0.06; fl += (flip - fl) * 0.09;
+  leaf.style.transform = `rotateX(${(-cy * 8).toFixed(2)}deg) rotateY(${(cx * 10 + fl * 180).toFixed(2)}deg)`;
+  document.documentElement.style.setProperty("--sx", (50 + cx * 90).toFixed(1));
+  if (!gone) {
+    if (f >= 1 && !fall) fall = { t0: now, dir: RB[5] & 1 ? 1 : -1 };
+    if (fall) {
+      const s = (now - fall.t0) / 1000;
+      stub.style.transform = `translate(${fall.dir * 60 * s}px, ${40 * s + 900 * s * s}px) rotate(${-4 - fall.dir * (30 * s + 40 * s * s)}deg)`;
+      stub.style.opacity = Math.max(0, 1 - s / 1.3);
+      if (s > 1.3) { gone = true; stub.style.display = "none"; verso.style.clipPath = deckle.versoTorn; $("tear").textContent = "reprint the stub · R";
+        $("note").textContent = "Torn along the render hash: every jag is one of its bytes. A stub from any other evocation of this god fits this edge exactly."; }
+    } else stub.style.transform = `rotate(${(-f * 4.5).toFixed(2)}deg) translateY(${(f * 3).toFixed(2)}px)`;
+  }
+  const t = !audio.paused ? audio.currentTime * 8000 : q.has("t") ? Number(q.get("t")) : -1;
+  const time = q.has("time") ? Number(q.get("time")) : (now - T0) / 1000 + 40;
+  window.PLAY_T = t;
+  requestAnimationFrame(frame);
+}
+addEventListener("resize", layout);
+document.fonts.ready.then(() => { layout(); requestAnimationFrame(frame); });
+</script>
+<!-- EXPLORATION ONLY: three.js r160 from jsDelivr. The site must vendor three (MIT) under web/vendor/. -->
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module" src="god5.js?v=3"></script>
+
+</body>
+</html>
