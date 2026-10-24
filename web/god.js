@@ -115,16 +115,20 @@ void main(){
   gl_FragColor = vec4(fogged(shade(c, N, vP, rough, 1., ao), vP), 1.);
 }`;
 
-function scriptTexture(seed) {
-  const c = document.createElement("canvas"); c.width = 2048; c.height = 64; const x = c.getContext("2d");
-  x.fillStyle = "#000"; x.fillRect(0, 0, 2048, 64); x.strokeStyle = "#fff"; x.lineCap = "round";
+// drawn in a 2048x64 design space and rasterised at W x H (4096x128 desktop, 2048x64 phone): same script, sharper
+function scriptTexture(seed, W = 2048, H = 64, aniso = 4) {
+  const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
+  x.fillStyle = "#000"; x.fillRect(0, 0, W, H); x.setTransform(W / 2048, 0, 0, H / 64, 0, 0);
+  x.strokeStyle = "#fff"; x.lineCap = "round";
   let i = 0;
   for (let px = 6; px < 2040; px += 10) {   // a script too fine to read, cut from the hash
     const g = genes(seed, i++, 8); x.lineWidth = 1.2 + g[7] * 1.2; x.beginPath();
     x.moveTo(px + g[0] * 6, 14 + g[1] * 36); x.lineTo(px + g[2] * 6, 14 + g[3] * 36); x.quadraticCurveTo(px + g[4] * 8, 10 + g[5] * 44, px + g[6] * 6, 14 + g[7] * 36); x.stroke();
     if (g[0] > 0.86) { x.beginPath(); x.arc(px + 3, 32, 4 + g[1] * 4, 0, TAU); x.stroke(); }
   }
-  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4; return t;
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping;
+  t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = aniso;
+  return t;
 }
 
 // ================================================================ mount
@@ -140,10 +144,15 @@ function mount(canvas, doc, opts = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;           // the composite pass does tone + gamma itself
   renderer.toneMapping = THREE.NoToneMapping;
-  // resolution: adaptive both ways with hysteresis (web/dpr.js); ?dpr=N pins it. Resolution only, never the form.
-  const LIM = DprAdapter.limits(devicePixelRatio, PHONE, new URLSearchParams(location.search).get("dpr"));
-  const DPR = DprAdapter.create(LIM), FORCED = LIM.forced, DPR_CAP = LIM.cap, DPR_FLOOR = LIM.floor;
+  // resolution: an HD target (short side >= 1080 px desktop / 720 px phone, within the screen's own ratio and the
+  // GPU's max size), then adaptive both ways with hysteresis (web/dpr.js); ?dpr=N pins it. Resolution only.
+  const gl = renderer.getContext();
+  const GPU_MAX = Math.min(renderer.capabilities.maxTextureSize, gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), gl.getParameter(gl.MAX_VIEWPORT_DIMS)[0]);
+  const DPR_Q = new URLSearchParams(location.search).get("dpr");
+  const limitsNow = () => DprAdapter.limits(devicePixelRatio, PHONE, DPR_Q, canvas.clientWidth || innerWidth, canvas.clientHeight || innerHeight, GPU_MAX);
+  const DPR = DprAdapter.create(limitsNow());
   let dpr = DPR.dpr;
+  const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
@@ -204,7 +213,7 @@ function mount(canvas, doc, opts = {}) {
     }`, { side: THREE.BackSide })));
 
   // ================================================================ the wheels
-  const scriptTex = keep(scriptTexture(seed0));
+  const scriptTex = keep(PHONE ? scriptTexture(seed0, 2048, 64, ANISO) : scriptTexture(seed0, 4096, 128, ANISO));
   const ringMat = mat(
     `varying vec3 vP, vN; varying vec2 vUv;
     void main(){ vec4 wp = modelMatrix * vec4(position, 1.); vP = wp.xyz; vN = normalize(mat3(modelMatrix) * normal); vUv = uv; gl_Position = projectionMatrix * viewMatrix * wp; }`,
@@ -480,7 +489,7 @@ function mount(canvas, doc, opts = {}) {
     for (const e of list) e.eyeMesh = m;
     return { mesh: m, wake, wakeAttr };
   }
-  const smallEyes = eyeMesh(eyeList.filter((e) => !e.big), PHONE ? 14 : 22, PHONE ? 10 : 14);
+  const smallEyes = eyeMesh(eyeList.filter((e) => !e.big), PHONE ? 14 : 20, PHONE ? 10 : 13);
   const bigEyes = eyeMesh(eyeList.filter((e) => e.big), PHONE ? 36 : 48, PHONE ? 24 : 32);
   const eyeGroups = [smallEyes, bigEyes];
 
@@ -526,7 +535,7 @@ function mount(canvas, doc, opts = {}) {
     for (const e of list) e.lidMesh = m;
     return { mesh: m, open, openAttr };
   }
-  const smallLids = lidMesh(eyeList.filter((e) => e.lid && !e.big), PHONE ? 12 : 20, PHONE ? 9 : 14);
+  const smallLids = lidMesh(eyeList.filter((e) => e.lid && !e.big), PHONE ? 12 : 18, PHONE ? 9 : 12);
   const bigLids = lidMesh(eyeList.filter((e) => e.lid && e.big), PHONE ? 32 : 44, PHONE ? 22 : 30);
   const lidGroups = [smallLids, bigLids];
 
@@ -554,7 +563,8 @@ function mount(canvas, doc, opts = {}) {
   }
 
   // ================================================================ post: scene (HDR) -> god rays (half res) -> composite
-  const rtOpts = { type: THREE.HalfFloatType, depthBuffer: true, samples: PHONE ? 0 : 4 };
+  // the scene target is multisampled (WebGL2 MSAA x4) on every device; the god-ray target is full resolution too
+  const rtOpts = { type: THREE.HalfFloatType, depthBuffer: true, samples: Math.min(4, renderer.capabilities.maxSamples || 4) };
   const rtScene = keep(new THREE.WebGLRenderTarget(1, 1, rtOpts)), rtRays = keep(new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false }));
   const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), quadGeo = geo(new THREE.PlaneGeometry(2, 2));
   const QVS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`;
@@ -564,8 +574,8 @@ function mount(canvas, doc, opts = {}) {
       for (int i = 0; i < 30; i++){ p -= d; vec3 s = texture2D(tScene, p).rgb; float l = max(dot(s, vec3(.3, .59, .11)) - .28, 0.); acc += s * l * w; w *= .94; }
       gl_FragColor = vec4(acc * (.2 + uGod * .12) * vec3(.7, 1., .9), 1.); }`, depthTest: false, depthWrite: false }));
   const compMat = keep(new THREE.ShaderMaterial({ uniforms: { tScene: { value: rtScene.texture }, tRays: { value: rtRays.texture }, uRes: { value: new THREE.Vector2(1, 1) },
-      uTime: U.uTime, uGod: { value: 0 } }, vertexShader: QVS,
-    fragmentShader: `uniform sampler2D tScene, tRays; uniform vec2 uRes; uniform float uTime, uGod; varying vec2 vUv;
+      uTime: U.uTime, uGod: { value: 0 }, uDpr: { value: 1 } }, vertexShader: QVS,
+    fragmentShader: `uniform sampler2D tScene, tRays; uniform vec2 uRes; uniform float uTime, uGod, uDpr; varying vec2 vUv;
     float h(vec2 p){ return fract(52.9829189 * fract(dot(p, vec2(.06711056, .00583715)))); }
     vec3 aces(vec3 x){ return clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0., 1.); }
     void main(){
@@ -576,7 +586,8 @@ function mount(canvas, doc, opts = {}) {
       col = aces(col * 1.1);
       col = mix(vec3(dot(col, vec3(.3, .59, .11))), col, .88);
       col *= mix(.25, 1., smoothstep(1.15, .25, length(c * vec2(1.25, 1.))));
-      col += (h(gl_FragCoord.xy + vec2(floor(uTime * 24.) * 5.588, floor(uTime * 24.) * 3.1)) - .5) * .04;
+      // film grain at CSS-pixel scale (one grain per CSS pixel whatever the backbuffer), so it never reads as mosaic
+      col += (h(floor(gl_FragCoord.xy / max(uDpr, 1.)) + vec2(floor(uTime * 24.) * 5.588, floor(uTime * 24.) * 3.1)) - .5) * .035;
       gl_FragColor = vec4(pow(max(col, 0.), vec3(1. / 2.2)), 1.);
     }`, depthTest: false, depthWrite: false }));
   const raysQuad = new THREE.Mesh(quadGeo, raysMat), compQuad = new THREE.Mesh(quadGeo, compMat);
@@ -586,8 +597,8 @@ function mount(canvas, doc, opts = {}) {
   function size() {
     const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight, narrow = w <= 900;
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
-    rtScene.setSize(Math.round(w * dpr), Math.round(h * dpr)); rtRays.setSize(Math.round(w * dpr / 2), Math.round(h * dpr / 2));
-    compMat.uniforms.uRes.value.set(w * dpr, h * dpr);
+    rtScene.setSize(Math.round(w * dpr), Math.round(h * dpr)); rtRays.setSize(Math.round(w * dpr), Math.round(h * dpr));
+    compMat.uniforms.uRes.value.set(w * dpr, h * dpr); compMat.uniforms.uDpr.value = dpr;
     camera.aspect = w / h; camera.fov = narrow ? 58 : 42;
     NARROW = narrow; VW = w; VH = h; if (narrow) camera.setViewOffset(w, h, 0, h * 0.06, w, h); else camera.setViewOffset(w, h, offX, 0, w, h);
     camera.updateProjectionMatrix();
@@ -597,7 +608,8 @@ function mount(canvas, doc, opts = {}) {
   const settle = (ms) => DPR.settle(performance.now(), ms);
   function adapt(now, dt) { const next = DPR.frame(now, dt); if (next !== null) { dpr = next; size(); } }
   settle(2500);
-  const onResize = () => { size(); settle(1000); };
+  // a new canvas size moves the hd floor (the short side changed): re-limit first, then size once
+  const onResize = () => { const v = DPR.relimit(performance.now(), limitsNow()); if (v !== null) dpr = v; size(); settle(1000); };
   addEventListener("resize", onResize);
   const onVis = () => { running = !document.hidden; if (running && alive) { lastT = 0; settle(1000); requestAnimationFrame(tick); } };
   document.addEventListener("visibilitychange", onVis);
@@ -703,8 +715,9 @@ function mount(canvas, doc, opts = {}) {
     setViewOffset(pxOff) { wantOff = pxOff || 0; },
     pick,
     wasDrag() { return moved > 6; },
-    stats() { return { calls: lastCalls, triangles: lastTris, fps: Math.round(fps), dpr: Number(dpr.toFixed(2)), cap: DPR_CAP, floor: DPR_FLOOR,
-                       forced: !!FORCED, eyes: NE, phone: PHONE }; },
+    stats() { return { calls: lastCalls, triangles: lastTris, fps: Math.round(fps), dpr: Number(dpr.toFixed(2)), cap: Number(DPR.cap.toFixed(2)),
+                       hd: Number(DPR.hd.toFixed(2)), floor: DPR.floor, mode: DPR.mode(), forced: DPR.pinned,
+                       bw: renderer.domElement.width, bh: renderer.domElement.height, msaa: rtScene.samples, eyes: NE, phone: PHONE }; },
     measure() { tick(performance.now(), true); return this.stats(); },   // one forced frame (a hidden tab draws none)
     dispose() {
       alive = false;

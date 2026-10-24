@@ -30,7 +30,7 @@ let STATS = null, statsAt = 0;
 if (Q.has("stats")) {
   STATS = document.createElement("div"); STATS.id = "stats";
   STATS.style.cssText = innerWidth <= 900   // phone: a thin strip in the top-left corner, above the title
-    ? "position:fixed;top:0;left:0;z-index:9;font:10px/1.2 Georgia,serif;color:#ebdfc2;background:rgba(5,3,2,.7);padding:2px 6px;pointer-events:none"
+    ? "position:fixed;top:0;left:0;max-width:100vw;overflow:hidden;white-space:nowrap;z-index:9;font:10px/1.2 Georgia,serif;color:#ebdfc2;background:rgba(5,3,2,.7);padding:2px 6px;pointer-events:none"
     : "position:fixed;top:8px;left:8px;z-index:9;font:13px Georgia,serif;color:#ebdfc2;background:rgba(5,3,2,.7);padding:4px 8px;pointer-events:none";
   document.body.appendChild(STATS);
 }
@@ -244,10 +244,10 @@ function frame(now) {
     god.setPlayT(t); god.setEyeOpen(lids);
     if (STATS && now - statsAt > 500) {                   // ?stats: draw calls, triangles, fps, DPR (budget: spec §3)
       statsAt = now; const s = god.stats();
-      const range = s.forced ? " (pinned)" : ` (${s.floor}–${s.cap})`;
+      const size = `${s.bw}×${s.bh}`, mode = s.mode === "adaptive" ? "" : ` · ${s.mode}`;
       STATS.textContent = innerWidth <= 900
-        ? `${s.calls}c · ${Math.round(s.triangles / 1000)}k tris · ${s.fps || 0} fps · dpr ${s.dpr}${range}${s.phone ? " · phone" : ""}`
-        : `${s.calls} calls · ${fmt(s.triangles)} tris · ${s.fps || 0} fps · dpr ${s.dpr}${range}${s.phone ? " · phone path" : ""}`;
+        ? `${size} · dpr ${s.dpr} · ${s.fps || 0} fps${mode} · ${s.calls}c ${Math.round(s.triangles / 1000)}k`
+        : `${size} · dpr ${s.dpr} (hd ${s.hd}, max ${s.cap}) · ${s.fps || 0} fps${mode} · ${s.calls} calls · ${fmt(s.triangles)} tris · msaa ${s.msaa}${s.phone ? " · phone path" : ""}`;
     }
   } else {
     const c = $("creature");
