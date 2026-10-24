@@ -288,7 +288,7 @@ async function openEye() {
   if (eyeOpenedAt !== null) return;
   eyeOpenedAt = performance.now();
   stop();
-  $("open_eye").style.display = "none";
+  $("open_eye").style.display = "none"; $("open_eye2").style.display = "none";
   let eye = null;
   if (STATIC && STATIC.static) {           // a snapshot has no key behind it: the Eye reveals the hashes only
     $("eye_key").textContent = "the key is published at the installation when the Eye opens there, never by this snapshot";
@@ -312,8 +312,9 @@ async function openEye() {
     $("eye").classList.add("on");
   }, 3500);
 }
-$("open_eye").addEventListener("click", openEye);
+$("open_eye").addEventListener("click", openEye); $("open_eye2").addEventListener("click", openEye);
 $("eye_close").addEventListener("click", () => $("eye").classList.remove("on"));
+if (SEANCE && Q.has("open")) setTimeout(openEye, 1500);   // for stills of the Eye opening
 document.addEventListener("keydown", (ev) => {
   if (ev.target && /INPUT|TEXTAREA/.test(ev.target.tagName)) return;
   const k = ev.key.toLowerCase();

@@ -92,8 +92,9 @@
   #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--rubric);
                  letter-spacing: 0.3em; font-size: 12px; pointer-events: none; font-family: var(--caps); }
   /* séance: the great eye's lids are shut and the hashes sealed until the Eye opens */
-  #open_eye { display: none; }
-  .sealed #open_eye { display: inline-block; }
+  #open_eye, #open_eye2 { display: none; }
+  .sealed #open_eye, .sealed #open_eye2 { display: inline-block; }
+  .sealed #open_eye2 { border-color: var(--rubric); }
   #eye { position: fixed; inset: 0; display: none; place-items: center; background: var(--night); z-index: 8; overflow: auto; }
   #eye.on { display: grid; }
   #eye .panel { max-width: 720px; padding: 32px clamp(16px, 4vw, 40px); display: grid; gap: 18px; }
@@ -130,7 +131,7 @@
 <canvas id="creature"></canvas>
 <div id="not_the_god">NOT THE GOD</div>
 <div class="masthead"><h1 id="m_name"></h1><div class="tagline" id="m_tag"></div><div class="hint">descend</div></div>
-<div id="chrome"><button id="play" class="listen">Listen</button><button id="open_leaf">open the grimoire · G</button></div>
+<div id="chrome"><button id="play" class="listen">Listen</button><button id="open_leaf">open the grimoire · G</button><button id="open_eye2">open the eye · E</button></div>
 <span id="status">loading</span>
 
 <div class="page">
