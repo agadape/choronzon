@@ -32,6 +32,7 @@
             text-shadow: 0 0 8px #000, 0 0 16px #000; pointer-events: none; }
   .privacy { position: fixed; left: clamp(20px, 4vw, 64px); bottom: 22px; max-width: 46ch; font-style: italic; color: var(--sepia);
              font-size: 15px; margin: 0; text-shadow: 0 0 8px #000, 0 0 16px #000; z-index: 3; }
+  body.bare #chrome, body.bare #status, body.bare .privacy { display: none; }   /* ?bare: the god and its name only (og.png) */
 
   /* the column on the right holds the leaf; it slides in from the right and the god makes room */
   .page { position: relative; min-height: 100vh; display: grid; grid-template-columns: 1fr auto; align-items: center;

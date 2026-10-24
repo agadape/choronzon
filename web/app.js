@@ -22,6 +22,7 @@ const SEANCE = Q.has("seance");
 let eyeOpenedAt = null;          // performance.now() when the lids started to part; null = not started
 let eyeOpen = !SEANCE;           // hashes (and the key) show only once the lids are open
 if (SEANCE) document.body.classList.add("sealed");
+if (Q.has("bare")) document.body.classList.add("bare");   // stills: the god and its name only (web/og.png is one)
 // static snapshot (Vercel): static.json next to index.html marks a build with no wallet and no key behind it
 let STATIC = null;
 // ?stats: a small readout of the god's weight (draw calls, triangles, fps) for measuring against the budget
