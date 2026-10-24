@@ -377,13 +377,20 @@ function mount(canvas, doc, opts = {}) {
   feathers.instanceMatrix.setUsage(THREE.DynamicDrawUsage); feathers.frustumCulled = false; scene.add(feathers);
   const WING = [{ th: 1.0, len: 8.4, y: 1.0 }, { th: 0.22, len: 9.6, y: 0.1 }, { th: -0.6, len: 7.6, y: -0.8 }].slice(0, PAIRS);
   const fM = new THREE.Matrix4(), fD = new THREE.Vector3(), fW = new THREE.Vector3(), fN = new THREE.Vector3(), fP = new THREE.Vector3();
+  // The wings breathe: each pair beats slowly (a few degrees of lift and sweep, period 9 / 11.5 / 14 s) a little out
+  // of phase with the others; the phase comes from the pair index and the render hash, never from randomness.
+  // Reduced motion: a quarter of the amplitude (and time itself runs slower there). Only the instance matrices move.
+  const BEAT = WING.map((_, p) => ({ w: TAU / (9 + 2.5 * p), ph: p * 2.1 + hb(26 + p) * TAU }));
+  const BEAT_A = CALM ? 0.25 : 1;
   function placeWings(time, gw) {
     let k = 0;
     WING.forEach((wd, p) => {
+      const beat = Math.sin(time * BEAT[p].w + BEAT[p].ph) * BEAT_A;
+      const lag = Math.sin(time * BEAT[p].w + BEAT[p].ph - 0.9) * BEAT_A;   // the tips follow the root a little late
       for (const sd of [-1, 1]) {
-        const spr = 0.82 + 0.1 * Math.sin(time * 0.33 + p * 1.7) + 0.3 * gw;
-        const th = wd.th * (0.7 + 0.3 * spr);
-        const A = new THREE.Vector3(sd * Math.cos(th), Math.sin(th), -0.3).normalize();
+        const spr = 0.82 + 0.1 * Math.sin(time * 0.33 + p * 1.7) + 0.3 * gw + 0.06 * lag;
+        const th = wd.th * (0.7 + 0.3 * spr) + 0.075 * beat;                 // ~4.3 degrees of lift
+        const A = new THREE.Vector3(sd * Math.cos(th), Math.sin(th), -0.3 + 0.1 * beat).normalize();   // and a little sweep
         const Nw = new THREE.Vector3(-sd * 0.3, 0.1, 1).normalize();
         const B = new THREE.Vector3().crossVectors(A, Nw).normalize(); if (B.y > 0.05 || (Math.abs(B.y) < 0.05 && B.x * sd < 0)) B.negate();
         const R0 = new THREE.Vector3(sd * 1.1, wd.y, -2.2);

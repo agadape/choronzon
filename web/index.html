@@ -110,14 +110,22 @@
 
   @media (max-width: 900px) {
     .page { grid-template-columns: minmax(0, 1fr); padding: 0 16px; }
-    .void { height: 86vh; }
-    .column, body.closed .column { transform: none; opacity: 1; pointer-events: auto; transition: none; }
+    /* the first screen (one small-viewport height): name on top, the god, then Listen + the grimoire + the privacy
+       line at the bottom, nothing overlapping; the leaf starts below the fold */
+    .void { height: 100vh; height: 100svh; }
+    .column, body.closed .column { transform: none; opacity: 1; pointer-events: auto; transition: none; padding-top: 8px; }
     .masthead { position: absolute; top: 18px; text-shadow: 0 0 12px #000, 0 0 24px #000; }
     body:not(.closed) .masthead { opacity: 1; }
     .masthead h1 { font-size: 40px; }
-    .masthead .hint { display: block; margin-top: 70vh; font-family: var(--caps); letter-spacing: 0.3em; font-size: 12px; color: var(--sepia); }
-    #chrome, #status, #close_leaf { display: none; }
-    .privacy { position: static; text-align: center; margin: 8px auto 40px; max-width: 60ch; }
+    #chrome, body:not(.closed) #chrome { position: absolute; left: 16px; right: 16px; bottom: auto; transform: none; opacity: 1; pointer-events: auto;
+              top: calc(100vh - 150px); top: calc(100svh - 150px); justify-content: center; flex-wrap: wrap; gap: 8px; }
+    #chrome button { font-size: 14px; padding: 8px 14px; }
+    #chrome button.listen { padding: 8px 22px; }
+    #status, #close_leaf { display: none; }
+    .privacy { position: absolute; left: 16px; right: 16px; top: calc(100vh - 92px); top: calc(100svh - 92px);
+               text-align: center; margin: 0 auto; max-width: 46ch; font-size: 13.5px; line-height: 1.4; padding: 4px 6px;
+               background: radial-gradient(ellipse at center, rgba(5, 3, 2, 0.72) 0%, rgba(5, 3, 2, 0.45) 60%, transparent 100%); }
+    .masthead .hint { display: none; }
     .topc { padding: 20px 22px 0; gap: 10px; }
     .leaf h1 { font-size: 42px; }
     .leaf .lede { font-size: 16px; }

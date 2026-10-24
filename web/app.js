@@ -29,7 +29,9 @@ let STATIC = null;
 let STATS = null, statsAt = 0;
 if (Q.has("stats")) {
   STATS = document.createElement("div"); STATS.id = "stats";
-  STATS.style.cssText = "position:fixed;top:8px;left:8px;z-index:9;font:13px Georgia,serif;color:#ebdfc2;background:rgba(5,3,2,.7);padding:4px 8px;pointer-events:none";
+  STATS.style.cssText = innerWidth <= 900   // phone: a thin strip in the top-left corner, above the title
+    ? "position:fixed;top:0;left:0;z-index:9;font:10px/1.2 Georgia,serif;color:#ebdfc2;background:rgba(5,3,2,.7);padding:2px 6px;pointer-events:none"
+    : "position:fixed;top:8px;left:8px;z-index:9;font:13px Georgia,serif;color:#ebdfc2;background:rgba(5,3,2,.7);padding:4px 8px;pointer-events:none";
   document.body.appendChild(STATS);
 }
 
@@ -242,7 +244,10 @@ function frame(now) {
     god.setPlayT(t); god.setEyeOpen(lids);
     if (STATS && now - statsAt > 500) {                   // ?stats: draw calls, triangles, fps, DPR (budget: spec §3)
       statsAt = now; const s = god.stats();
-      STATS.textContent = `${s.calls} calls · ${fmt(s.triangles)} tris · ${s.fps || 0} fps · dpr ${s.dpr}${s.forced ? " (pinned)" : ` (${s.floor}–${s.cap})`}${s.phone ? " · phone path" : ""}`;
+      const range = s.forced ? " (pinned)" : ` (${s.floor}–${s.cap})`;
+      STATS.textContent = innerWidth <= 900
+        ? `${s.calls}c · ${Math.round(s.triangles / 1000)}k tris · ${s.fps || 0} fps · dpr ${s.dpr}${range}${s.phone ? " · phone" : ""}`
+        : `${s.calls} calls · ${fmt(s.triangles)} tris · ${s.fps || 0} fps · dpr ${s.dpr}${range}${s.phone ? " · phone path" : ""}`;
     }
   } else {
     const c = $("creature");
@@ -268,7 +273,13 @@ function leafOffset() {
   const open = !document.body.classList.contains("closed") && innerWidth > 900;
   if (god) god.setViewOffset(open ? ((Leaf.width() || 430) + 80) / 2 : 0);
 }
-function setLeaf(open) { document.body.classList.toggle("closed", !open); leafOffset(); }
+function setLeaf(open) {
+  if (innerWidth <= 900) {                                 // phone: the leaf is always there, below the fold
+    if (open) document.querySelector(".column").scrollIntoView({ behavior: CALM ? "auto" : "smooth" });
+    return;
+  }
+  document.body.classList.toggle("closed", !open); leafOffset();
+}
 $("open_leaf").addEventListener("click", () => setLeaf(true));
 $("close_leaf").addEventListener("click", () => setLeaf(false));
 addEventListener("leaf-layout", leafOffset);

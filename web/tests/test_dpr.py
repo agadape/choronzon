@@ -50,7 +50,7 @@ def test_sustained_slow_frames_step_down_to_the_floor_not_below():
     r = run([[16.7, 3000], [40, 30000]], ratio=2)
     assert r["end"] == 0.75 and r["min"] == 0.75
     r = run([[16.7, 3000], [60, 30000]], ratio=2, phone=True)
-    assert r["end"] == 0.6 and r["min"] == 0.6
+    assert r["end"] == 0.85 and r["min"] == 0.85
 
 
 def test_one_slow_second_is_not_enough_and_a_single_spike_is_ignored():

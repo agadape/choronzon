@@ -4,7 +4,7 @@
 //   start   at the cap (the device's own ratio, capped: 2 desktop, 1.5 phone), or at ?dpr=N, which pins it
 //   settle  frames right after mount (2.5 s), a resize or tab switch (1 s) or a DPR change (0.6 s) are ignored:
 //           shader compiles, texture uploads and render-target reallocations are not "the GPU is too slow"
-//   down    median of the last ~1 s over 22 ms              -> -0.1, never below the floor (0.75 desktop, 0.6 phone)
+//   down    median of the last ~1 s over 22 ms              -> -0.1, never below the floor (0.75 desktop, 0.85 phone)
 //   up      median of the last ~2 s under 18 ms and its      -> +0.1, never above the cap
 //           90th percentile under 22 ms (a 60 Hz display never goes below 16.7 ms, so "fast" means "holding vsync")
 //   memory  after a slowdown nothing climbs for 3 s, and the level that was slow is not retried for 15 s; when a
@@ -46,7 +46,8 @@
   }
   // the device's numbers: cap and floor by kind of screen, ?dpr=N pins
   function limits(devicePixelRatio, phone, query) {
-    const cap = Math.min(devicePixelRatio || 1, phone ? 1.5 : 2), floor = Math.min(cap, phone ? 0.6 : 0.75);
+    // phones measured at 58 fps on the phone path: they are not GPU-bound, so the floor stays high (below it: mosaic)
+    const cap = Math.min(devicePixelRatio || 1, phone ? 1.5 : 2), floor = Math.min(cap, phone ? 0.85 : 0.75);
     const v = Number(query);
     return { cap, floor, forced: v > 0 ? Math.min(3, Math.max(0.25, v)) : 0 };
   }
