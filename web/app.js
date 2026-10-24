@@ -76,8 +76,41 @@ async function loadStatic() {
     $("whisper_text").remove();
     $("whisper_label").textContent = "whisper back";
     $("whisper_status").textContent = "works at the installation: it reads the reply address from a wallet, never from this page.";
+    if (STATIC.key && STATIC.key.file === "key.txt") loadKey(Number(STATIC.key.birthday));
   }
 }
+
+// The choir's full viewing key, published deliberately (from 24 Oct): key.txt next to the page, written by the
+// publisher from the secret, never from the repo. Shown on the leaf's verso and in the Eye panel with a copy button
+// and the command that summons the god from it.
+let KEY = null;
+const KEY_RE = /^(uview|uvf)[a-z]*1[02-9ac-hj-np-z]{40,}$/;
+async function loadKey(birthday) {
+  let key;
+  try { const r = await fetch("key.txt", { cache: "no-store" }); if (!r.ok) return; key = (await r.text()).trim(); } catch (e) { return; }
+  if (!KEY_RE.test(key) || !(birthday > 0)) return;
+  KEY = { key, birthday };
+  const cmd = `python3 -m renderer summon --key-file key.txt --birthday ${birthday} --wallet wallets/watcher`;
+  for (const el of document.querySelectorAll(".key_text")) el.textContent = key;
+  for (const el of document.querySelectorAll(".key_birthday")) el.textContent = fmt(birthday);
+  for (const el of document.querySelectorAll(".key_cmd")) el.textContent = cmd;
+  $("key_block").hidden = false;
+  $("eye_key").textContent = key;
+  $("eye_birthday").textContent = `· birthday height ${birthday}`;
+  $("eye_cmd").textContent = cmd;
+  $("eye_keyinfo").hidden = false;
+}
+async function copyKey(btn) {
+  if (!KEY) return;
+  try { await navigator.clipboard.writeText(KEY.key); btn.textContent = "copied"; }
+  catch (e) {                                                     // no clipboard permission: select it instead
+    const el = btn.closest("#eye") ? $("eye_key") : document.querySelector(".key_text");
+    const range = document.createRange(); range.selectNodeContents(el);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); btn.textContent = "selected: copy it";
+  }
+  setTimeout(() => { btn.textContent = btn.closest("#eye") ? "copy the key" : "copy"; }, 2500);
+}
+for (const b of document.querySelectorAll(".key_copy")) b.addEventListener("click", () => copyKey(b));
 
 // OpenTimestamps: anchor.json is the statement of a render (hashes, height, counts, commit); anchor.json.ots is the
 // proof. Pending or in Bitcoin is read from the proof itself (its attestation tags), never assumed.
@@ -347,7 +380,7 @@ async function openEye() {
   $("open_eye").style.display = "none"; $("open_eye2").style.display = "none";
   let eye = null;
   if (STATIC && STATIC.static) {           // a snapshot has no key behind it: the Eye reveals the hashes only
-    $("eye_key").textContent = "the key is published at the installation when the Eye opens there, never by this snapshot";
+    if (!KEY) $("eye_key").textContent = "this snapshot carries no key";   // with key.txt, loadKey() already filled it
   } else {
     try {
       await fetch("eye/open", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });

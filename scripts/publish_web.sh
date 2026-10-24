@@ -5,6 +5,8 @@
 #   scripts/publish_web.sh --no-render  skip the render (use the existing out/)
 #   scripts/publish_web.sh --dry-run    everything up to the deploy; prints the height and render_hash it would publish
 #   scripts/publish_web.sh --force      deploy even if the live snapshot is at a higher height
+#   scripts/publish_web.sh --key-file K publish the viewing key as key.txt (K from `kiosk reveal --to K`); without it
+#                                       the snapshot carries no key
 #
 # Same height rule as the GitHub Actions job (docs/auto-publish.md): the render is at the height of the newest
 # transaction the wallet can see (`renderer once --as-of last`), not at the chain tip, so its hashes change only when
@@ -15,13 +17,14 @@
 # after `slug` in config/brand.json. Nothing but dist/ (allow-list, see build_web.sh) ever leaves this machine.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-RENDER=1; DRY=0; FORCE=0
-for arg in "$@"; do
-  case "$arg" in
-    --no-render) RENDER=0;;
-    --dry-run) DRY=1;;
-    --force) FORCE=1;;
-    *) echo "usage: $0 [--no-render] [--dry-run] [--force]" >&2; exit 2;;
+RENDER=1; DRY=0; FORCE=0; KEY_ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --no-render) RENDER=0; shift;;
+    --dry-run) DRY=1; shift;;
+    --force) FORCE=1; shift;;
+    --key-file) KEY_ARGS=(--key-file "$2" --birthday 4502962); shift 2;;
+    *) echo "usage: $0 [--no-render] [--dry-run] [--force] [--key-file FILE]" >&2; exit 2;;
   esac
 done
 SLUG=$(python3 -c "import json; print(json.load(open('config/brand.json'))['slug'])")
@@ -31,7 +34,7 @@ if [ "$RENDER" = 1 ]; then
   python3 -m renderer once --wallet wallets/test/V --sync --as-of last --out out >/dev/null
 fi
 echo "== build the static snapshot =="
-scripts/build_web.sh --out out --dist dist --stamp   # --stamp: anchor.json.ots; a failed stamp is only a warning
+scripts/build_web.sh --out out --dist dist --stamp "${KEY_ARGS[@]}"   # --stamp: a failed stamp is only a warning
 
 read -r HEIGHT HASH < <(python3 -c "import json; d=json.load(open('dist/static.json')); print(d['as_of_height'], d['render_hash'])")
 LIVE_HEIGHT=$(curl -fsS --retry 2 --max-time 20 "https://$SLUG.vercel.app/static.json?t=$(date +%s)" 2>/dev/null \

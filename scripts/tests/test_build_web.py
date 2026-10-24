@@ -90,6 +90,43 @@ def test_check_rejects_runtime_requests_outside_the_origin(out, tmp_path, page, 
     assert r.returncode != 0 and "external runtime request" in r.stderr
 
 
+FAKE_KEY = "uvftest1" + ("qpzry9x8gf2tvdw0s3jn54khce6mua7l" * 4)   # shaped like a viewing key; not a real one
+
+
+def test_key_is_published_only_as_key_txt(out, tmp_path):
+    dist, key = tmp_path / "dist", tmp_path / "choir.key"
+    key.write_text(FAKE_KEY + "\n")
+    run("--out", str(out), "--dist", str(dist), "--key-file", str(key), "--birthday", "4502962")
+    assert (dist / "key.txt").read_text() == FAKE_KEY + "\n"
+    static = json.loads((dist / "static.json").read_text())
+    assert static["key"] == {"file": "key.txt", "birthday": 4502962}
+    assert all(FAKE_KEY not in p.read_text(errors="ignore") for p in dist.rglob("*") if p.is_file() and p.name != "key.txt")
+    assert run("--check", "--dist", str(dist)).returncode == 0
+    # without --key-file there is no key.txt and no key entry
+    dist2 = tmp_path / "dist2"
+    run("--out", str(out), "--dist", str(dist2))
+    assert not (dist2 / "key.txt").exists() and "key" not in json.loads((dist2 / "static.json").read_text())
+
+
+@pytest.mark.parametrize("planted", ["index.html", "out/score.json", "app.js", "anchor.json"])
+def test_check_rejects_a_key_outside_key_txt(out, tmp_path, planted):
+    dist, key = tmp_path / "dist", tmp_path / "choir.key"
+    key.write_text(FAKE_KEY + "\n")
+    run("--out", str(out), "--dist", str(dist), "--key-file", str(key))
+    target = dist / planted
+    target.write_text(target.read_text() + "\n" + FAKE_KEY + "\n")
+    r = run("--check", "--dist", str(dist), check=False)
+    assert r.returncode != 0 and "a viewing key outside key.txt" in r.stderr and FAKE_KEY not in r.stderr + r.stdout
+
+
+@pytest.mark.parametrize("content", ["not a key\n", FAKE_KEY + "\n" + FAKE_KEY + "\n", ""])
+def test_refuses_a_key_file_that_is_not_one_key(out, tmp_path, content):
+    key = tmp_path / "bad.key"
+    key.write_text(content)
+    r = run("--out", str(out), "--dist", str(tmp_path / "dist"), "--key-file", str(key), check=False)
+    assert r.returncode == 1 and "exactly one unified full viewing key" in r.stderr and FAKE_KEY not in r.stderr
+
+
 def test_dist_and_vercel_are_ignored():
     ignore = (ROOT / ".gitignore").read_text().splitlines()
     assert "dist/" in ignore and ".vercel/" in ignore

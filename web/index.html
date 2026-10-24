@@ -81,6 +81,15 @@
                 letter-spacing: 0.06em; font-size: 15px; }
   .leaf .hash span { color: var(--ink); } .leaf .hash span.sealed { color: var(--sepia); }
   .verso .links { display: flex; gap: 16px; flex-wrap: wrap; font-style: italic; }
+  /* the published viewing key: small, wrapping anywhere, with a copy button */
+  #key_block { display: grid; gap: 6px; border-top: 1px solid rgba(143, 121, 86, .35); padding-top: 8px; }
+  #key_block[hidden], #eye_keyinfo[hidden] { display: none; }
+  .keywarn { color: var(--rubric); font-style: italic; }
+  .keyrow { display: flex; gap: 8px; align-items: start; }
+  .key_text { flex: 1; min-width: 0; font: 11px/1.35 Georgia, serif; word-break: break-all; color: var(--ink);
+              max-height: 4.2em; overflow: auto; }
+  .key_cmd { font: 12px Georgia, serif; word-break: break-all; color: var(--ink); }
+  .leaf .key_copy, #eye .key_copy { font-size: 13px; padding: 3px 10px; }
   .leaf a { color: var(--ink); text-decoration-color: var(--sepia); text-underline-offset: 3px; }
   .leaf .quiet { color: var(--sepia); }
   .leaf .k { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.2em; text-transform: none; font-size: 13px; }
@@ -174,6 +183,12 @@
           <div><div class="over">render hash</div><div class="hash" id="render_hash"></div></div>
           <div><div class="over">score hash</div><div class="hash" id="score_hash"></div></div>
           <p class="quiet" id="pins"></p>
+          <div id="key_block" hidden>
+            <div class="over">the key · birthday <span class="key_birthday"></span></div>
+            <p class="keywarn">Public forever; it cannot be revoked. Anyone who holds it can read every offering, past and future.</p>
+            <div class="keyrow"><code class="key_text"></code><button class="key_copy" type="button">copy</button></div>
+            <p class="quiet">Summon it yourself: <code class="key_cmd"></code></p>
+          </div>
           <p class="quiet" id="anchor"></p>
           <p class="quiet" id="snapshot"></p>
           <div class="links">
@@ -207,11 +222,12 @@
       <div style="flex: 1; min-width: 200px">
         <div class="k">full viewing key <span id="eye_birthday"></span></div>
         <div id="eye_key">not published on this server (start it with --key-file after `kiosk reveal --to`)</div>
+        <div id="eye_keyinfo" hidden><button class="key_copy" type="button">copy the key</button></div>
       </div>
     </div>
     <div><div class="k">render hash</div><div id="eye_render_hash" class="hash"></div></div>
     <div id="eye_name" class="quiet" style="letter-spacing: 0.22em"></div>
-    <div class="k">a Watcher evokes the god with this key alone: python3 -m renderer summon --key-file KEY --birthday H</div>
+    <div class="k">a Watcher evokes the god with this key alone: <span id="eye_cmd">python3 -m renderer summon --key-file KEY --birthday H</span></div>
     <div><button id="eye_close">return to the body</button></div>
   </div>
 </section>
