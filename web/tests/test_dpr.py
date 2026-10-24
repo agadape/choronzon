@@ -1,4 +1,4 @@
-"""The god's resolution (web/dpr.js), driven in node with synthetic frame times: an HD floor (short side >= 1080 px
+"""The god's resolution (web/dpr.js), driven in node with synthetic frame times: an HD floor (short side >= 900 px
 desktop / 720 px phone, never beyond the screen's own ratio or the GPU), load spikes ignored, a steady 60 fps holds or
 climbs to the cap, sustained slow frames step down but not below the hd floor unless under 30 fps for 5 s, a level that
 was too slow is not retried at once (no thrashing). ?dpr=N pins it."""
@@ -88,8 +88,11 @@ def test_dpr_query_pins_it():
 
 
 def test_hd_floor_desktop_and_phone():
-    # 1440x900 CSS at 125 %: the short side needs 1080 px -> 1.2, inside the screen's 1.25
+    # 1440x900 CSS: the short side already has its 900 px at 1x
     r = run([[16.7, 5000]], css=[1440, 900])
+    assert r["hd"] == 1 and r["start"] == 1.25
+    # 1440x750 CSS at 125 %: 900 / 750 -> 1.2, inside the screen's 1.25
+    r = run([[16.7, 5000]], css=[1440, 750])
     assert r["hd"] == 1.2 and r["start"] == 1.25
     # a phone 375x812 CSS at 3x: 720 / 375 = 1.92, above the 1.5 phone cap, so the cap rises to it
     r = run([[16.7, 5000]], ratio=3, phone=True, css=[375, 812])
@@ -103,18 +106,18 @@ def test_hd_floor_desktop_and_phone():
 
 
 def test_slow_but_above_30_fps_holds_the_hd_floor():
-    r = run([[16.7, 3000], [31, 60000]], ratio=2, css=[1440, 900])     # 32 fps: slow, but not below 30
+    r = run([[16.7, 3000], [31, 60000]], ratio=2, css=[1440, 750])     # 32 fps: slow, but not below 30
     assert r["min"] == 1.2 and r["end"] == 1.2 and r["mode"] == "hd floor"
 
 
 def test_under_30_fps_for_5_s_goes_below_hd_and_says_so():
-    r = run([[16.7, 3000], [45, 60000]], ratio=2, css=[1440, 900])     # 22 fps
+    r = run([[16.7, 3000], [45, 60000]], ratio=2, css=[1440, 750])     # 22 fps
     assert r["end"] == 0.75 and r["mode"] == "below hd: slow GPU"
     # and it comes back to hd (and out of slow mode) once the GPU keeps up again
-    r = run([[16.7, 3000], [45, 30000], [16.7, 180000]], ratio=2, css=[1440, 900])
+    r = run([[16.7, 3000], [45, 30000], [16.7, 180000]], ratio=2, css=[1440, 750])
     assert r["end"] == 2 and r["mode"] == "adaptive"
 
 
 def test_an_hd_floor_dip_of_three_seconds_does_not_go_below_hd():
-    r = run([[16.7, 3000], [45, 3000], [16.7, 20000]], ratio=1.25, css=[1440, 900])
+    r = run([[16.7, 3000], [45, 3000], [16.7, 20000]], ratio=1.25, css=[1440, 750])
     assert r["min"] >= 1.2

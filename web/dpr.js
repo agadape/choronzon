@@ -1,8 +1,8 @@
 // Resolution for the god (web/god.js): an HD target first, then adaptation both ways with hysteresis. Pure: it is
 // fed frame times and answers with the device-pixel ratio to render at. No DOM, no randomness; resolution only.
 //
-//   hd      the drawing buffer's short side is at least 1080 px on desktop and 720 px on phones:
-//           hd = 1080 (720) / the canvas's CSS short side, never above the screen's own devicePixelRatio (no
+//   hd      the drawing buffer's short side is at least 900 px on desktop and 720 px on phones:
+//           hd = 900 (720) / the canvas's CSS short side, never above the screen's own devicePixelRatio (no
 //           supersampling) and never beyond what the GPU can allocate (its max render size)
 //   range   cap = max(hd, the device's ratio capped at 2 desktop / 1.5 phone); start at the cap. ?dpr=N pins it.
 //   settle  frames right after mount (2.5 s), a resize or tab switch (1 s) or a DPR change (0.6 s) are ignored:
@@ -77,7 +77,7 @@
     const base = Math.min(ratio, phone ? 1.5 : 2), floor = Math.min(base, phone ? 0.85 : 0.75);
     const shortSide = Math.min(cssW || 0, cssH || 0), longSide = Math.max(cssW || 0, cssH || 0);
     const gpu = maxSize && longSide ? maxSize / longSide : Infinity;
-    const hd = shortSide ? Math.min(ratio, (phone ? 720 : 1080) / shortSide, gpu) : 0;
+    const hd = shortSide ? Math.min(ratio, (phone ? 720 : 900) / shortSide, gpu) : 0;
     const cap = Math.min(Math.max(base, hd), gpu);
     const v = Number(query);
     return { cap, floor: Math.min(floor, cap), hd: Math.min(hd, cap), forced: v > 0 ? Math.min(3, Math.max(0.25, v)) : 0 };

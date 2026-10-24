@@ -144,6 +144,14 @@ function freshCanvas() {
   return c;
 }
 let godRetried = false, godWaited = false;
+// the god stops drawing once the page has scrolled past it (phones: reading the leaf); it keeps its last frame
+let godOffscreen = false;
+if ("IntersectionObserver" in window) {
+  new IntersectionObserver((entries) => {
+    godOffscreen = !entries[0].isIntersecting;
+    if (god) god.setPaused(godOffscreen);
+  }).observe(document.querySelector(".void"));
+}
 function mountGod(doc) {
   if (window.God && God.supported()) {
     if (god) god.dispose();
@@ -151,6 +159,7 @@ function mountGod(doc) {
       god = God.mount(freshCanvas(), doc, { reducedMotion: CALM });
       document.body.classList.add("webgl");
       window.__god = god;
+      god.setPaused(godOffscreen);
       leafOffset();
       return;
     } catch (e) { god = null; document.body.classList.remove("webgl"); }

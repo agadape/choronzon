@@ -115,7 +115,7 @@ void main(){
   gl_FragColor = vec4(fogged(shade(c, N, vP, rough, 1., ao), vP), 1.);
 }`;
 
-// drawn in a 2048x64 design space and rasterised at W x H (4096x128 desktop, 2048x64 phone): same script, sharper
+// drawn in a 2048x64 design space and rasterised at W x H: the same script at any texture size
 function scriptTexture(seed, W = 2048, H = 64, aniso = 4) {
   const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
   x.fillStyle = "#000"; x.fillRect(0, 0, W, H); x.setTransform(W / 2048, 0, 0, H / 64, 0, 0);
@@ -152,7 +152,7 @@ function mount(canvas, doc, opts = {}) {
   const limitsNow = () => DprAdapter.limits(devicePixelRatio, PHONE, DPR_Q, canvas.clientWidth || innerWidth, canvas.clientHeight || innerHeight, GPU_MAX);
   const DPR = DprAdapter.create(limitsNow());
   let dpr = DPR.dpr;
-  const ANISO = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const ANISO = Math.min(4, renderer.capabilities.getMaxAnisotropy());
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
@@ -213,7 +213,7 @@ function mount(canvas, doc, opts = {}) {
     }`, { side: THREE.BackSide })));
 
   // ================================================================ the wheels
-  const scriptTex = keep(PHONE ? scriptTexture(seed0, 2048, 64, ANISO) : scriptTexture(seed0, 4096, 128, ANISO));
+  const scriptTex = keep(scriptTexture(seed0, 1024, 64, ANISO));   // halos and wing pages, mipmapped, every device
   const ringMat = mat(
     `varying vec3 vP, vN; varying vec2 vUv;
     void main(){ vec4 wp = modelMatrix * vec4(position, 1.); vP = wp.xyz; vN = normalize(mat3(modelMatrix) * normal); vUv = uv; gl_Position = projectionMatrix * viewMatrix * wp; }`,
@@ -563,8 +563,9 @@ function mount(canvas, doc, opts = {}) {
   }
 
   // ================================================================ post: scene (HDR) -> god rays (half res) -> composite
-  // the scene target is multisampled (WebGL2 MSAA x4) on every device; the god-ray target is full resolution too
-  const rtOpts = { type: THREE.HalfFloatType, depthBuffer: true, samples: Math.min(4, renderer.capabilities.maxSamples || 4) };
+  // the scene target is multisampled (WebGL2 MSAA x2) on every device at backbuffer resolution; the god rays are a
+  // radial blur, so their target runs at half resolution (the blur hides it)
+  const rtOpts = { type: THREE.HalfFloatType, depthBuffer: true, samples: Math.min(2, renderer.capabilities.maxSamples || 2) };
   const rtScene = keep(new THREE.WebGLRenderTarget(1, 1, rtOpts)), rtRays = keep(new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false }));
   const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), quadGeo = geo(new THREE.PlaneGeometry(2, 2));
   const QVS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`;
@@ -597,7 +598,7 @@ function mount(canvas, doc, opts = {}) {
   function size() {
     const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight, narrow = w <= 900;
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
-    rtScene.setSize(Math.round(w * dpr), Math.round(h * dpr)); rtRays.setSize(Math.round(w * dpr), Math.round(h * dpr));
+    rtScene.setSize(Math.round(w * dpr), Math.round(h * dpr)); rtRays.setSize(Math.round(w * dpr / 2), Math.round(h * dpr / 2));
     compMat.uniforms.uRes.value.set(w * dpr, h * dpr); compMat.uniforms.uDpr.value = dpr;
     camera.aspect = w / h; camera.fov = narrow ? 58 : 42;
     NARROW = narrow; VW = w; VH = h; if (narrow) camera.setViewOffset(w, h, 0, h * 0.06, w, h); else camera.setViewOffset(w, h, offX, 0, w, h);
@@ -611,19 +612,80 @@ function mount(canvas, doc, opts = {}) {
   // a new canvas size moves the hd floor (the short side changed): re-limit first, then size once
   const onResize = () => { const v = DPR.relimit(performance.now(), limitsNow()); if (v !== null) dpr = v; size(); settle(1000); };
   addEventListener("resize", onResize);
-  const onVis = () => { running = !document.hidden; if (running && alive) { lastT = 0; settle(1000); requestAnimationFrame(tick); } };
+  // the loop runs only while the tab is visible and the god is on screen (app.js pauses it when the page has
+  // scrolled past it); a paused god keeps its last frame
+  let paused = false;
+  const resume = () => { const was = running; running = !document.hidden && !paused; if (running && !was && alive) { lastT = 0; settle(1000); requestAnimationFrame(tick); } };
+  const onVis = () => resume();
   document.addEventListener("visibilitychange", onVis);
 
-  // ================================================================ frame
+  // ================================================================ gaze: rest, attention, the voice
+  // Every eye has its own resting gaze (from its contrib_id) and drifts slowly around it. They watch you only
+  // sometimes: when the pointer moves after being still, a few eyes (a subset chosen from the slot order and a
+  // one-second time bucket) turn to it, one after another, and lose interest after 2-4 s; now and then a few glance
+  // at you on their own (9 s buckets of scene time). The great eye follows the pointer while it moves and for a few
+  // seconds after, otherwise it alternates between watching you and looking around (6.5 s buckets). While a voice
+  // sounds, every other eye turns to the one that sings. Targets are chosen at 20 Hz; the eyes turn every frame.
   let px = 0, py = 0, playT = -1, eyeOpenV = 1, lastCalls = 0, lastTris = 0;
-  const onPointer = (e) => { px = (e.clientX / innerWidth) * 2 - 1; py = -(e.clientY / innerHeight) * 2 + 1; };
+  let pointerAt = -Infinity, attn = null, gazeAt = -Infinity;
+  const onPointer = (e) => {
+    px = (e.clientX / innerWidth) * 2 - 1; py = -(e.clientY / innerHeight) * 2 + 1;
+    const t = performance.now();
+    if (t - pointerAt > 1500) attn = { t0: t, bucket: Math.floor(t / 1000) };   // moved after being still
+    pointerAt = t;
+  };
   addEventListener("pointermove", onPointer);
+  eyeList.forEach((e, i) => {
+    const g = genes(e.it ? e.it.g[0] * 4294967296 >>> 0 : seed0 ^ (i * 7919), i, 6);
+    e.rest = new THREE.Vector3((g[0] - 0.5) * 0.9, (g[1] - 0.5) * 0.7, 1).normalize();   // in the socket's own frame
+    e.dw = 0.11 + 0.09 * g[2]; e.dph = g[3] * TAU;                                       // slow drift around it
+    e.rate = 0.025 + 0.11 * ((i * 0.618) % 1);                                           // each turns at its own pace
+  });
+  const gazeWant = eyeList.map(() => new THREE.Vector3(0, 0, 1));
+  function attends(i, now, time) {
+    if (attn && now - attn.t0 < 6000) {
+      const g = genes(seed0 ^ 0xa77e, i + attn.bucket * 977, 3);
+      const from = attn.t0 + g[1] * 900, until = from + 2000 + g[2] * 2000;
+      if (g[0] < 0.25 && now >= from && now < until) return true;
+    }
+    const b = Math.floor(time / 9), g = genes(seed0 ^ 0x9a2e, i + b * 131, 3), s = time - b * 9;
+    return g[0] < 0.1 && s >= g[1] * 4 && s < g[1] * 4 + 2 + g[2] * 2;
+  }
+  const tv = new THREE.Vector3(), restW = new THREE.Vector3();
+  function chooseGazes(now, time, sing, singer) {
+    const drift = CALM ? 0.4 : 1, follow = now - pointerAt < 5000;
+    eyeList.forEach((e, i) => {
+      const P = eyePos[i], W = gazeWant[i];
+      let target = null;
+      if (e.kind === "blind") target = tv.copy(camP);
+      else if (sing && i !== singer && e.kind !== "great") target = tv.copy(eyePos[singer]);
+      else if (e.kind === "great") {
+        const b = Math.floor(time / 6.5), r = genes(seed0 ^ 0x6a7e, b, 3);
+        const sc = CALM ? [0.5, 0.5] : genes(seed0, Math.floor(time / 1.9), 2);       // saccades: it jumps
+        if (follow || r[0] < 0.6) target = tv.copy(camP).addScaledVector(right, (follow ? px * 6 : 0) + (sc[0] - 0.5) * 1.6)
+          .addScaledVector(up, (follow ? py * 4 : 0) + (sc[1] - 0.5) * 1.0);
+        else target = tv.copy(camP).addScaledVector(right, (r[1] - 0.5) * 9).addScaledVector(up, (r[2] - 0.5) * 5 - 1.5);   // it looks away
+      } else if (attends(i, now, time)) target = tv.copy(camP).addScaledVector(right, px * 3).addScaledVector(up, py * 2);
+      if (target) W.copy(target).sub(P).normalize();
+      else {                                                                    // at rest, drifting
+        restW.set(e.rest.x + Math.sin(time * e.dw + e.dph) * 0.18 * drift, e.rest.y + Math.cos(time * e.dw * 0.8 + e.dph) * 0.12 * drift, e.rest.z).normalize();
+        if (e.kind === "ring") { e.socket.getWorldQuaternion(tmpQ); W.copy(restW).applyQuaternion(tmpQ); }
+        else if (e.kind === "dweller") W.copy(e.dir).addScaledVector(restW, 0.6).normalize();
+        else W.copy(restW);
+      }
+      if (e.kind === "ring") {                                                  // as far as the socket lets it
+        e.socket.getWorldQuaternion(tmpQ); nW.set(0, 0, 1).applyQuaternion(tmpQ);
+        const d = W.dot(nW); if (d < 0.55) W.addScaledVector(nW, 0.55 - d).normalize();
+      } else if (e.kind === "dweller") { const d = W.dot(e.dir); if (d < 0.3) W.addScaledVector(e.dir, 0.3 - d).normalize(); }
+    });
+  }
   const T0 = performance.now(), dummy = new THREE.Object3D(), camP = new THREE.Vector3(), nW = new THREE.Vector3(), tmpQ = new THREE.Quaternion();
   const right = new THREE.Vector3(), up = new THREE.Vector3(), M = new THREE.Matrix4(), S4 = new THREE.Matrix4(), sunV = new THREE.Vector3();
   const eyePos = eyeList.map(() => new THREE.Vector3());
   const eyeLook = eyeList.map(() => null);
   function tick(now, once) {
     if ((!running && !once) || !alive) return;
+    if (!once && lastT && now - lastT < 1000 / 60 - 1.5) { requestAnimationFrame(tick); return; }   // at most 60 fps
     if (lastT && now > lastT && !once) { const dt = now - lastT; adapt(now, dt); fps = fps ? fps * 0.9 + (1000 / dt) * 0.1 : 1000 / dt; }
     if (!once) lastT = now;
     const time = ((now - T0) / 1000) * (CALM ? 0.35 : 1) + 30;
@@ -647,25 +709,15 @@ function mount(canvas, doc, opts = {}) {
     });
     const sing = singer >= 0 && sw > 0.25;
     U.uSing.value = sing ? sw : 0; if (singer >= 0) U.uSingP.value.copy(eyePos[singer]);
+    if (once || now - gazeAt >= 50) { gazeAt = now; chooseGazes(now, time, sing, singer); }   // targets at 20 Hz
     eyeList.forEach((e, i) => {
-      const P = eyePos[i]; let target, scale = e.r;
-      if (sing && i !== singer && e.kind !== "blind" && e.kind !== "great") target = eyePos[singer].clone();
-      else if (e.kind === "great") { const sc = CALM ? [0.5, 0.5] : genes(seed0, Math.floor(time / 1.9), 2);       // saccades: it jumps
-        target = camP.clone().addScaledVector(right, px * 6 + (sc[0] - 0.5) * 1.6).addScaledVector(up, py * 4 + (sc[1] - 0.5) * 1.0); }
-      else target = camP.clone();
-      if (e.kind === "ring") {
-        scale = e.it.silent ? e.r * 0.9 : e.r * (1 + 0.15 * e.w);
-        e.socket.getWorldQuaternion(tmpQ); nW.set(0, 0, 1).applyQuaternion(tmpQ);
-        const dir = target.sub(P).normalize(), d = dir.dot(nW);
-        if (d < 0.55) dir.addScaledVector(nW, 0.55 - d).normalize();
-        target = P.clone().add(dir);
-      } else if (e.kind === "dweller") {
-        const dir = target.sub(P).normalize(), d = dir.dot(e.dir); if (d < 0.3) dir.addScaledVector(e.dir, 0.3 - d).normalize(); target = P.clone().add(dir);
-      } else if (e.kind === "blind" && ((time * (0.15 + 0.1 * e.g[5]) + e.g[3]) % 1) >= 0.55) scale = 0;
-      const want = target.clone().sub(P).normalize();
+      const P = eyePos[i]; let scale = e.r;
+      if (e.kind === "ring") scale = e.it.silent ? e.r * 0.9 : e.r * (1 + 0.15 * e.w);
+      else if (e.kind === "blind" && ((time * (0.15 + 0.1 * e.g[5]) + e.g[3]) % 1) >= 0.55) scale = 0;
+      const want = gazeWant[i];
       if (!eyeLook[i]) eyeLook[i] = want.clone();
-      else eyeLook[i].lerp(want, e.kind === "great" ? 0.35 : 0.025 + 0.11 * ((i * 0.618) % 1)).normalize();
-      dummy.position.copy(P); dummy.scale.setScalar(scale); dummy.lookAt(P.clone().add(eyeLook[i])); dummy.updateMatrix();
+      else eyeLook[i].lerp(want, e.kind === "great" ? 0.35 : e.rate).normalize();
+      dummy.position.copy(P); dummy.scale.setScalar(scale); tv.copy(P).add(eyeLook[i]); dummy.lookAt(tv); dummy.updateMatrix();
       const eg = e.big ? bigEyes : smallEyes; eg.mesh.setMatrixAt(e.idx, dummy.matrix); eg.wake[e.idx] = e.w;
       if (e.lid) {
         const li = e.lidIndex, s = e.r * 1.08, lg = e.big ? bigLids : smallLids;
@@ -713,6 +765,7 @@ function mount(canvas, doc, opts = {}) {
     setPlayT(v) { playT = typeof v === "number" ? v : -1; },
     setEyeOpen(v) { eyeOpenV = v === undefined ? 1 : clamp01(v); },
     setViewOffset(pxOff) { wantOff = pxOff || 0; },
+    setPaused(v) { paused = !!v; resume(); },
     pick,
     wasDrag() { return moved > 6; },
     stats() { return { calls: lastCalls, triangles: lastTris, fps: Math.round(fps), dpr: Number(dpr.toFixed(2)), cap: Number(DPR.cap.toFixed(2)),
