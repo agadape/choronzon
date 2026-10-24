@@ -66,7 +66,7 @@ flowchart TB
         S["score.json → score_hash<br/>chain data only, decoder-independent"]
         C["Composer<br/>pinned Codec2 decoder · integer mix"]
         H["mix.wav → render_hash"]
-        W["Listener page<br/>creature grown from the score · plays the mix · shows both hashes"]
+        W["Listener page<br/>the god drawn from the score · plays the mix · shows both hashes"]
         R --> S --> C --> H --> W
     end
     Z -->|"view-only sync + enhance"| R
@@ -82,7 +82,7 @@ flowchart TB
 2. **Discover.** The renderer holds only the public viewing key, and refuses to run on a wallet that holds a spending key. It syncs, fetches full transactions (memos are not in compact blocks), and collects every output received by the god's wallet up to an explicit `as_of_height`.
 3. **Order and validate.** Offerings are ordered by `(mined_height, tx_index, action_index)`. Incomplete chunks, CRC failures, unknown codecs, conductor lines not paid by the god's own wallet and flagged txids are skipped and logged with the reason; they stay on chain and are listed under `skipped`.
 4. **Compose.** Audio is decoded with a pinned Codec2 build and mixed offline with integer arithmetic into one buffer. The browser only plays that buffer.
-5. **Evoke.** The creature's body is a pure function of the ordered offerings, `G_n = F(G_{n-1}, A_n, I_n)`, with no randomness anywhere.
+5. **Evoke.** The god's body is a pure function of the ordered offerings, `G_n = F(G_{n-1}, A_n, I_n)`, with no randomness anywhere. The listener draws it with three.js r160, vendored under `web/vendor/three/` (MIT), with IM Fell English self-hosted under `web/fonts/` (SIL OFL); the public page makes no request outside its own origin. One eye per offering, the great eye and the wings for the god's own lines, one arm per block, sewn lids for silenced offerings, blind red eyes for refused forgeries; without WebGL the Canvas 2D creature is shown instead. The grimoire leaf (G) is cut from the hashes: its deckle from the score hash, its tear line from the render hash, so a stub from any other evocation with the same render hash fits the edge exactly; `apparition.html` lays two such leaves against each other.
 6. **Prove.** Two machines with the same key print the same `render_hash`. A Watcher built from the key alone (`renderer summon`) is the second machine.
 7. **Whisper back.** A listener clicks a limb; the page builds a payment request to that offering's one-time reply address, read from the wallet database at that moment and stored nowhere else. The reply is a shielded transaction between the two wallets; the key holder sees none of it.
 
@@ -138,7 +138,7 @@ The god's full viewing key is one line of text, shown at the Séance (`python3 -
 - **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`spikes/g6_render.py`). The product renderer reproduces that value and, at the same height, `score_hash` (`score/1`) `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a` and `render_hash` (`render/1`, composer `choir/2`) `9b6c1b9d3b61830b82848179e323276cb95b43cd90558c99e740d78addba2bc0`; `score.json` and `mix.wav` are byte-identical from the view-only and the full-key wallet. The test suite and `scripts/smoke.sh` pin these values.
 - **The second machine.** On 21 Oct a fresh clone with no wallet built a Watcher from the key alone and printed `render_hash` `8540a0a57d6f80d409d4ed5948789f64e524fc08252a15ea3bd904dd58fa1af5` at height 4,525,294, byte-identical to the operator's view-only wallet, in 49.8 s including sync ([docs/fresh-clone.md](docs/fresh-clone.md)). Both demo rehearsals repeated the match unattended (`7dc6f42a…` at 4,525,338, `bb2cf2dc…` at 4,525,371).
 - **A machine we do not own.** On 22 Oct a GitHub-hosted Ubuntu runner with nothing but the published key built the pinned tools from source, synced a view-only wallet and printed `render_hash` `6ae739854eca770ef1c3d32b4519f31be8b10b5f83cdd883b747bce63cab444e` at height 4,527,794, identical to the laptop's, with the decoder and voice fingerprints matching the pins ([run 39727405735](https://github.com/agadape/choronzon/actions/runs/39727405735), [docs/auto-publish.md](docs/auto-publish.md)).
-- **Anchored in Bitcoin.** Every published render is stamped with OpenTimestamps. The statement, `anchor.json`, holds the hashes, versions, counts, one height, the skiplist's sha256 and the repo commit; nothing private. It and its proof are served next to the page and kept on the append-only `anchors` branch, which also holds the historic anchors at 4,522,002 and 4,527,794. `python3 -m anchor verify anchor.json` checks the proof against two public block explorers; no Bitcoin node is needed. A confirmed proof shows the statement existed no later than that Bitcoin block. After that, any change to a published render (reordering offerings, editing the skiplist) no longer matches what is already in Bitcoin, including a change made by us. It hides nothing. It does not prove that the chain data is complete. A fresh proof stays pending for a few hours until a calendar's Bitcoin transaction confirms. The calendars see the IP of whoever stamps. Details: [docs/anchoring.md](docs/anchoring.md).
+- **Anchored in Bitcoin.** Every published render is stamped with OpenTimestamps. The statement, `anchor.json`, holds the hashes, versions, counts, one height, the skiplist's sha256 and the repo commit; nothing private. It and its proof are served next to the page and kept on the append-only `anchors` branch, which also holds the historic anchors at 4,522,002 and 4,527,794. `python3 -m anchor verify anchor.json` checks the proof against two public block explorers; no Bitcoin node is needed. A confirmed proof shows the statement existed no later than that Bitcoin block: the anchors at 4,522,002 and 4,527,794 are in Bitcoin block 972,742 (23 Oct 2026, 08:41 UTC). A served proof is the one made at deploy; any OpenTimestamps verifier fetches its Bitcoin confirmation from the calendars. After that, any change to a published render (reordering offerings, editing the skiplist) no longer matches what is already in Bitcoin, including a change made by us. It hides nothing. It does not prove that the chain data is complete. A fresh proof stays pending for a few hours until a calendar's Bitcoin transaction confirms. The calendars see the IP of whoever stamps. Details: [docs/anchoring.md](docs/anchoring.md).
 
 ## Memo protocol v1
 
@@ -180,7 +180,7 @@ python3 -m pytest    # 121 passed, 2 skipped on a fresh clone (the 2 chain-regre
 ```bash
 python3 -m renderer summon --key-file key.txt --birthday 4502962 --wallet wallets/watcher --as-of 4525294 --out out
 cat out/render_hash        # 8540a0a57d6f80d409d4ed5948789f64e524fc08252a15ea3bd904dd58fa1af5 at that height
-python3 -m web --port 8766 # the listener page on the clone: creature, playback, both hashes
+python3 -m web --port 8766 # the listener page on the clone: the god, playback, both hashes
 ```
 
 Operator commands (these need the testnet wallets, which are never committed):
@@ -188,7 +188,7 @@ Operator commands (these need the testnet wallets, which are never committed):
 ```bash
 python3 -m renderer once   --wallet wallets/test/V --as-of 4522002   # one render -> out/score.json, out/render_hash, out/mix.wav
 python3 -m renderer daemon --wallet wallets/test/V                    # sync -> enhance -> render, every 30 s
-python3 -m web --port 8765                                            # listener page: creature + playback of out/mix.wav
+python3 -m web --port 8765                                            # listener page: the god + playback of out/mix.wav
 python3 -m kiosk preview "a secret"                                   # speak it locally; nothing is sent
 python3 -m kiosk session open --notes 8 && python3 -m kiosk offer - --reply   # ephemeral wallet, then an offering typed at the prompt
 python3 -m renderer whisper <txid> --wallet wallets/test/V            # reply request (QR) for one offering; see kiosk/README.md for inbox, qr, speak, reveal
@@ -205,7 +205,7 @@ python3 -m renderer whisper <txid> --wallet wallets/test/V            # reply re
 | `protocol/` | Memo wire format v1: binary memos, phone envelope, readable phone replies, reply-address checksum (+ tests) |
 | `renderer/` | View-only renderer and daemon: canonical score, `score_hash`, `render_hash`, pinned-decoder wrapper, `whisper`, `summon` (+ tests) |
 | `kiosk/` | Sender kiosk CLI: preview, ephemeral session wallet + note pool, offer, inbox, qr, speak, reveal (+ tests) |
-| `web/` | Listener page: Canvas 2D creature grown from the score + playback of the mix; stdlib static server |
+| `web/` | Listener page: the god (three.js, vendored; Canvas 2D fallback) grown from the score + playback of the mix, the grimoire leaf, the séance, the two-evocation chirograph; stdlib static server |
 | `config/choir.json` | The god's public address and the fixed offering amount (never its viewing key) |
 | `config/` | `brand.json` (name and copy), `skiplist.txt` (flagged offerings: still on chain, never sung) |
 | `scripts/` | `setup.sh`, `smoke.sh`, `demo.sh` (end-to-end rehearsal), `gen_readme.py` |
@@ -266,7 +266,7 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 - Phone wallets send ZIP-321 memos as text, which is why the phone path uses an ASCII envelope.
 - One public testnet explorer follows a different testnet fork and shows none of our transactions; the links here go to ZecBlock, which is on our chain (see [Evidence](#evidence-zcash-testnet-nu7)). Either way the independent proof of a transaction is a wallet holding the public key, not a web page.
 
-Not built: Codec2 decoding in the browser (the page plays the offline mix), a séance mode on the listener page, a random send delay, a real phone scan of the QR path (the envelope was proven with a laptop wallet standing in for the phone).
+Not built: Codec2 decoding in the browser (the page plays the offline mix), a random send delay, a real phone scan of the QR path (the envelope was proven with a laptop wallet standing in for the phone).
 
 ## Status
 
@@ -278,7 +278,7 @@ Done:
 - [x] Renderer daemon on a view-only wallet: `score.json`, `score_hash`, skip log; refuses a wallet with a spending key
 - [x] Offline composer: pinned decoder, pinned local voice, integer mix, `render_hash` + `mix.wav`
 - [x] Kiosk CLI: text → local TTS → Codec2 → shielded send from an ephemeral wallet with a note pool; secrets from a prompt, no cache, no argv
-- [x] Listener page: Canvas 2D creature grown from the score + playback of the mix, both hashes on screen
+- [x] Listener page: the god seen from below (three.js, one eye per offering, Canvas 2D fallback) + playback of the mix, both hashes, the grimoire leaf, the séance and the two-evocation chirograph
 - [x] Whisper Back (limb click or `renderer whisper`, `kiosk inbox`), the god's own voice with forgeries refused, phone offerings by QR, the Séance (`kiosk reveal`, `renderer summon`)
 - [x] Fresh-clone proof with measured times, privacy review, eight failure drills, two unattended rehearsals of the 3-minute demo
 - [x] Tor by default for every lightwalletd connection the product makes (kiosk, renderer, Whisper Back, summon), fail-closed, same hashes over Tor and direct
@@ -287,7 +287,6 @@ Done:
 Open:
 
 - [ ] The gate on a second physical laptop (today the Watcher on a fresh clone stands in for it)
-- [ ] Listener page: séance mode and the NOT THE GOD moment for a refused forgery
 - [ ] A real phone scan of the QR path (Zingo! on testnet); Codec2 in the browser (may be dropped)
 - [ ] Five clean run-throughs of the demo, labelled pre-sent offerings, demo video, submission on 28 Oct
 

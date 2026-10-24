@@ -108,7 +108,8 @@ This is a machine that never saw ours, reproducing the work from one key. It is 
 | Kept on | branch `anchors` (append-only, content-addressed): `4522002-5e7a489d70dcc34c.json` (score `41530793…`, render `9b6c1b9d…`, g6 `c46dd5de…`) and `4527794-e4700837f6db640b.json` (render `6ae73985…`), each with its `.ots` proof |
 | Served | `https://choronzon.vercel.app/anchor.json` + `anchor.json.ots`; the GitHub runner built the same statement bytes as the laptop (sha256 `e4700837…`) |
 | CI | publish [run 39924480381](https://github.com/agadape/choronzon/actions/runs/39924480381) (stamp + persist), upgrade [run 39924774744](https://github.com/agadape/choronzon/actions/runs/39924774744) ("pending, nothing changed") |
-| Status on 23 Oct ~09:00 UTC | **pending**: `python3 -m anchor verify` on the served files says "proof commits to sha256 of this statement" and "PENDING: not in Bitcoin yet (4 calendar(s) hold it)", exit 3. Record the Bitcoin block here once upgraded |
+| Status on 23 Oct ~09:00 UTC | **pending**: `python3 -m anchor verify` on the served files says "proof commits to sha256 of this statement" and "PENDING: not in Bitcoin yet (4 calendar(s) hold it)", exit 3 |
+| Confirmed in Bitcoin (24 Oct) | `4522002-5e7a489d70dcc34c.json` and `4527794-e4700837f6db640b.json` in block 972,742 (`00000000000000000000a1bf4e832b290e803eb681fd3fd0d48a845e141cc803`, 2026-10-23 08:41:36 UTC); `4531929-a24dd50f32d34c79.json` in block 972,778 (`000000000000000000015d24ff5042c808902968cc8a0cf5d254035ff0c97241`, 13:12:13 UTC); `python3 -m anchor verify <file>` exit 0 with headers from two explorers (`a14ddfb`; see docs/anchoring.md "Confirmed in Bitcoin") |
 | Logs | `logs/anchor-spike/`, `logs/anchor-historic/` |
 
 ## Tor by default (23 Oct 2026)
