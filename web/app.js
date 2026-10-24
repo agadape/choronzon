@@ -92,24 +92,43 @@ function otsStatus(bytes) {
 }
 async function loadAnchor(doc) {
   const el = $("anchor");
-  let st, base = "";
-  try { st = await fetchJSON("anchor.json"); }
+  let st, base = "", raw = null;
+  const getRaw = async (url) => { const r = await fetch(url, { cache: "no-store" }); if (!r.ok) throw new Error(r.status); return new Uint8Array(await r.arrayBuffer()); };
+  try { raw = await getRaw("anchor.json"); }
   catch (e) {
-    try { st = await fetchJSON("out/anchor.json"); base = "out/"; }   // the installation: python3 -m anchor statement --to out/anchor.json
+    try { raw = await getRaw("out/anchor.json"); base = "out/"; }   // the installation: python3 -m anchor statement --to out/anchor.json
     catch (e2) { el.textContent = "No anchor statement on this server (the public site carries one, stamped in Bitcoin with OpenTimestamps)."; return; }
   }
+  try { st = JSON.parse(new TextDecoder().decode(raw)); } catch (e) { el.textContent = "The anchor statement on this server could not be read."; return; }
   const same = st.render_hash === doc.render_hash && st.score_hash === doc.score_hash;
   let proof = "no proof file yet";
   try {
     const r = await fetch(`${base}anchor.json.ots`, { cache: "no-store" });
     if (r.ok) {
       const s = otsStatus(new Uint8Array(await r.arrayBuffer()));
-      proof = s.bitcoin.length ? `in Bitcoin, block ${s.bitcoin.map(fmt).join(", ")}` : s.pending ? "PENDING: held by the calendars, not yet in Bitcoin" : "proof file present, no attestation read";
+      // the served proof is the one made at deploy time: say what it held then, not what the anchor is now
+      proof = s.bitcoin.length ? `proof as served: in Bitcoin, block ${s.bitcoin.map(fmt).join(", ")}`
+            : s.pending ? "proof as served: pending at deploy" : "proof as served: no attestation read";
     }
   } catch (e) { /* no proof */ }
   el.textContent = (same ? `Anchored: statement anchor/1 for height ${fmt(st.as_of_height)} carries these two hashes, ${st.offerings} offerings, commit ${String(st.repo_commit).slice(0, 7)}. `
                          : `Anchor statement is for height ${fmt(st.as_of_height)} (render ${String(st.render_hash).slice(0, 8)}…), not this render. `)
-    + `OpenTimestamps: ${proof}. Verify: python3 -m anchor verify anchor.json`;
+    + `OpenTimestamps: ${proof}. Verify: python3 -m anchor verify anchor.json.`;
+  // the upgraded proof lives on the append-only anchors branch as <height>-<sha256(anchor.json)[:16]>.json.ots
+  const repo = `https://github.com/agadape/${brand ? brand.slug : ""}`;
+  const note = document.createElement("span");
+  note.append(" Proof made at deploy; any OpenTimestamps verifier fetches its Bitcoin confirmation from the calendars. ");
+  const tree = document.createElement("a"); tree.href = `${repo}/tree/anchors`; tree.target = "_blank"; tree.rel = "noopener";
+  tree.textContent = "Upgraded proofs"; note.append(tree, " (public from 28 Oct)");
+  try {
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", raw));
+    const short = Array.from(digest.slice(0, 8), (b) => b.toString(16).padStart(2, "0")).join("");
+    const one = document.createElement("a"); one.href = `${repo}/blob/anchors/${st.as_of_height}-${short}.json.ots`;
+    one.target = "_blank"; one.rel = "noopener"; one.textContent = "this one";
+    note.append(", ", one);
+  } catch (e) { /* no WebCrypto (plain http on another host): the branch link alone */ }
+  note.append(".");
+  el.append(note);
 }
 
 // the god: three.js when WebGL2 is there, else the Canvas 2D creature (same score, same meaning)
