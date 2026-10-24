@@ -60,7 +60,9 @@ The digest is of public data anyway (every hash in the statement is already on t
 
 1. **The page**: `https://<slug>.vercel.app/anchor.json` and `/anchor.json.ots` for the snapshot being served
    (`scripts/build_web.sh --stamp`; both are on its allow-list). The `.ots` served there is the one made at
-   deploy time and stays *pending* on the page until the next deploy; the verifier below upgrades it on the fly.
+   deploy time and stays *pending* in that file until the next deploy. That does not make it unverifiable: all
+   three verifiers below ask the calendars for the upgrade first (checked 24 Oct: the pending deploy-time proof
+   of 4,527,794 from `anchors@8415ae6` gave VERIFIED, block 972,742). The upgraded file is on the branch.
 2. **The `anchors` branch** of this repository: every statement ever deployed, append-only and
    content-addressed (`<height>-<sha256(statement)[:16]>.json` + `.ots`). Written by the `anchor` job of
    `publish-web.yml` after each deploy, and by `python3 -m anchor persist` from a laptop. Git plumbing only
@@ -111,13 +113,29 @@ Then any one of:
    python3 -m anchor verify anchor.json
    ```
 
-   It checks that the proof commits to `sha256(anchor.json)`, upgrades a pending proof from the calendars in
-   memory, and for every Bitcoin attestation fetches the block hash at that height from **two** explorers
-   (mempool.space and blockstream.info, which must agree), downloads the 80-byte header, checks that it hashes to
-   that block hash and meets its proof-of-work target, and compares its merkle root with the proof's. Prints the
-   block height, hash and time; exit 0 = in Bitcoin, 3 = only pending, 1 = does not match. Trust: you rely on the
-   explorers agreeing on the block at that height (a header with valid proof-of-work is expensive to fake; a
-   node removes even that).
+   It checks that the proof commits to `sha256(anchor.json)` and upgrades a pending proof from the calendars in
+   memory. For every Bitcoin attestation it asks Esplora explorers run by different operators, in order
+   (mempool.space, blockstream.info, mempool.emzy.de, btcscan.org, bitcoin.lu.ke, mempool.bitaroo.net), for the
+   block hash at that height and its 80-byte header. A source counts only if its header hashes to the hash it
+   named and meets a proof-of-work floor (difficulty ≥ 10¹³ after height 700,000: a difficulty-1 header could be
+   mined around any merkle root in seconds by a lying explorer). It stops when **two** sources agree, then
+   compares that header's merkle root with the proof's. Requests go IPv4 first, 10 s per request at most; a host
+   that fails to connect is skipped for the rest of the run. `--explorers a,b` picks a subset.
+
+   | Outcome | Exit | Means |
+   |---|---|---|
+   | VERIFIED | 0 | in Bitcoin; prints block height, hash, time; the earliest block is the "no later than" |
+   | MISMATCH | 1 | the proof is for another file, or two agreeing explorers show a block whose merkle root is not the proof's |
+   | PENDING | 3 | no Bitcoin attestation yet (calendars publish every few hours) |
+   | UNCHECKED | 4 | the proof names blocks, but fewer than two explorers could be used from this network (each one is named with the reason: unreachable, TLS certificate of someone else, filter page, below the PoW floor) or they disagree. Nothing was found wrong; retry elsewhere |
+
+   Why two: one explorer that passes the PoW floor already shows a real, expensively mined header committing to
+   our proof, but only a second, independent source shows that the block is the one at that height on the main
+   chain. A Bitcoin node (option 3) removes the trust in explorers altogether.
+
+   On 24 Oct, from the team laptop's ISP, `blockstream.info` resolved to the ISP's filter host (TLS certificate
+   for `*.citra.net.id`) and `mempool.space` timed out; the old two-explorer verifier reported that as a mismatch
+   after ~10 minutes. Now it says which explorers were not used and why, and confirms through the next two.
 3. **With a Bitcoin node**: `ots verify anchor.json.ots` (the reference client asks your `bitcoind`).
 
 `ots info anchor.json.ots` prints the proof's operations offline.
@@ -137,3 +155,19 @@ history). Statements built by commit `7fcdc3c`; files on the `anchors` branch:
 |---|---|---|---|---|---|
 | 4,522,002 | the G6 / score/1 / render/1 regression anchors (7 accepted) | `41530793…` | `9b6c1b9d…` | `c46dd5de…` | `4522002-5e7a489d70dcc34c.json` |
 | 4,527,794 | the seeded corpus, the render the page served from 22 Oct (43 offerings) | `2649909b…` | `6ae73985…` | `747b446a…` | `4527794-e4700837f6db640b.json` |
+
+## Confirmed in Bitcoin
+
+`python3 -m anchor verify` on 24 Oct 2026 (exit 0; headers from mempool.emzy.de + btcscan.org, the first two
+explorers being blocked on that network). "No later than" = the earliest block; each calendar's own
+transaction is a further, independent attestation.
+
+| Statement (`anchors` branch) | Render | Earliest block | Block hash | Block time (UTC) | Other attestations |
+|---|---|---|---|---|---|
+| `4522002-5e7a489d70dcc34c.json` | 4,522,002 · render `9b6c1b9d…` | 972,742 | `00000000000000000000a1bf4e832b290e803eb681fd3fd0d48a845e141cc803` | 2026-10-23 08:41:36 | 972,743 · 972,749 · 972,793 |
+| `4527794-e4700837f6db640b.json` | 4,527,794 · render `6ae73985…` | 972,742 | `00000000000000000000a1bf4e832b290e803eb681fd3fd0d48a845e141cc803` | 2026-10-23 08:41:36 | 972,743 · 972,749 · 972,793 |
+| `4531929-a24dd50f32d34c79.json` | 4,531,929 · render `52fb6802…` (CI deploy, commit `94983a6`) | 972,778 | `000000000000000000015d24ff5042c808902968cc8a0cf5d254035ff0c97241` | 2026-10-23 13:12:13 | 972,779 · 972,793 · 972,808 |
+
+The four other statements at 4,531,929 (`5accedb5…`, `8da56879…`, `73a62cd4…`, `646e73f5…`) are the same render
+(`52fb6802…`) redeployed on 24 Oct 10:34–10:53 UTC after web commits; only `repo_commit` differs. They were still
+pending at the time of writing; `anchor-upgrade.yml` upgrades them.

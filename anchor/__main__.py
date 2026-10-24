@@ -8,7 +8,8 @@
   python3 -m anchor verify anchor.json [--ots P] [--offline]                Bitcoin block height/time, no node
   python3 -m anchor persist anchor.json [--ots P] [--no-push]               add to the append-only `anchors` branch
 
-verify exits 0 when anchored in Bitcoin, 3 when only pending, 1 when the proof does not match.
+verify exits 0 VERIFIED (in Bitcoin, header confirmed by 2+ explorers), 1 MISMATCH (proof or header does not
+match), 3 PENDING (not in Bitcoin yet), 4 UNCHECKED (explorers unreachable from this network: nothing found wrong).
 """
 from __future__ import annotations
 
@@ -116,21 +117,48 @@ def cmd_verify(a) -> int:
         print(f"proof      {'commits to this statement' if ok else 'IS FOR ANOTHER FILE'}; claims Bitcoin block(s) "
               f"{st['bitcoin_heights'] or 'none yet'}; pending at {len(st['pending'])} calendar(s) (offline: not checked)")
         return 0 if ok and st["bitcoin_heights"] else (1 if not ok else 3)
-    v = ots.verify(data, proof, log=lambda s: print("           " + s, file=sys.stderr))
+    explorers = ots.EXPLORERS
+    if a.explorers:
+        wanted = a.explorers.split(",")
+        known = dict(ots.EXPLORERS)
+        unknown = [w for w in wanted if w not in known]
+        if unknown:
+            print(f"unknown explorer(s) {unknown}; known: {', '.join(known)}", file=sys.stderr)
+            return 2
+        explorers = tuple((w, known[w]) for w in wanted)
+    v = ots.verify(data, proof, explorers=explorers,
+                   log=lambda s: print("           calendar " + s, file=sys.stderr))
     print(f"proof      {'commits to sha256 of this statement' if v.digest_ok else 'IS FOR ANOTHER FILE'}")
-    for b in sorted(v.confirmed, key=lambda b: b.height):
-        print(f"bitcoin    block {b.height}  {b.hash}  {b.time_utc}  (header checked; {' + '.join(b.sources)} agree)")
-    for p in v.problems:
-        print(f"PROBLEM    {p}")
-    if v.digest_ok and v.earliest and not v.problems:
-        print(f"=> this statement existed no later than {v.earliest.time_utc} (Bitcoin block {v.earliest.height}).")
-        return 0
-    if v.digest_ok and not v.problems and v.pending:
+    why: dict[str, str] = {}                  # one line per explorer: the first real reason, not "skipped (...)"
+    for u in (u for h in v.heights for u in h.unusable):
+        host = u.split(":", 1)[0]
+        if host not in why or ": skipped (" in why[host]:
+            why[host] = u
+    unusable = [why[h] for h in sorted(why)]
+    for h in v.heights:
+        if h.outcome == "confirmed":
+            b = h.block
+            print(f"bitcoin    block {b.height}  {b.hash}  {b.time_utc}  (header checked; {h.detail})")
+        elif h.outcome == "mismatch":
+            print(f"MISMATCH   {h.detail}")
+        else:
+            print(f"unchecked  block {h.height}: {h.detail}")
+    for u in unusable:
+        print(f"           explorer not used: {u}")
+    outcome = v.outcome
+    if outcome == "VERIFIED":
+        print(f"=> VERIFIED: this statement existed no later than {v.earliest.time_utc} "
+              f"(Bitcoin block {v.earliest.height}, header confirmed by {ots.QUORUM}+ independent explorers).")
+    elif outcome == "PENDING":
         print(f"=> PENDING: not in Bitcoin yet ({len(v.pending)} calendar(s) hold it). Calendars publish a Bitcoin "
               "transaction every few hours; try again later.")
-        return 3
-    print("=> NOT VERIFIED")
-    return 1
+    elif outcome == "UNCHECKED":
+        print(f"=> UNCHECKED: the proof names Bitcoin block(s) {[h.height for h in v.heights]}, but fewer than "
+              f"{ots.QUORUM} explorers could confirm them from this network. Nothing was found wrong; retry from "
+              "another network (or via Tor), use https://opentimestamps.org, or `ots verify` with a Bitcoin node.")
+    else:
+        print("=> MISMATCH: the proof does not match this statement or the Bitcoin chain.")
+    return ots.EXIT[outcome]
 
 
 def cmd_persist(a) -> int:
@@ -167,6 +195,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("statement")
     s.add_argument("--ots", help="proof file (default: <statement>.ots)")
     s.add_argument("--offline", action="store_true", help="no network: only check the digest and list the claims")
+    s.add_argument("--explorers", help="comma-separated subset/order of the built-in explorers (default: all, in order)")
     s = sub.add_parser("persist")
     s.add_argument("statement")
     s.add_argument("--ots", help="proof file (default: <statement>.ots, if it exists)")

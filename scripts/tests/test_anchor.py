@@ -124,36 +124,77 @@ def mine(merkle_root: bytes, time=1792000000, bits=0x207FFFFF):
     raise AssertionError("could not mine")
 
 
-def explorer(headers: dict[int, bytes], wrong_hash_on=None):
-    by_hash = {sha256d(h)[::-1].hex(): h for h in headers.values()}
+EXPLORERS = (("a.example", "https://a.example/api"), ("b.example", "https://b.example/api"),
+             ("c.example", "https://c.example/api"))
+EASY = 2 ** 256
 
+
+def explorer(headers: dict[int, bytes], down=(), lying: dict | None = None, garbage=()):
+    """A fake set of explorers: `down` raise like an unreachable host, `lying` maps name -> header to serve instead,
+    `garbage` answer with a filter page."""
     def get(url):
-        name = url.split("/")[2]
+        host = url.split("/")[2]
+        if host in down:
+            raise ots.SourceError(f"{host}: unreachable: TimeoutError: timed out")
+        if host in garbage:
+            return "<html>blocked</html>"
+        mine_headers = {h: (lying or {}).get(host, hdr) for h, hdr in headers.items()}
         if "/block-height/" in url:
-            height = int(url.rsplit("/", 1)[1])
-            if name == wrong_hash_on:
-                return "00" * 32
-            return sha256d(headers[height])[::-1].hex()
+            return sha256d(mine_headers[int(url.rsplit("/", 1)[1])])[::-1].hex()
+        by_hash = {sha256d(h)[::-1].hex(): h for h in mine_headers.values()}
         return by_hash[url.split("/")[-2]].hex()
     return get
 
 
-EASY = 2 ** 256
+def check(headers, msg, **kw):
+    opts = {k: kw.pop(k) for k in ("quorum", "pow_limit") if k in kw}
+    return ots.check_height(900000, msg, get=explorer(headers, **kw), explorers=EXPLORERS,
+                            **{"pow_limit": EASY, **opts})
 
 
-def test_bits_to_target_matches_bitcoin():
+def test_bits_to_target_and_the_pow_floor():
     assert ots.bits_to_target(0x1D00FFFF) == ots.POW_LIMIT
     assert ots.bits_to_target(0x170331DB) == 0x0331DB << (8 * (0x17 - 3))
+    # a real block of Oct 2026 (bits 0x1701f303-ish) passes the floor; a difficulty-1 header does not
+    assert ots.bits_to_target(0x170331DB) <= ots.pow_floor(972742)
+    assert ots.bits_to_target(0x1D00FFFF) > ots.pow_floor(972742)
+    assert ots.pow_floor(500000) == ots.POW_LIMIT
 
 
-def test_bitcoin_block_checks_hash_header_and_agreement():
-    header = mine(b"\x11" * 32)
-    b = ots.bitcoin_block(900000, get=explorer({900000: header}), pow_limit=EASY)
-    assert b.merkle_root == b"\x11" * 32 and b.time == 1792000000 and b.time_utc.startswith("2026-")
-    with pytest.raises(ots.AnchorError, match="disagree"):
-        ots.bitcoin_block(900000, get=explorer({900000: header}, wrong_hash_on="blockstream.info"), pow_limit=EASY)
-    with pytest.raises(ots.AnchorError, match="proof-of-work"):
-        ots.bitcoin_block(900000, get=explorer({900000: header}))       # an easy target is not Bitcoin's
+def test_confirmed_needs_two_agreeing_explorers():
+    root = b"\x11" * 32
+    hdr = mine(root)
+    c = check({900000: hdr}, root)
+    assert c.outcome == "confirmed" and c.block.sources == ["a.example", "b.example"] and c.block.time == 1792000000
+    c = check({900000: hdr}, root, down={"a.example"})        # one down: the next one is asked
+    assert c.outcome == "confirmed" and c.block.sources == ["b.example", "c.example"]
+    assert c.unusable and "a.example" in c.unusable[0]
+
+
+def test_unreachable_explorers_are_unchecked_never_a_mismatch():
+    root = b"\x11" * 32
+    hdr = mine(root)
+    c = check({900000: hdr}, root, down={"a.example", "b.example", "c.example"})
+    assert c.outcome == "unchecked" and "reached none" in c.detail
+    c = check({900000: hdr}, root, down={"a.example", "b.example"})
+    assert c.outcome == "unchecked" and "only 1 (c.example)" in c.detail
+    c = check({900000: hdr}, root, garbage={"a.example", "b.example"})       # an ISP filter page
+    assert c.outcome == "unchecked" and "not hex" in c.unusable[0]
+
+
+def test_a_header_below_the_pow_floor_is_an_unusable_source():
+    root = b"\x11" * 32
+    c = ots.check_height(900000, root, get=explorer({900000: mine(root)}), explorers=EXPLORERS)
+    assert c.outcome == "unchecked" and all("proof-of-work floor" in u for u in c.unusable)
+
+
+def test_disagreeing_explorers_are_unchecked_and_a_wrong_root_is_a_mismatch():
+    root = b"\x11" * 32
+    other = mine(b"\x33" * 32)
+    c = check({900000: mine(root)}, root, lying={"a.example": other})
+    assert c.outcome == "unchecked" and "disagree" in c.detail
+    c = check({900000: other}, root)                                          # the chain says another root
+    assert c.outcome == "mismatch" and "merkle root" in c.detail
 
 
 def synthetic_proof(data: bytes, height: int):
@@ -169,24 +210,73 @@ def synthetic_proof(data: bytes, height: int):
     return ots.dump(d), leaf.msg
 
 
-def test_verify_a_confirmed_proof_against_a_header():
+def verdict(data, proof, headers, **kw):
+    return ots.verify(data, proof, get=explorer(headers, **kw), online_upgrade=False, explorers=EXPLORERS,
+                      pow_limit=EASY)
+
+
+def test_verify_outcomes_and_exit_codes():
     data = anchor.canonical(statement())
     proof, root = synthetic_proof(data, 900000)
-    get = explorer({900000: mine(root)})
-    v = ots.verify(data, proof, get=get, online_upgrade=False, pow_limit=EASY)
-    assert v.digest_ok and not v.problems and v.earliest.height == 900000
+    good = {900000: mine(root)}
+    v = verdict(data, proof, good)
+    assert v.outcome == "VERIFIED" and ots.EXIT[v.outcome] == 0 and v.earliest.height == 900000
+    v = verdict(data, proof, good, down={"a.example", "b.example", "c.example"})
+    assert v.outcome == "UNCHECKED" and ots.EXIT[v.outcome] == 4                 # network failure: not exit 1
+    v = verdict(data, proof, {900000: mine(b"\x22" * 32)})
+    assert v.outcome == "MISMATCH" and ots.EXIT[v.outcome] == 1
+    other = anchor.canonical(statement(skipped=2))      # e.g. a skiplist edited after the fact
+    assert verdict(other, proof, good).outcome == "MISMATCH"
     st = ots.status(ots.load(proof))
     assert st["bitcoin_heights"] == [900000] and st["digest"] == hashlib.sha256(data).hexdigest()
 
 
-def test_verify_rejects_another_file_and_a_wrong_block():
+def test_a_proof_with_only_pending_attestations_is_pending():
+    pytest.importorskip("opentimestamps")
+    from opentimestamps.core.notary import PendingAttestation
+    from opentimestamps.core.op import OpAppend, OpSHA256
+    from opentimestamps.core.timestamp import DetachedTimestampFile, Timestamp
     data = anchor.canonical(statement())
-    proof, root = synthetic_proof(data, 900000)
-    other = anchor.canonical(statement(skipped=2))      # e.g. a skiplist edited after the fact
-    v = ots.verify(other, proof, get=explorer({900000: mine(root)}), online_upgrade=False, pow_limit=EASY)
-    assert not v.digest_ok
-    v = ots.verify(data, proof, get=explorer({900000: mine(b"\x22" * 32)}), online_upgrade=False, pow_limit=EASY)
-    assert v.problems and "merkle root" in v.problems[0] and not v.confirmed
+    d = DetachedTimestampFile(OpSHA256(), Timestamp(hashlib.sha256(data).digest()))
+    d.timestamp.ops.add(OpAppend(b"\x01" * 16)).ops.add(OpSHA256()).attestations.add(
+        PendingAttestation("https://alice.btc.calendar.opentimestamps.org"))
+    v = verdict(data, ots.dump(d), {})
+    assert v.outcome == "PENDING" and ots.EXIT["PENDING"] == 3
+
+
+def test_fetcher_fails_fast_and_skips_a_dead_host():
+    f = ots.Fetcher(timeout=3, retries=1)
+    t = __import__("time").monotonic()
+    with pytest.raises(ots.SourceError, match="unreachable"):
+        f("https://127.0.0.1:9/api/block-height/1")          # nothing listens on the discard port
+    with pytest.raises(ots.SourceError, match="skipped"):
+        f("https://127.0.0.1:9/api/block/00/header")
+    assert __import__("time").monotonic() - t < 5
+
+
+def test_ipv4_is_tried_before_ipv6(monkeypatch):
+    tried = []
+
+    class FakeSock:
+        def __init__(self, family, *a):
+            self.family = family
+        def settimeout(self, t):
+            pass
+        def connect(self, addr):
+            tried.append(self.family)
+            raise OSError(101, "Network is unreachable")
+        def close(self):
+            pass
+
+    import socket
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [
+        (socket.AF_INET6, socket.SOCK_STREAM, 6, "", ("::1", 443, 0, 0)),
+        (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.0.2.1", 443))])
+    monkeypatch.setattr(socket, "socket", FakeSock)
+    conn = ots._IPv4FirstHTTPS("example.invalid", 443, timeout=2)
+    with pytest.raises(OSError):
+        conn.connect()
+    assert tried == [socket.AF_INET, socket.AF_INET6]
 
 
 # ------------------------------------------------------------------ anchors branch (append-only)

@@ -6,23 +6,37 @@ opentimestamps/calendar.py RemoteCalendar.submit). Upgrading and verifying send 
 to it (GET /timestamp/<hex>). Calendars and block explorers see the caller's IP; set ANCHOR_SOCKS5 (e.g. a local
 Tor at 127.0.0.1:9050) to route `ots stamp` through a SOCKS5 proxy.
 
+verify: VERIFIED (exit 0) / MISMATCH (1) / PENDING (3) / UNCHECKED (4, explorers or calendars unreachable).
+
 Pinned client: opentimestamps-client 0.7.2 / opentimestamps 0.4.5 (anchor/requirements.txt, hash-pinned wheels).
 """
 from __future__ import annotations
 
 import hashlib
+import http.client
 import os
 import shutil
+import socket
+import ssl
 import struct
 import subprocess
 import sys
 import tempfile
-import urllib.request
+import time
+import urllib.parse
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-EXPLORERS = (("mempool.space", "https://mempool.space/api"), ("blockstream.info", "https://blockstream.info/api"))
+# Esplora-compatible block explorers run by different operators. A block counts as checked when QUORUM of them name
+# the same valid header; the rest are fallbacks (on 24 Oct an ISP filter here blocked the first two).
+EXPLORERS = (("mempool.space", "https://mempool.space/api"), ("blockstream.info", "https://blockstream.info/api"),
+             ("mempool.emzy.de", "https://mempool.emzy.de/api"), ("btcscan.org", "https://btcscan.org/api"),
+             ("bitcoin.lu.ke", "https://bitcoin.lu.ke/api"), ("mempool.bitaroo.net", "https://mempool.bitaroo.net/api"))
+QUORUM = 2
+REQUEST_TIMEOUT = 10.0     # seconds per request, all addresses of a host included
+CONNECT_TIMEOUT = 5.0      # seconds per address
+MIN_DIFFICULTY_AFTER_700K = 10 ** 13
 POW_LIMIT = 0x00000000FFFF0000000000000000000000000000000000000000000000000000   # Bitcoin mainnet, difficulty 1
 USER_AGENT = "anchor-verify/1"
 INSTALL_HINT = ("needs the OpenTimestamps library: pip install --break-system-packages opentimestamps-client==0.7.2 "
@@ -139,11 +153,79 @@ def upgrade(proof: bytes, timeout: float = 20.0, log=lambda s: None) -> tuple[by
 
 
 # ---------------------------------------------------------------- Bitcoin header check (no node)
+#
+# Outcomes are kept apart on purpose: a header that does not match the proof is a MISMATCH; an explorer we could not
+# reach (network down, blocked by an ISP filter, TLS certificate of someone else, garbage, a header that does not
+# hash to the hash it named) only means that source could not be used: UNCHECKED, never a mismatch.
 
-def http_get(url: str, timeout: float = 20.0) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read(4096).decode("ascii").strip()
+class SourceError(AnchorError):
+    """An explorer could not be used (unreachable, blocked, malformed or inconsistent answer)."""
+
+
+class _IPv4FirstHTTPS(http.client.HTTPSConnection):
+    """Tries the host's IPv4 addresses before IPv6, each for at most CONNECT_TIMEOUT, all within self.timeout.
+
+    (urllib tries every address with the full timeout each: a host with 4 dead addresses cost 4 x timeout.)"""
+
+    def connect(self):
+        infos = socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM)
+        infos.sort(key=lambda i: i[0] != socket.AF_INET)
+        deadline, last, sock = time.monotonic() + self.timeout, None, None
+        for family, kind, proto, _name, addr in infos:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                break
+            sock = socket.socket(family, kind, proto)
+            sock.settimeout(min(left, CONNECT_TIMEOUT))
+            try:
+                sock.connect(addr)
+                break
+            except OSError as e:
+                last, sock = e, sock.close()
+        if sock is None:
+            raise last or TimeoutError("no address answered")
+        sock.settimeout(max(1.0, deadline - time.monotonic()))
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+
+
+class Fetcher:
+    """GET small text answers from explorers; a source that fails to connect is skipped for the rest of the run."""
+
+    def __init__(self, timeout: float = REQUEST_TIMEOUT, retries: int = 1):
+        self.timeout, self.retries, self.dead = timeout, retries, {}
+
+    def __call__(self, url: str) -> str:
+        parts = urllib.parse.urlsplit(url)
+        host = parts.hostname
+        if host in self.dead:
+            raise SourceError(f"{host}: skipped ({self.dead[host]})")
+        for attempt in range(self.retries + 1):
+            conn = _IPv4FirstHTTPS(host, parts.port or 443, timeout=self.timeout,
+                                   context=ssl.create_default_context())
+            try:
+                conn.request("GET", parts.path + (f"?{parts.query}" if parts.query else ""),
+                             headers={"User-Agent": USER_AGENT, "Accept": "text/plain"})
+                r = conn.getresponse()
+                body = r.read(4096)
+                if r.status == 200:
+                    return body.decode("ascii").strip()
+                if r.status < 500 or attempt == self.retries:
+                    raise SourceError(f"{host}: HTTP {r.status}")
+            except ssl.SSLCertVerificationError as e:
+                self.dead[host] = f"TLS certificate is not {host}'s ({e.verify_message}): blocked or intercepted"
+                raise SourceError(f"{host}: {self.dead[host]}") from None
+            except (OSError, http.client.HTTPException, UnicodeDecodeError) as e:
+                if attempt == self.retries or isinstance(e, (socket.gaierror, TimeoutError, ConnectionRefusedError)) \
+                        or getattr(e, "errno", None) in (101, 113):   # network/host unreachable: retrying won't help
+                    self.dead[host] = f"unreachable: {e.__class__.__name__}: {e}"[:160]
+                    raise SourceError(f"{host}: {self.dead[host]}") from None
+            finally:
+                conn.close()
+            time.sleep(1)
+        raise SourceError(f"{host}: no answer")
+
+
+http_get = Fetcher()
 
 
 def _sha256d(b: bytes) -> bytes:
@@ -153,6 +235,13 @@ def _sha256d(b: bytes) -> bytes:
 def bits_to_target(bits: int) -> int:
     exp, mant = bits >> 24, bits & 0x007FFFFF
     return mant << (8 * (exp - 3)) if exp >= 3 else mant >> (8 * (3 - exp))
+
+
+def pow_floor(height: int) -> int:
+    """The largest target we accept at `height`. Difficulty 1 is not enough: anyone can mine a difficulty-1 header
+    around any merkle root in seconds, so a single lying explorer could fake one. Blocks after 700,000 (2021) all
+    have difficulty > 1.3e13; faking a header at 1e13 costs about as much as mining a real block."""
+    return POW_LIMIT // MIN_DIFFICULTY_AFTER_700K if height >= 700_000 else POW_LIMIT
 
 
 @dataclass
@@ -168,70 +257,110 @@ class Block:
         return datetime.fromtimestamp(self.time, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
-def bitcoin_block(height: int, get=http_get, explorers=EXPLORERS, pow_limit: int = POW_LIMIT) -> Block:
-    """The header at `height`, checked: every explorer names the same block hash, the 80-byte header hashes to it,
-    and that hash meets the header's own proof-of-work target (at least Bitcoin's minimum difficulty)."""
-    hashes = {}
+def _header_from(name: str, base: str, height: int, get, pow_limit: int) -> Block:
+    """One explorer's block at `height`, after checking the header hashes to the hash it named and meets the
+    proof-of-work floor. Any failure here is that source's fault (SourceError), not the proof's."""
+    try:
+        block_hash = get(f"{base}/block-height/{height}").lower()
+        header = bytes.fromhex(get(f"{base}/block/{block_hash}/header"))
+    except SourceError:
+        raise
+    except ValueError:
+        raise SourceError(f"{name}: answer is not hex (a filter page?)") from None
+    if len(header) != 80 or _sha256d(header)[::-1].hex() != block_hash:
+        raise SourceError(f"{name}: header does not hash to the block hash it named for height {height}")
+    target = bits_to_target(struct.unpack("<I", header[72:76])[0])
+    if target > pow_limit or int.from_bytes(_sha256d(header), "little") > target:
+        raise SourceError(f"{name}: block {block_hash} is below the proof-of-work floor for height {height}")
+    return Block(height, block_hash, header[36:68], struct.unpack("<I", header[68:72])[0], [name])
+
+
+@dataclass
+class HeightCheck:
+    height: int
+    outcome: str                    # "confirmed" | "mismatch" | "unchecked"
+    block: Block | None
+    detail: str
+    unusable: list[str] = field(default_factory=list)   # "<source>: <why>" for every explorer that could not be used
+
+
+def check_height(height: int, msg: bytes, get=http_get, explorers=EXPLORERS, quorum: int = QUORUM,
+                 pow_limit: int | None = None) -> HeightCheck:
+    """Ask explorers in order until `quorum` of them name the same valid header for `height`, then compare its
+    merkle root with the proof's. Fewer than `quorum` usable sources, or sources that disagree: unchecked."""
+    pow_limit = pow_floor(height) if pow_limit is None else pow_limit
+    by_hash: dict[str, Block] = {}
+    unusable: list[str] = []
     for name, base in explorers:
         try:
-            hashes[name] = get(f"{base}/block-height/{height}").lower()
-        except Exception as e:
-            raise AnchorError(f"{name}: no block hash for height {height} ({e})") from None
-    if len(set(hashes.values())) != 1:
-        raise AnchorError(f"explorers disagree on block {height}: {hashes}")
-    block_hash = next(iter(hashes.values()))
-    name, base = explorers[0]
-    header = bytes.fromhex(get(f"{base}/block/{block_hash}/header"))
-    if len(header) != 80:
-        raise AnchorError(f"{name}: header for {block_hash} is {len(header)} bytes, not 80")
-    if _sha256d(header)[::-1].hex() != block_hash:
-        raise AnchorError(f"{name}: header does not hash to {block_hash}")
-    bits = struct.unpack("<I", header[72:76])[0]
-    target = bits_to_target(bits)
-    if target > pow_limit or int.from_bytes(_sha256d(header), "little") > target:
-        raise AnchorError(f"block {block_hash} does not meet its proof-of-work target")
-    return Block(height, block_hash, header[36:68], struct.unpack("<I", header[68:72])[0], [n for n, _ in explorers])
+            b = _header_from(name, base, height, get, pow_limit)
+        except SourceError as e:
+            unusable.append(str(e))
+            continue
+        if b.hash in by_hash:
+            by_hash[b.hash].sources.append(name)
+        else:
+            by_hash[b.hash] = b
+        agreed = by_hash[b.hash]
+        if len(agreed.sources) >= quorum and len(by_hash) == 1:
+            if agreed.merkle_root != msg:
+                return HeightCheck(height, "mismatch", agreed,
+                                   f"block {height} ({agreed.hash}) has merkle root {agreed.merkle_root[::-1].hex()}, "
+                                   f"the proof commits to {msg[::-1].hex()}", unusable)
+            return HeightCheck(height, "confirmed", agreed, f"{' + '.join(agreed.sources)} agree", unusable)
+    if len(by_hash) > 1:
+        seen = "; ".join(f"{'+'.join(b.sources)}: {h}" for h, b in by_hash.items())
+        return HeightCheck(height, "unchecked", None, f"explorers disagree on block {height} ({seen})", unusable)
+    got = next(iter(by_hash.values()), None)
+    have = f"only {len(got.sources)} ({got.sources[0]})" if got else "none"
+    return HeightCheck(height, "unchecked", got, f"needs {quorum} agreeing explorers, reached {have}", unusable)
 
 
 @dataclass
 class Verdict:
     digest_ok: bool
-    confirmed: list[Block]
+    heights: list[HeightCheck]
     pending: list[str]
-    problems: list[str]
+
+    @property
+    def confirmed(self) -> list[Block]:
+        return [h.block for h in self.heights if h.outcome == "confirmed"]
 
     @property
     def earliest(self) -> Block | None:
         return min(self.confirmed, key=lambda b: b.height) if self.confirmed else None
 
+    @property
+    def outcome(self) -> str:
+        """VERIFIED (exit 0), MISMATCH (1), PENDING (3), UNCHECKED (4)."""
+        if not self.digest_ok or any(h.outcome == "mismatch" for h in self.heights):
+            return "MISMATCH"
+        if self.confirmed:
+            return "VERIFIED"
+        if self.heights:
+            return "UNCHECKED"
+        return "PENDING" if self.pending else "MISMATCH"   # no attestation at all: not a proof
+
+
+EXIT = {"VERIFIED": 0, "MISMATCH": 1, "PENDING": 3, "UNCHECKED": 4}
+
 
 def verify(data: bytes, proof: bytes, get=http_get, online_upgrade: bool = True, explorers=EXPLORERS,
-           pow_limit: int = POW_LIMIT, log=lambda s: None) -> Verdict:
+           quorum: int = QUORUM, pow_limit: int | None = None, log=lambda s: None) -> Verdict:
     """Check that `proof` commits to sha256(data) and that each Bitcoin attestation matches a real block header."""
     L = _lib()
     if online_upgrade:
-        proof, _ = upgrade(proof, log=log)
+        proof, _ = upgrade(proof, timeout=REQUEST_TIMEOUT, log=log)
     detached = load(proof)
     digest_ok = detached.file_digest == hashlib.sha256(data).digest()
-    confirmed, problems = [], []
-    if not digest_ok:
-        problems.append("the proof is for another file (sha256 differs)")
-    seen = set()
+    checks, seen = [], set()
     for msg, att in detached.timestamp.all_attestations():
         if not isinstance(att, L["BitcoinBlockHeaderAttestation"]) or (msg, att.height) in seen:
             continue
         seen.add((msg, att.height))
-        try:
-            block = bitcoin_block(att.height, get=get, explorers=explorers, pow_limit=pow_limit)
-        except AnchorError as e:
-            problems.append(str(e))
-            continue
-        if block.merkle_root != msg:
-            problems.append(f"block {att.height}: merkle root {block.merkle_root[::-1].hex()} is not the proof's "
-                            f"{msg[::-1].hex()}")
-            continue
-        confirmed.append(block)
-    return Verdict(digest_ok, confirmed, status(detached)["pending"], problems)
+        checks.append(check_height(att.height, msg, get=get, explorers=explorers, quorum=quorum,
+                                   pow_limit=pow_limit))
+    return Verdict(digest_ok, sorted(checks, key=lambda c: c.height), status(detached)["pending"])
 
 
 def scratch_dir() -> Path:
