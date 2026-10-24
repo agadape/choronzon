@@ -1,12 +1,14 @@
 // Listener page: loads config/brand.json + out/score.json + out/mix.wav, mounts the god (three.js, web/god.js;
-// Canvas 2D creature.js without WebGL), plays the buffer. WebAudio only PLAYS the offline mix; nothing is mixed
-// here (browser mixing is not bit-exact). The god is a pure function of score.json: a new render_hash mounts a new one.
+// Canvas 2D creature.js without WebGL), fills the grimoire leaf (web/leaf.js), plays the buffer. WebAudio only PLAYS
+// the offline mix; nothing is mixed here (browser mixing is not bit-exact). The god and the leaf are pure functions
+// of score.json: a new render_hash mounts a new god and re-cuts the leaf.
 "use strict";
 
 const $ = (id) => document.getElementById(id);
 const README = "https://github.com/agadape/";           // + slug; anchors below point into the generated README
 const ZECBLOCK = "https://testnet.zecblock.com/block/";
 const fmt = (n) => Number(n).toLocaleString("en-US");
+const blocks = (h) => h.match(/.{1,8}/g) || [];
 let audioCtx = null, source = null, startedAt = 0, playing = false, currentHash = null, currentDoc = null;
 let body = { chambers: [], conductors: [], forged: [], silenced: [], spine: 70, count: 0 };
 let buffer = null, pendingWav = null, brand = null;
@@ -14,8 +16,9 @@ const firstSeen = {};            // tx -> performance.now() when this page first
 let forgedSeen = null;
 let god = null;                  // the three.js god (web/god.js), or null on the Canvas 2D fallback
 const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const Q = new URLSearchParams(location.search);
 // séance mode (?seance): the great eye's lids are shut and the hashes sealed until the operator opens the Eye
-const SEANCE = new URLSearchParams(location.search).has("seance");
+const SEANCE = Q.has("seance");
 let eyeOpenedAt = null;          // performance.now() when the lids started to part; null = not started
 let eyeOpen = !SEANCE;           // hashes (and the key) show only once the lids are open
 if (SEANCE) document.body.classList.add("sealed");
@@ -23,7 +26,7 @@ if (SEANCE) document.body.classList.add("sealed");
 let STATIC = null;
 // ?stats: a small readout of the god's weight (draw calls, triangles, fps) for measuring against the budget
 let STATS = null, statsAt = 0;
-if (new URLSearchParams(location.search).has("stats")) {
+if (Q.has("stats")) {
   STATS = document.createElement("div"); STATS.id = "stats";
   STATS.style.cssText = "position:fixed;top:8px;left:8px;z-index:9;font:13px Georgia,serif;color:#ebdfc2;background:rgba(5,3,2,.7);padding:4px 8px;pointer-events:none";
   document.body.appendChild(STATS);
@@ -35,12 +38,12 @@ async function fetchJSON(url) {
   return r.json();
 }
 
-function hashBlocks(el, hash) {
+function hashBlocks(el, hash, sealed) {
   el.textContent = "";
-  for (const b of (hash.match(/.{1,8}/g) || [])) {
+  for (const b of blocks(hash)) {
     const span = document.createElement("span");
-    span.textContent = b;
-    span.className = "lit";
+    span.textContent = sealed ? "········" : b;
+    if (sealed) span.className = "sealed";
     el.appendChild(span);
   }
 }
@@ -64,13 +67,48 @@ async function loadStatic() {
   } catch (e) { STATIC = null; }
   if (STATIC && STATIC.static) {
     const when = new Date(STATIC.rendered_at).toISOString().replace("T", " ").slice(0, 16) + " UTC";
-    $("snapshot").textContent = `snapshot of the god at height ${fmt(STATIC.as_of_height)}, ` +
-      `rendered ${when}; the installation re-renders every block.`;
+    $("snapshot").textContent = `This leaf is a snapshot: rendered ${when} at height ${fmt(STATIC.as_of_height)}; ` +
+      `the installation re-renders every block.`;
     // a snapshot cannot whisper back: one quiet line instead of an input box
     $("whisper_text").remove();
     $("whisper_label").textContent = "whisper back";
     $("whisper_status").textContent = "works at the installation: it reads the reply address from a wallet, never from this page.";
   }
+}
+
+// OpenTimestamps: anchor.json is the statement of a render (hashes, height, counts, commit); anchor.json.ots is the
+// proof. Pending or in Bitcoin is read from the proof itself (its attestation tags), never assumed.
+const OTS_BITCOIN = [0x05, 0x88, 0x96, 0x0d, 0x73, 0xd7, 0x19, 0x01], OTS_PENDING = [0x83, 0xdf, 0xe3, 0x0d, 0x2e, 0xf9, 0x0c, 0x8e];
+function otsStatus(bytes) {
+  const find = (tag, from) => { outer: for (let i = from; i + 8 <= bytes.length; i++) { for (let j = 0; j < 8; j++) if (bytes[i + j] !== tag[j]) continue outer; return i; } return -1; };
+  const varint = (p) => { let v = 0, s = 0; while (bytes[p] & 0x80) { v += (bytes[p++] & 0x7f) * Math.pow(2, s); s += 7; } return [v + bytes[p] * Math.pow(2, s), p + 1]; };
+  const heights = [];
+  for (let i = find(OTS_BITCOIN, 0); i >= 0; i = find(OTS_BITCOIN, i + 8)) {
+    const [, p] = varint(i + 8);                 // after the tag: varint payload length, then varint block height
+    heights.push(varint(p)[0]);
+  }
+  return { bitcoin: heights, pending: find(OTS_PENDING, 0) >= 0 };
+}
+async function loadAnchor(doc) {
+  const el = $("anchor");
+  let st, base = "";
+  try { st = await fetchJSON("anchor.json"); }
+  catch (e) {
+    try { st = await fetchJSON("out/anchor.json"); base = "out/"; }   // the installation: python3 -m anchor statement --to out/anchor.json
+    catch (e2) { el.textContent = "No anchor statement on this server (the public site carries one, stamped in Bitcoin with OpenTimestamps)."; return; }
+  }
+  const same = st.render_hash === doc.render_hash && st.score_hash === doc.score_hash;
+  let proof = "no proof file yet";
+  try {
+    const r = await fetch(`${base}anchor.json.ots`, { cache: "no-store" });
+    if (r.ok) {
+      const s = otsStatus(new Uint8Array(await r.arrayBuffer()));
+      proof = s.bitcoin.length ? `in Bitcoin, block ${s.bitcoin.map(fmt).join(", ")}` : s.pending ? "PENDING: held by the calendars, not yet in Bitcoin" : "proof file present, no attestation read";
+    }
+  } catch (e) { /* no proof */ }
+  el.textContent = (same ? `Anchored: statement anchor/1 for height ${fmt(st.as_of_height)} carries these two hashes, ${st.offerings} offerings, commit ${String(st.repo_commit).slice(0, 7)}. `
+                         : `Anchor statement is for height ${fmt(st.as_of_height)} (render ${String(st.render_hash).slice(0, 8)}…), not this render. `)
+    + `OpenTimestamps: ${proof}. Verify: python3 -m anchor verify anchor.json`;
 }
 
 // the god: three.js when WebGL2 is there, else the Canvas 2D creature (same score, same meaning)
@@ -101,29 +139,33 @@ async function loadScore() {
   const firstLoad = currentHash === null;
   currentHash = doc.render_hash; currentDoc = doc;
   mountGod(doc);
+  Leaf.setHashes(doc.render_hash, doc.score_hash);
   const now = performance.now();
   for (const c of body.chambers) if (!(c.tx in firstSeen)) firstSeen[c.tx] = firstLoad ? now - 60000 : now;
   const forged = doc.score.skipped.filter((s) => s.reason === "forged-conductor");
   if (forged.length && forgedSeen === null) forgedSeen = firstLoad ? -1 : now;
-  const height = Number(doc.score.as_of_height);
-  $("offerings").textContent = doc.score.offerings.length;
-  $("height").textContent = fmt(height);
-  $("skipped").textContent = doc.score.skipped.filter((s) => s.reason === "flagged").length;
-  $("refused").textContent = forged.length;
+  const height = Number(doc.score.as_of_height), n = doc.score.offerings.length;
+  const silenced = doc.score.skipped.filter((s) => s.reason === "flagged").length;
+  const godLines = doc.score.offerings.filter((o) => o.conductor).length;
   $("over").textContent = `evoked at height ${fmt(height)}`;
+  $("tally").textContent = `${n} offerings · ${godLines} the god's own · ${forged.length} refused · ${silenced} silenced`;
   const name = trueName(doc.render_hash);                  // the god's true name: a pure function of the hash
   $("true_name").textContent = "";
   if (eyeOpen) { $("true_name").append("it is now called "); const g = document.createElement("span"); g.className = "gilt"; g.textContent = name; $("true_name").append(g); }
-  else $("true_name").textContent = "sealed until the eye opens";
+  else $("true_name").textContent = "its name is sealed until the Eye opens";
+  $("stubline").textContent = eyeOpen ? `height ${fmt(height)} · ${blocks(doc.render_hash)[0]} … ${blocks(doc.render_hash)[7]}` : `height ${fmt(height)}`;
   $("eye_name").textContent = `it is now called ${name}`;
-  hashBlocks($("render_hash"), doc.render_hash);
-  hashBlocks($("score_hash"), doc.score_hash);
-  hashBlocks($("eye_render_hash"), doc.render_hash);
-  $("pins").textContent = ((doc.render.decoder.matches_pin && doc.render.voice.matches_pin)
-    ? "decoder and voice match the pinned builds" : "WARNING: decoder or voice differs from the pinned build")
-    + ` · composer ${doc.render.composer}`;
+  hashBlocks($("render_hash"), doc.render_hash, !eyeOpen);
+  hashBlocks($("score_hash"), doc.score_hash, !eyeOpen);
+  hashBlocks($("eye_render_hash"), doc.render_hash, false);
+  $("colophon").textContent = eyeOpen
+    ? `Evoked from the public viewing key at height ${fmt(height)}. Anyone holding the key re-renders the whole work and gets these same two hashes: the score from chain data alone, the render from the score, the pinned decoder and the composer.`
+    : `Evoked at height ${fmt(height)}. The hashes stay sealed until the Eye opens.`;
+  $("pins").textContent = `composer ${doc.render.composer} · codec2 ${doc.render.decoder.codec2_tag} · espeak-ng ${doc.render.voice.espeak_ng} · sox ${doc.render.voice.sox}`
+    + ((doc.render.decoder.matches_pin && doc.render.voice.matches_pin) ? " · decoder and voice match the pinned builds" : " · WARNING: decoder or voice differs from the pinned build");
   $("link_block").href = ZECBLOCK + height;
-  $("status").textContent = `${doc.score.offerings.length === 0 ? "nothing has been given yet" : "evoked"} at height ${fmt(height)}`;
+  $("status").textContent = `${n === 0 ? "nothing has been given yet" : "evoked"} at height ${fmt(height)}`;
+  loadAnchor(doc);
   const r = await fetch("out/mix.wav", { cache: "no-store" });
   const ab = await r.arrayBuffer();
   if (audioCtx) buffer = await audioCtx.decodeAudioData(ab);
@@ -156,9 +198,8 @@ function stop() {
   setPlaying(false, "Listen");
 }
 
-function frame() {
+function frame(now) {
   const t = playing ? Math.floor((audioCtx.currentTime - startedAt) * 8000) : -1;
-  const now = performance.now();
   // the Eye (séance): the great eye's lids part over ~3 s and stay open
   let lids = SEANCE ? 0 : 1;
   if (eyeOpenedAt !== null) { const a = Math.min(1, (now - eyeOpenedAt) / 3000); lids = a * a * (3 - 2 * a); }
@@ -183,24 +224,38 @@ function frame() {
     $("not_the_god").style.display = f ? "block" : "none";
     if (f) { $("not_the_god").style.left = `${f.x / devicePixelRatio}px`; $("not_the_god").style.top = `${f.y / devicePixelRatio}px`; $("not_the_god").style.opacity = f.fade; }
   }
+  Leaf.frame(now);
   requestAnimationFrame(frame);
 }
 
-// the grimoire: the column slides in from the right; the god's view glides left to make room (desktop only)
+// the grimoire: the leaf slides in from the right; the god's view glides left by (leaf + 80) / 2 (desktop only)
 function leafOffset() {
   const open = !document.body.classList.contains("closed") && innerWidth > 900;
-  if (god) god.setViewOffset(open ? (document.querySelector(".column").offsetWidth + 80) / 2 : 0);
+  if (god) god.setViewOffset(open ? ((Leaf.width() || 430) + 80) / 2 : 0);
 }
 function setLeaf(open) { document.body.classList.toggle("closed", !open); leafOffset(); }
 $("open_leaf").addEventListener("click", () => setLeaf(true));
 $("close_leaf").addEventListener("click", () => setLeaf(false));
+addEventListener("leaf-layout", leafOffset);
 // the god picks its detail level (PHONE path) when mounted: crossing the 900 px line mounts it again
 let narrowAtMount = innerWidth <= 900;
 addEventListener("resize", () => {
   leafOffset();
   if (god && currentDoc && (innerWidth <= 900) !== narrowAtMount) { narrowAtMount = innerWidth <= 900; mountGod(currentDoc); }
 });
-if (new URLSearchParams(location.search).has("leaf")) setLeaf(true);
+if (Q.has("leaf")) setLeaf(true);
+
+// the leaf: turn (F), tear the stub (T / drag), reprint (R)
+Leaf.init({ leaf: $("leaf"), top: $("top"), stub: $("stub"), verso: $("versopart") }, {
+  onTorn(torn) {
+    $("tear").textContent = torn ? "reprint the stub · R" : "tear the stub · T";
+    $("note").textContent = torn ? "Torn along the render hash: every jag of this edge is one of its bytes. A stub from any other evocation of this god fits this edge exactly; a stub from a different god does not." : "";
+  },
+});
+$("flip").addEventListener("click", () => Leaf.turn());
+$("tear").addEventListener("click", () => (Leaf.isGone() ? Leaf.reprint() : Leaf.tear()));
+if (Q.has("verso")) Leaf.turn(true);   // for stills of the colophon
+if (Q.has("tear")) setTimeout(Leaf.tear, 800);   // for stills of the torn leaf
 
 // Whisper Back: click an eye -> ask the server for that offering's reply request (read from the wallet DB on demand)
 async function whisper(txid) {
@@ -247,7 +302,7 @@ async function openEye() {
   setTimeout(() => {
     eyeOpen = true;
     document.body.classList.remove("sealed");
-    currentHash = null;                 // re-render the leaf unsealed on the next poll (the god itself is unchanged)
+    currentHash = null;                 // re-fill the leaf unsealed on the next poll (the god itself is unchanged)
     loadScore();
     if (eye) {
       $("eye_key").textContent = eye.key;
@@ -264,6 +319,9 @@ document.addEventListener("keydown", (ev) => {
   const k = ev.key.toLowerCase();
   if (k === "e" && SEANCE) openEye();
   if (k === "g") setLeaf(document.body.classList.contains("closed"));
+  if (k === "f") Leaf.turn(false);
+  if (k === "t") (Leaf.isGone() ? Leaf.reprint() : Leaf.tear());
+  if (k === "r") Leaf.reprint();
 });
 
 for (const b of playButtons()) b.addEventListener("click", () => (playing ? stop() : play()));

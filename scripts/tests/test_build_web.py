@@ -10,7 +10,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "build_web.sh"
 ALLOWED = {"index.html", "apparition.html", "static.json", "vercel.json", "config/brand.json", "out/score.json",
-           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "god.js", "name.js", "style.css",
+           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "god.js", "leaf.js", "name.js",
+           "style.css",
            "logo.svg", "og.png", "anchor.json", "anchor.json.ots",
            "vendor/three/three.module.min.js", "vendor/three/BufferGeometryUtils.js", "vendor/three/LICENSE",
            "fonts/IMFellEnglish-Regular.ttf", "fonts/IMFellEnglish-Italic.ttf", "fonts/IMFellEnglishSC-Regular.ttf",

@@ -33,51 +33,67 @@
   .privacy { position: fixed; left: clamp(20px, 4vw, 64px); bottom: 22px; max-width: 46ch; font-style: italic; color: var(--sepia);
              font-size: 15px; margin: 0; text-shadow: 0 0 8px #000, 0 0 16px #000; z-index: 3; }
 
-  /* the column on the right: the leaf (the grimoire, Day 8) — for now a plain vellum page holding the same proof */
+  /* the column on the right holds the leaf; it slides in from the right and the god makes room */
   .page { position: relative; min-height: 100vh; display: grid; grid-template-columns: 1fr auto; align-items: center;
           padding: 0 clamp(20px, 4vw, 64px); pointer-events: none; }
   .void { pointer-events: none; }
-  .column { pointer-events: auto; display: grid; gap: 14px; justify-items: center; padding: 3vh 0; width: var(--leafw, 430px); max-width: 100%; }
-  .column { transition: transform 1.1s cubic-bezier(.2, .7, .15, 1), opacity .7s; }
+  .column { pointer-events: auto; display: grid; gap: 14px; justify-items: center; padding: 3vh 0;
+            transition: transform 1.1s cubic-bezier(.2, .7, .15, 1), opacity .7s; }
   body.closed .column { transform: translateX(calc(100% + 140px)); opacity: 0; pointer-events: none; }
   body:not(.closed) .masthead, body:not(.closed) #chrome { opacity: 0; pointer-events: none; }
-  .leaf { width: 100%; background: var(--grain), radial-gradient(ellipse at 50% 35%, #261d13 0%, var(--vellum) 60%, #120d08 100%);
-          padding: 26px 30px 24px; display: grid; gap: 12px; text-align: center;
-          filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(235, 223, 194, 0.25)); }
-  .leaf .over { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.24em; font-size: 13px; }
-  .leaf h1 { font: 400 48px/1 var(--serif); letter-spacing: 0.03em; margin: 0; }
-  .leaf h1::first-letter { color: var(--rubric); }
-  .leaf .tagline { font-style: italic; color: var(--sepia); font-size: 18px; margin-top: -4px; }
-  .leaf .rule { width: 60%; height: 1px; margin: 0 auto; background: linear-gradient(90deg, transparent, var(--sepia), transparent); }
-  .leaf .lede { margin: 0; font-size: 16px; line-height: 1.5; color: var(--ink); max-width: none; opacity: 1; }
-  .leaf .lede::first-letter { color: var(--rubric); font-size: 1.5em; line-height: 1; }
-  #strip { display: flex; gap: 6px 18px; flex-wrap: wrap; justify-content: center; font-family: var(--caps); color: var(--sepia);
-           letter-spacing: 0.12em; font-size: 14px; }
-  #strip .stat .k { display: none; }
-  #strip .stat::after { content: attr(data-l); margin-left: 6px; }
-  #strip .stat b { color: var(--ink); font-weight: 400; }
-  #true_name { width: 100%; font-family: var(--caps); font-size: 20px; letter-spacing: 0.14em; color: var(--ink); margin-top: 4px; }
-  #true_name .gilt { font-size: 1.1em; }
-  .leaf details.proof { border-top: 1px solid rgba(143, 121, 86, .35); text-align: left; font-size: 15px; }
-  .leaf .k { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.2em; text-transform: none; font-size: 13px; }
-  .leaf .hash { font-family: Georgia, "Times New Roman", serif; font-variant-numeric: lining-nums; letter-spacing: 0.06em; font-size: 15px; }
-  .leaf .hash span { color: var(--sepia); } .leaf .hash span.lit { color: var(--ink); }
-  .leaf a { color: var(--ink); text-decoration-color: var(--sepia); }
-  .leaf .quiet { color: var(--sepia); }
-  #whisper_row { font-size: 14px; justify-content: center; }
-  #whisper_row input { width: min(22em, 100%); font: 15px var(--serif); border-color: var(--sepia); color: var(--ink); }
   .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-  .leaf #actions { justify-content: center; }
+  .note { font-style: italic; max-width: 34ch; text-align: center; min-height: 3em; font-size: 15px; text-shadow: 0 0 10px #000; }
+
+  /* the leaf: black-stained vellum (the Black Hours); recto = the evocation, verso = the colophon */
+  .scene { perspective: 1700px; max-width: 100%; }
+  .column { max-width: 100%; min-width: 0; }
+  .leaf { position: relative; transform-style: preserve-3d; width: var(--W, min(430px, calc(100vw - 32px))); height: var(--H, 700px); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+          filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 1px rgba(235, 223, 194, 0.25)); }
+  .verso { transform: rotateY(180deg); }
+  .part { position: absolute; inset: 0; background: var(--grain), radial-gradient(ellipse at 50% 35%, #261d13 0%, var(--vellum) 60%, #120d08 100%); }
+  .holes { position: absolute; left: 14px; right: 14px; height: 8px; top: calc(var(--cut) - 4px);
+           background: radial-gradient(circle, var(--night) 0 2.6px, transparent 3.1px) 0 0 / 14px 8px repeat-x; }
+  .topc { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+          gap: 12px; padding: 24px 34px 0; height: calc(var(--cut) - 10px); }
+  .over { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.24em; font-size: 13px; }
+  .leaf h1 { font: 400 56px/1 var(--serif); margin: 0; letter-spacing: 0.03em; }
+  .leaf h1::first-letter { color: var(--rubric); }
+  .leaf .tagline { font-style: italic; color: var(--sepia); font-size: 18px; margin-top: -6px; }
+  .rule { width: 60%; height: 1px; background: linear-gradient(90deg, transparent, var(--sepia), transparent); }
+  .leaf .lede { margin: 0; font-size: 17px; line-height: 1.5; color: var(--ink); max-width: none; opacity: 1; }
+  .leaf .lede::first-letter { color: var(--rubric); font-size: 1.5em; line-height: 1; }
+  .tally { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.12em; font-size: 14px; }
+  .leaf #actions { justify-content: center; gap: 10px; }
+  .stub-content { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--H) - var(--cut));
+                  display: grid; place-content: center; text-align: center; gap: 2px; padding: 6px 16px 0; }
+  .stub-content .k { font-family: var(--caps); color: var(--rubric); letter-spacing: 0.3em; font-size: 12px; text-transform: none; }
+  .stub-content .tn { font-family: var(--caps); font-size: 22px; letter-spacing: 0.14em; }
+  .stub-content .sm { color: var(--sepia); font-size: 14px; }
+  .stub { cursor: grab; touch-action: none; }
+  .stub:active { cursor: grabbing; }
+  .verso .part { padding: 30px 34px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; overflow-y: auto; }
+  .verso h2 { font-weight: 400; margin: 0; font-size: 28px; }
+  .verso h2::first-letter { color: var(--rubric); }
+  .verso p { margin: 0; }
+  .leaf .hash { display: flex; flex-wrap: wrap; gap: 0 12px; font-family: Georgia, "Times New Roman", serif; font-variant-numeric: lining-nums;
+                letter-spacing: 0.06em; font-size: 15px; }
+  .leaf .hash span { color: var(--ink); } .leaf .hash span.sealed { color: var(--sepia); }
+  .verso .links { display: flex; gap: 16px; flex-wrap: wrap; font-style: italic; }
+  .leaf a { color: var(--ink); text-decoration-color: var(--sepia); text-underline-offset: 3px; }
+  .leaf .quiet { color: var(--sepia); }
+  .leaf .k { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.2em; text-transform: none; font-size: 13px; }
+  #whisper_row { font-size: 14px; gap: 6px 10px; }
+  #whisper_row input { width: min(22em, 100%); font: 14px var(--serif); border-color: var(--sepia); color: var(--ink); padding: 5px 8px; }
   #whisper { position: fixed; top: 16px; right: 16px; width: min(300px, calc(100vw - 32px)); display: grid; gap: 8px;
              font-size: 13px; background: var(--vellum); color: var(--ink); padding: 10px; border: 1px solid var(--sepia); z-index: 7; }
   #whisper:has(#qr:empty) { display: none; }
   #qr svg { width: 100%; aspect-ratio: 1; height: auto; background: var(--ink); display: block; }
   #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--rubric);
                  letter-spacing: 0.3em; font-size: 12px; pointer-events: none; font-family: var(--caps); }
-  /* séance: hashes and key stay sealed until the Eye opens */
+  /* séance: the great eye's lids are shut and the hashes sealed until the Eye opens */
   #open_eye { display: none; }
   .sealed #open_eye { display: inline-block; }
-  .sealed #proof { display: none; }
   #eye { position: fixed; inset: 0; display: none; place-items: center; background: var(--night); z-index: 8; overflow: auto; }
   #eye.on { display: grid; }
   #eye .panel { max-width: 720px; padding: 32px clamp(16px, 4vw, 40px); display: grid; gap: 18px; }
@@ -87,21 +103,26 @@
   #eye_key { word-break: break-all; font: 13px Georgia, serif; border: 1px solid var(--sepia); padding: 12px; }
   #eye_qr svg { width: 200px; max-width: 100%; height: auto; background: var(--ink); display: block; }
   #eye .irrevocable { color: var(--rubric); letter-spacing: 0.2em; font-family: var(--caps); }
-  #eye .hash { font-family: Georgia, serif; }
+  #eye .hash { font-family: Georgia, serif; display: flex; flex-wrap: wrap; gap: 0 12px; font-size: 15px; }
+  #eye .k { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.2em; text-transform: none; font-size: 13px; }
 
   @media (max-width: 900px) {
     .page { grid-template-columns: minmax(0, 1fr); padding: 0 16px; }
     .void { height: 86vh; }
-    .column, body.closed .column { transform: none; opacity: 1; pointer-events: auto; transition: none; width: 100%; }
+    .column, body.closed .column { transform: none; opacity: 1; pointer-events: auto; transition: none; }
     .masthead { position: absolute; top: 18px; text-shadow: 0 0 12px #000, 0 0 24px #000; }
     body:not(.closed) .masthead { opacity: 1; }
     .masthead h1 { font-size: 40px; }
     .masthead .hint { display: block; margin-top: 70vh; font-family: var(--caps); letter-spacing: 0.3em; font-size: 12px; color: var(--sepia); }
-    #chrome, .controls, #status { display: none; }
+    #chrome, #status, #close_leaf { display: none; }
     .privacy { position: static; text-align: center; margin: 8px auto 40px; max-width: 60ch; }
-    .leaf { padding: 20px 18px 18px; }
-    .leaf h1 { font-size: 38px; }
-    .leaf .lede { font-size: 15px; }
+    .topc { padding: 20px 22px 0; gap: 10px; }
+    .leaf h1 { font-size: 42px; }
+    .leaf .lede { font-size: 16px; }
+    .verso .part { padding: 18px 18px; font-size: 13px; line-height: 1.4; gap: 6px; overflow-y: auto; }
+    .verso h2 { font-size: 22px; }
+    .leaf .hash { font-size: 12.5px; }
+    .verso .over { font-size: 11px; }
   }
 </style>
 </head>
@@ -115,44 +136,51 @@
 <div class="page">
   <div class="void"></div>
   <div class="column">
-    <section class="leaf">
-      <div class="over" id="over"></div>
-      <h1 id="name"></h1>
-      <div id="tagline" class="tagline"></div>
-      <div class="rule"></div>
-      <p id="lede" class="lede"></p>
-      <div id="strip">
-        <span class="stat" data-l="offerings"><span class="k">offerings</span><b id="offerings">0</b></span>
-        <span class="stat" data-l="refused"><span class="k">refused</span><b id="refused">0</b></span>
-        <span class="stat" data-l="silenced"><span class="k">silenced</span><b id="skipped">0</b></span>
-        <span class="stat" data-l="height"><span class="k">height</span><b id="height">—</b></span>
-        <span id="true_name"></span>
-      </div>
-      <div id="actions" class="row">
-        <button id="play2" class="listen">Listen</button>
-        <button id="open_eye">open the eye</button>
-      </div>
-      <details class="proof" id="proof">
-        <summary><span class="k">colophon</span><span class="quiet" id="proof_hint">two hashes anyone can recompute from the public key</span></summary>
-        <div class="body">
-          <div><div class="k">render hash</div><div id="render_hash" class="hash"></div></div>
-          <div><div class="k">score hash</div><div id="score_hash" class="hash"></div></div>
-          <div id="pins" class="quiet"></div>
-          <div id="snapshot" class="quiet"></div>
+    <div class="scene"><div class="leaf" id="leaf">
+      <section class="face recto">
+        <div class="part top" id="top"><div class="topc">
+          <div class="over" id="over"></div>
+          <h1 id="name"></h1>
+          <div class="tagline" id="tagline"></div>
+          <div class="rule"></div>
+          <p class="lede" id="lede"></p>
+          <div class="tally" id="tally"></div>
+          <div id="actions" class="row"><button id="play2" class="listen">Listen</button><button id="open_eye">open the eye</button></div>
+        </div><div class="holes"></div></div>
+        <div class="part stub" id="stub">
+          <div class="holes"></div>
+          <div class="stub-content">
+            <div class="k">witness · tear along the line</div>
+            <div class="tn" id="true_name"></div>
+            <div class="sm" id="stubline"></div>
+          </div>
+        </div>
+      </section>
+      <section class="face verso">
+        <div class="part" id="versopart">
+          <div class="over">colophon</div>
+          <h2>How this leaf was made</h2>
+          <p id="colophon"></p>
+          <div><div class="over">render hash</div><div class="hash" id="render_hash"></div></div>
+          <div><div class="over">score hash</div><div class="hash" id="score_hash"></div></div>
+          <p class="quiet" id="pins"></p>
+          <p class="quiet" id="anchor"></p>
+          <p class="quiet" id="snapshot"></p>
           <div class="links">
             <a id="link_readme" target="_blank" rel="noopener">how to verify</a>
             <a id="link_block" target="_blank" rel="noopener">this block on ZecBlock</a>
             <a id="link_apparition" href="apparition.html">two evocations</a>
           </div>
+          <div id="whisper_row" class="row">
+            <span class="k" id="whisper_label">whisper back: click an eye</span>
+            <input id="whisper_text" placeholder="you are not alone." maxlength="400">
+            <span id="whisper_status" class="quiet"></span>
+          </div>
         </div>
-      </details>
-      <div id="whisper_row" class="row">
-        <span class="k" id="whisper_label">whisper back: click an eye</span>
-        <input id="whisper_text" placeholder="you are not alone." maxlength="400">
-        <span id="whisper_status" class="quiet"></span>
-      </div>
-    </section>
-    <div class="controls"><button id="close_leaf">close · G</button></div>
+      </section>
+    </div></div>
+    <div class="controls"><button id="close_leaf">close · G</button><button id="flip">turn the leaf · F</button><button id="tear">tear the stub · T</button></div>
+    <div class="note" id="note"></div>
   </div>
 </div>
 <p class="privacy" id="privacy">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</p>
@@ -185,7 +213,7 @@
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
 <script>
   // cache-busting for the local scripts: browsers kept the old creature.js even with Cache-Control: no-store
-  for (const f of ["name.js", "creature.js", "app.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
+  for (const f of ["name.js", "creature.js", "leaf.js", "app.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
   document.write(`<script type="module" src="god.js?v=${Date.now()}"><\/script>`);   // three.js, vendored; no CDN
 </script>
 </body>
