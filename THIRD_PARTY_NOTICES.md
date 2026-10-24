@@ -12,6 +12,19 @@ The work below was made by others. It keeps its own license and is not code writ
 The patch adapts zcash-devtool to Zcash testnet after NU7, where the stock tool fails with `incorrect consensus branch id`.
 It modifies zcash-devtool and pins librustzcash, both licensed MIT OR Apache-2.0.
 
+## Vendored for the web page (stored in this repository, served from our own origin; the page makes no request to any other host)
+
+| File(s) | Origin | sha256 of our copy | License |
+|---|---|---|---|
+| `web/vendor/three/three.module.min.js` | [three.js](https://github.com/mrdoob/three.js) r160, npm `three@0.160.0`, `build/three.module.min.js` (tarball sha256 `1ee2f935c4f555814b388e87b5ef78a44856bd2e9d0feb88643a6e193fb42856`), fetched 24 Oct 2026, unmodified | `3e690ac7d180b0aadf0891bea39eec643e29e2d3e75c99b18689518665f69ba6` | MIT (`web/vendor/three/LICENSE`, the package's own copy) |
+| `web/vendor/three/BufferGeometryUtils.js` | same package, `examples/jsm/utils/BufferGeometryUtils.js`, unmodified (it imports `three`, which the page's import map resolves to the file above) | `9be041e96308775d00e2695cc607645b9a9b64fd7c0e759dd8f7c00a8d92becb` | MIT |
+| `web/fonts/IMFellEnglish-Regular.ttf` | [IM Fell English](https://github.com/google/fonts/tree/main/ofl/imfellenglish) by Igino Marini, google/fonts `main` `ofl/imfellenglish/IMFeENrm28P.ttf`, fetched 24 Oct 2026, renamed only | `fe9705bbde51af802719246d4608d08d37bde956ab99d9a590da996a5221a24c` | SIL OFL 1.1 (`web/fonts/OFL.txt`) with Reserved Font Name "IM FELL English" |
+| `web/fonts/IMFellEnglish-Italic.ttf` | same, `IMFeENit28P.ttf` | `47cd75dce54b1f2e0831359d22d5e688f519d68ae45706b664fd310fd0e3ccf7` | SIL OFL 1.1 |
+| `web/fonts/IMFellEnglishSC-Regular.ttf` | [IM Fell English SC](https://github.com/google/fonts/tree/main/ofl/imfellenglishsc), `ofl/imfellenglishsc/IMFeENsc28P.ttf` | `102324fb5434bb5da7963533426b0ad44c85bbc9e7755067535c9d11464a176b` | SIL OFL 1.1 (same OFL text) |
+
+`web/tests/test_vendor.py` checks these hashes and that nothing in `web/` loads from another origin;
+`scripts/build_web.sh --check` repeats the origin check on every deploy.
+
 ## Fetched or built at setup time (not stored in this repository)
 
 | Component | Version | How it is used | License |
@@ -22,4 +35,5 @@ It modifies zcash-devtool and pins librustzcash, both licensed MIT OR Apache-2.0
 | [espeak-ng](https://github.com/espeak-ng/espeak-ng) | system package | invoked as a separate program for local text-to-speech | GPL-3.0 |
 | [@grpc/grpc-js](https://github.com/grpc/grpc-node), [@grpc/proto-loader](https://github.com/grpc/grpc-node) | npm | lightwalletd queries in the spike scripts | Apache-2.0 |
 
-No third-party binaries are distributed from this repository: `bin/`, `vendor/` and `node_modules/` are git-ignored.
+No third-party binaries are distributed from this repository beyond the web files listed above: `bin/`, `vendor/`
+and `node_modules/` are git-ignored.

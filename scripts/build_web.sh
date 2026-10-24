@@ -30,6 +30,8 @@ allowed() {
   printf "%s\n" index.html apparition.html static.json vercel.json config/brand.json out/score.json out/mix.wav out/render_hash logo.svg og.png anchor.json anchor.json.ots
   for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || basename "$f"; done
   for f in web/*.css; do [ -e "$f" ] || continue; basename "$f"; done
+  # vendored three.js (MIT) and the self-hosted type (OFL): THIRD_PARTY_NOTICES.md lists every file with its sha256
+  for f in web/vendor/three/* web/fonts/*; do [ -e "$f" ] || continue; echo "${f#web/}"; done
   true
 }
 
@@ -45,6 +47,14 @@ verify() {
     [ -f "$DIST/$f" ] || { echo "!! missing from dist: $f" >&2; bad=1; }
   done
   grep -q "kiosk\.html\|kiosk\.js" "$DIST/index.html" "$DIST/apparition.html" && { echo "!! a page links the kiosk" >&2; bad=1; }
+  # zero runtime requests outside the origin: no script, stylesheet, import, font or image from another host
+  local q="[\"']"
+  for f in "$DIST"/*.html "$DIST"/*.css "$DIST"/*.js; do
+    [ -e "$f" ] || continue
+    if grep -nE "<(script|link)[^>]*(src|href)=${q}https?://|@import[^;]*https?://|url\(${q}?https?://|from ${q}https?://|import\(${q}https?://" "$f" >&2; then
+      echo "!! external runtime request in ${f#"$DIST"/}" >&2; bad=1
+    fi
+  done
   return $bad
 }
 
@@ -56,6 +66,9 @@ cp web/index.html web/apparition.html "$DIST/"
 for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || cp "$f" "$DIST/"; done
 for f in web/*.css; do [ -e "$f" ] && cp "$f" "$DIST/"; done
 cp config/brand.json "$DIST/config/brand.json"
+mkdir -p "$DIST/vendor/three" "$DIST/fonts"
+cp web/vendor/three/* "$DIST/vendor/three/"                   # three.js r160 (MIT): THIRD_PARTY_NOTICES.md
+cp web/fonts/* "$DIST/fonts/"                                 # IM Fell English (SIL OFL 1.1): web/fonts/OFL.txt
 cp docs/brand/logo.svg "$DIST/logo.svg"                       # favicon
 [ -f web/og.png ] && cp web/og.png "$DIST/og.png"             # link preview image (rendered from the page, committed)
 cp "$OUT/score.json" "$OUT/mix.wav" "$DIST/out/"
@@ -78,6 +91,8 @@ cat > "$DIST/vercel.json" <<'EOF'
   "headers": [
     { "source": "/out/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
     { "source": "/static.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
+    { "source": "/vendor/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
+    { "source": "/fonts/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
     { "source": "/anchor.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
     { "source": "/anchor.json.ots", "headers": [{ "key": "Cache-Control", "value": "no-store" },
                                                { "key": "Content-Type", "value": "application/octet-stream" }] }

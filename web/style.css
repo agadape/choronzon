@@ -1,6 +1,18 @@
-/* Shared look for the listener, apparition and kiosk pages. Four tokens, one system monospace stack, no requests. */
+/* Shared look for the listener, apparition and kiosk pages. No request leaves the origin: the type is self-hosted
+   (IM Fell English, SIL OFL 1.1, web/fonts/OFL.txt). Tokens: docs/visual-direction.md §5. */
+@font-face { font-family: "IM Fell English"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/IMFellEnglish-Regular.ttf") format("truetype"); }
+@font-face { font-family: "IM Fell English"; font-style: italic; font-weight: 400; font-display: swap; src: url("fonts/IMFellEnglish-Italic.ttf") format("truetype"); }
+@font-face { font-family: "IM Fell English SC"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/IMFellEnglishSC-Regular.ttf") format("truetype"); }
 :root {
   color-scheme: dark;
+  /* the leaf and the night (v2) */
+  --night: #050302; --vellum: #1d1710; --ink: #ebdfc2; --sepia: #8f7956;
+  --gilt: #d6a94c; --gilt-hi: #f8e1a0; --gilt-lo: #6f501c; --rubric: #c8431f;
+  --serif: "IM Fell English", "Palatino Linotype", Palatino, Georgia, serif;
+  --caps: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
+  --sx: 50;               /* sheen position on gold leaf, follows the tilt */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='11'/><feColorMatrix values='0 0 0 0 0.92  0 0 0 0 0.82  0 0 0 0 0.62  0 0 0 0.09 0'/></filter><rect width='260' height='260' filter='url(%23n)'/></svg>");
+  /* the 21 Oct tokens, still used by the apparition and kiosk pages until they are restyled */
   --void: #171916; --bone: #E4DFD0; --ash: #777F79; --anomaly: #FF6338;
   --ash-dim: rgba(119, 127, 121, 0.35);
   --mono: ui-monospace, "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -16,6 +28,8 @@ h1 { margin: 0; font-weight: 500; letter-spacing: 0.16em; font-size: clamp(26px,
 .k { color: var(--ash); letter-spacing: 0.12em; text-transform: uppercase; font-size: 11px; }
 .quiet { color: var(--ash); }
 .bad { color: var(--anomaly); }
+.gilt { background: linear-gradient(100deg, var(--gilt-lo) 0%, var(--gilt) 28%, var(--gilt-hi) calc(var(--sx) * 1%), var(--gilt) calc(var(--sx) * 1% + 16%), var(--gilt-lo) 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent; }
 button, .button {
   font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash); padding: 10px 22px;
   cursor: pointer; letter-spacing: 0.16em; text-transform: uppercase; font-size: 12px; border-radius: 2px;
@@ -24,6 +38,12 @@ button:hover:not(:disabled), .button:hover { border-color: var(--bone); }
 button:disabled { color: var(--ash); cursor: default; }
 button.primary { border-color: var(--bone); padding: 12px 30px; font-size: 13px; }
 button.primary.live { background: var(--bone); color: var(--void); }
+/* the leaf's buttons (v2): small caps on vellum, gold for Listen */
+button.leaf, .leaf button, #chrome button { font: 15px var(--caps); letter-spacing: 0.12em; text-transform: none; color: var(--ink);
+  background: rgba(5, 3, 2, 0.55); border: 1px solid var(--sepia); padding: 8px 16px; border-radius: 1px; }
+button.leaf:hover, .leaf button:hover, #chrome button:hover { border-color: var(--ink); }
+button.listen { border-color: var(--gilt); padding: 9px 34px; font-size: 16px; }
+button.listen.live, button.listen.on { background: var(--gilt); color: var(--vellum); }
 input, textarea {
   font: inherit; background: transparent; color: var(--bone); border: 1px solid var(--ash); padding: 8px 10px;
   border-radius: 2px; max-width: 100%;

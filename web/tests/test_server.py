@@ -60,6 +60,13 @@ def test_served_files_and_confinement(served):
     assert req("GET", "/out/score.json")[0] == 200
     assert req("GET", "/config/brand.json")[0] == 200
     assert req("GET", "/logo.svg")[0] == 200 and req("GET", "/style.css")[0] == 200
+    for served_file in ("/god.js", "/vendor/three/three.module.min.js", "/vendor/three/BufferGeometryUtils.js",
+                        "/fonts/IMFellEnglish-Regular.ttf", "/fonts/OFL.txt"):
+        status, headers, _ = req("GET", served_file)
+        assert status == 200, served_file
+        if served_file.endswith(".js"):
+            ctype = {k.lower(): v for k, v in headers.items()}.get("content-type", "")
+            assert "javascript" in ctype, served_file   # module scripts need a JS type
     for bad in ("/out/../secret.txt", "/out/%2e%2e/secret.txt", "/out//etc/hostname", "/out/..%2fsecret.txt",
                 "/../pyproject.toml", "/%2e%2e/pyproject.toml", "/out/../../etc/passwd", "/tests/", "/out/"):
         status, _, body = req("GET", bad)

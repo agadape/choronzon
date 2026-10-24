@@ -10,8 +10,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "build_web.sh"
 ALLOWED = {"index.html", "apparition.html", "static.json", "vercel.json", "config/brand.json", "out/score.json",
-           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "name.js", "style.css",
-           "logo.svg", "og.png", "anchor.json", "anchor.json.ots"}
+           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "god.js", "name.js", "style.css",
+           "logo.svg", "og.png", "anchor.json", "anchor.json.ots",
+           "vendor/three/three.module.min.js", "vendor/three/BufferGeometryUtils.js", "vendor/three/LICENSE",
+           "fonts/IMFellEnglish-Regular.ttf", "fonts/IMFellEnglish-Italic.ttf", "fonts/IMFellEnglishSC-Regular.ttf",
+           "fonts/OFL.txt"}
 
 
 def run(*args, check=True):
@@ -42,7 +45,9 @@ def test_dist_holds_exactly_the_allow_list(out, tmp_path):
     files = {str(p.relative_to(dist)).replace("\\", "/") for p in dist.rglob("*") if p.is_file()}
     assert files <= ALLOWED | {f for f in files if f.endswith(".css")}
     assert {"index.html", "apparition.html", "static.json", "vercel.json", "config/brand.json", "out/score.json",
-            "out/mix.wav", "app.js", "creature.js", "name.js", "style.css", "logo.svg", "anchor.json"} <= files
+            "out/mix.wav", "app.js", "creature.js", "god.js", "name.js", "style.css", "logo.svg", "anchor.json",
+            "vendor/three/three.module.min.js", "vendor/three/LICENSE", "fonts/IMFellEnglish-Regular.ttf",
+            "fonts/OFL.txt"} <= files
     assert "kiosk.js" not in files and "out/cache/secretvoice.c2" not in files
     static = json.loads((dist / "static.json").read_text())
     assert static["static"] is True and static["as_of_height"] == 4522002 and static["render_hash"] == "a" * 64
@@ -66,6 +71,22 @@ def test_check_rejects_planted_files(out, tmp_path, planted):
     target.write_text("planted")
     r = run("--check", "--dist", str(dist), check=False)
     assert r.returncode != 0 and planted.split("/")[-1] in r.stderr
+
+
+@pytest.mark.parametrize("page, line", [
+    ("index.html", '<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js"></script>'),
+    ("index.html", '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English">'),
+    ("style.css", "@font-face { font-family: x; src: url(https://fonts.gstatic.com/x.woff2); }"),
+    ("god.js", 'import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";'),
+])
+def test_check_rejects_runtime_requests_outside_the_origin(out, tmp_path, page, line):
+    dist = tmp_path / "dist"
+    run("--out", str(out), "--dist", str(dist))
+    assert run("--check", "--dist", str(dist)).returncode == 0
+    target = dist / page
+    target.write_text(target.read_text() + "\n" + line + "\n")
+    r = run("--check", "--dist", str(dist), check=False)
+    assert r.returncode != 0 and "external runtime request" in r.stderr
 
 
 def test_dist_and_vercel_are_ignored():

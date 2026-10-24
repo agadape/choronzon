@@ -3,7 +3,7 @@ wallets/
 *.age
 .env
 bin/
-vendor/
+/vendor/
 logs/
 *.zip
 __pycache__/
