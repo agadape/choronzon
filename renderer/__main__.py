@@ -154,6 +154,11 @@ def cmd_summon(args) -> None:
         sys.exit("no key: pass --key-file or set SUMMON_KEY (a unified full viewing key)")
     wallet_dir = Path(args.wallet)
     if not (wallet_dir / "data.sqlite").exists():
+        if args.tor_cache_from and args.connection == "tor":
+            # only the public Tor directory cache, never the guards (kiosk/session.py seed_tor_cache)
+            from kiosk.session import seed_tor_cache
+            if seed_tor_cache(Path(args.tor_cache_from), wallet_dir):
+                log.info("summon: Tor directory cache copied from %s", args.tor_cache_from)
         log.info("summon: creating a view-only wallet from the key (birthday %s)", args.birthday)
         try:
             Devtool(wallet_dir, server=args.server, connection=args.connection)._run(
@@ -190,6 +195,8 @@ def main(argv: list[str] | None = None) -> None:
     s.add_argument("--key-file", help="file holding the published full viewing key (or set SUMMON_KEY)")
     s.add_argument("--birthday", type=int, required=True, help="block height the god was born at")
     s.add_argument("--as-of", default="tip", help="block height to evoke at (compare with the other laptop)")
+    s.add_argument("--tor-cache-from", help="copy the public Tor directory cache from this warm wallet dir (a cold "
+                   "Tor bootstrap takes minutes; guards are never copied)")
     w = sub.choices["whisper"]
     w.add_argument("txid", help="the offering to answer (display order)")
     w.add_argument("--text", default="you are not alone.", help="the whisper (text)")

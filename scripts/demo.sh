@@ -116,7 +116,7 @@ if [ "${1:-}" != "--skip-summon" ]; then
   WATCH=$(mktemp -d wallets/.demo_watcher_XXXX); KEY=$(mktemp)
   python3 -m kiosk reveal --from $B --yes --to "$KEY" >/dev/null 2>&1 || die "reveal failed"
   OURS=$(hashes $V "$H" /tmp/demo_v)
-  THEIRS=$(python3 -m renderer summon --key-file "$KEY" --birthday 4502962 --wallet "$WATCH" --as-of "$H" --out /tmp/demo_w 2>/dev/null \
+  THEIRS=$(python3 -m renderer summon --key-file "$KEY" --birthday 4502962 --wallet "$WATCH" --as-of "$H" --out /tmp/demo_w --tor-cache-from $V 2>/dev/null \
            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["as_of_height"], d["offerings"], d["skipped"], d["render_hash"])')
   rm -f "$KEY"; rm -rf "$WATCH"
   echo "   this laptop : $OURS"; echo "   the watcher : $THEIRS"

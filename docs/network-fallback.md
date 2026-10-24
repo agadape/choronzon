@@ -116,3 +116,10 @@ Before trusting any new server: `node spikes/s1_lightd.mjs test` must show branc
 2. Direct works, Tor does not (the venue blocks Tor) → decide on purpose, and say it on stage: lightwalletd will see
    the venue IP. Then `export LWD_CONNECTION=direct` for the kiosk, renderer and `scripts/demo.sh`.
 3. Both fail → zec.rocks is down: stop sending, run the renderer on the **pre-synced wallet DBs** (`python3 -m renderer once --wallet wallets/test/V --as-of <height>`), say so on stage, and play the demo video for the live-send part. Never fake tx status.
+
+## Rehearsal over Tor and the Watcher's cold start (24 Oct)
+
+- `./scripts/demo.sh` over Tor (default): **PASS** in 1,124 s (log `logs/demo_20261024T105133Z.log`). Offering `d4d69be5…` heard after 80 s, whisper `7b7c65ee…` received after 87 s, god line `a1edea89…` accepted after 87 s, forgery `e117d0bf…` refused as `forged-conductor` after 25 s, Watcher = V = `8b332fe6…` at 4,535,682 with the same audio.
+- The Watcher step took **633 s**: a new wallet downloads the whole Tor directory (~40 MB) before its first sync.
+- Fix: `renderer summon --tor-cache-from <warm wallet>` copies only the public directory cache (`tor/arti-cache`, never the guards in `tor/arti-data`), as `kiosk session open` already does. `demo.sh` passes `--tor-cache-from wallets/test/V`. Measured: a fresh Watcher over Tor from the key alone in **129 s**, same `render_hash` `8b332fe6…`.
+- On a real second laptop: run one Watcher (or one Tor sync of any wallet) there before the show so its cache is warm, then pass `--tor-cache-from` that wallet.
