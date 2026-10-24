@@ -133,11 +133,120 @@ def test_devtool_refuses_to_spend_without_identity(tmp_path):
 def test_privacy_statement_uses_the_section_6_wording():
     must = ["We, the operator, cannot learn who contributed", "forever", "irrevocable",
             "Content and voice can identify you", "Your own wallet stores what you sent",
-            "anyone holding the public key", "IP address", "miner order, not send order"]
-    for phrase in must:
-        assert phrase in copy.PRIVACY, phrase
-    for banned in ("anonymous", "untraceable", "nobody can ever", "no one will ever know"):
-        assert banned not in copy.PRIVACY.lower()
+            "anyone holding the public key", "miner order, not send order",
+            # a kiosk --reply lands in the operator's session wallet: say so, and offer the visitor's own wallet
+            "the reply lands in this kiosk's session", "the operator can read it", "give the address of your own wallet",
+            # close overwrites, and says where that is not a guarantee
+            "overwritten and deleted", "best-effort"]
+    for route in ("tor", "direct"):
+        text = copy.privacy(route)
+        for phrase in must:
+            assert phrase in text.replace("\n  ", " "), (route, phrase)
+        for banned in ("anonymous", "untraceable", "nobody can ever", "no one will ever know", "wiped",
+                       "never through us", "lightwalletd sees the kiosk's ip address."):
+            assert banned not in text.lower(), (route, banned)
+    tor, direct = copy.privacy("tor").replace("\n  ", " "), copy.privacy("direct").replace("\n  ", " ")
+    # CLAUDE.md section 6 MUST wording for the route
+    assert "lightwalletd sees a Tor exit, not this kiosk's IP (Tor is the default;" in tor
+    assert "an operator can choose direct on purpose, and then it sees the IP)" in tor
+    assert "Tor does not hide timing" in tor
+    assert "DIRECTLY: lightwalletd sees this kiosk's IP address" in direct and "on purpose" in direct
+    assert "Tor exit" not in direct
+    with pytest.raises(KeyError):
+        copy.privacy("carrier-pigeon")
+
+
+def test_confirm_prints_the_route_this_process_uses(monkeypatch, capsys):
+    from kiosk.__main__ import confirm
+    for route, marker in (("tor", "Tor exit"), ("direct", "CONNECTED DIRECTLY")):
+        monkeypatch.setenv("LWD_CONNECTION", route)
+        confirm(type("A", (), {"yes": True})())
+        out = capsys.readouterr().out
+        assert marker in out, route
+
+
+@pytest.mark.parametrize("cmd", [["preview"], ["offer", "--yes"], ["qr"], ["speak", "--from", "wallets/test/B"]])
+def test_a_secret_on_the_command_line_is_refused(cmd, capsys):
+    from kiosk.__main__ import main
+    with pytest.raises(SystemExit) as e:
+        main([cmd[0], "my secret", *cmd[1:]])
+    msg = str(e.value.code)
+    assert "refusing the text as a command-line argument" in msg and "shell history" in msg and "`ps`" in msg
+    assert "my secret" not in msg and "my secret" not in capsys.readouterr().out
+
+
+def test_reply_and_reply_to_are_exclusive():
+    from kiosk.__main__ import main
+    with pytest.raises(SystemExit) as e:
+        main(["offer", "-", "--reply", "--reply-to", "utest1x"])
+    assert e.value.code == 2      # argparse: not allowed together
+
+
+def test_reply_to_must_be_a_unified_address_of_the_choir_network():
+    from kiosk.session import check_reply_to
+    good = address.bech32m_encode("utest", [i % 32 for i in range(170)])
+    assert check_reply_to(" " + good + "\n", "test") == good
+    with pytest.raises(ValueError, match="not a testnet"):
+        check_reply_to(address.bech32m_encode("u", [i % 32 for i in range(170)]), "test")
+    with pytest.raises(ValueError, match="does not parse"):
+        check_reply_to(good[:-1] + ("q" if good[-1] != "q" else "p"), "test")    # checksum broken
+    with pytest.raises(ValueError, match="does not parse"):
+        check_reply_to("ztestsapling1abc", "test")
+
+
+def _reply_db(path, memos):
+    import sqlite3
+    con = sqlite3.connect(path)
+    con.execute("create table ironwood_received_notes (memo blob, is_change integer)")
+    con.executemany("insert into ironwood_received_notes values (?, ?)", [(m, c) for m, c in memos])
+    con.commit()
+    con.close()
+
+
+def test_inbox_shows_only_the_reply_for_the_typed_contrib_id(tmp_path):
+    from kiosk.session import replies_for
+    db = tmp_path / "data.sqlite"
+    _reply_db(db, [(protocol.encode_reply(111, b"for the first visitor"), 0),
+                   (protocol.encode_reply_text(222, "for the second visitor"), 0),
+                   (protocol.encode_reply(111, b"own change, ignored"), 1),
+                   (b"\xf6", 0)])
+    state = {"offerings": [{"contrib_id": 111, "txid": "a" * 64}, {"contrib_id": 222, "txid": "b" * 64}]}
+    first = replies_for(db, state, 111)
+    assert [r["text"] for r in first] == ["for the first visitor"] and first[0]["for_txid"] == "a" * 64
+    assert [r["text"] for r in replies_for(db, state, 222)] == ["for the second visitor"]
+    assert replies_for(db, state, 333) == []          # not an offering of this session: nothing, not even a count
+    assert replies_for(db, {"offerings": []}, 111) == []
+
+
+@pytest.mark.parametrize("with_shred", [True, False])
+def test_session_close_overwrites_every_file_before_deleting(tmp_path, monkeypatch, with_shred):
+    import os
+    import shutil
+    from kiosk import session
+    if not with_shred:
+        monkeypatch.setattr(session.shutil, "which", lambda name: None)
+    elif not shutil.which("shred"):
+        pytest.skip("no shred on this machine")
+    root = tmp_path / "current"
+    files = {"wallet/data.sqlite": b"sent_notes: my secret" * 300, "wallet/data.sqlite-wal": b"wal" * 99,
+             "identity.age": b"AGE-SECRET-KEY-1...", "state.json": b'{"offerings": []}',
+             "wallet/tor/arti-data/guards.json": b"guards", "empty": b""}
+    keep = tmp_path / "links"
+    keep.mkdir()
+    for rel, data in files.items():
+        f = root / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(data)
+        os.link(f, keep / rel.replace("/", "_"))      # a second name for the same inode: shows what was on it
+    outside = tmp_path / "outside.txt"
+    outside.write_bytes(b"not part of the session")
+    (root / "wallet" / "link-out").symlink_to(outside)
+    session.Session(root).close()
+    assert not root.exists()
+    assert outside.read_bytes() == b"not part of the session"          # a symlink is removed, never followed
+    for rel, data in files.items():
+        after = (keep / rel.replace("/", "_")).read_bytes()
+        assert len(after) == len(data) and after == b"\0" * len(data), rel
 
 
 def test_banner_comes_from_brand_json():

@@ -6,23 +6,36 @@ v1 memos (`protocol/`) → one ZIP-321 payment to the choir address (`config/cho
 wording of CLAUDE.md §6 and is shown before every send.
 
 ```bash
-python3 -m kiosk preview "text" --wav ghost.wav      # speak locally, show memo sizes; nothing is sent
+python3 -m kiosk preview --wav ghost.wav             # type the text at the prompt; speak locally; nothing is sent
 python3 -m kiosk session open --notes 8              # ephemeral wallet: fund from the pool, wait, split (~8 min)
-python3 -m kiosk offer "text" [--reply]              # send from the session wallet (prompts; --yes for scripts)
-python3 -m kiosk inbox                               # whispers that returned to this session's wallet
-python3 -m kiosk session close                       # wipe the wallet, its identity and the sent secrets
+python3 -m kiosk offer [--reply | --reply-to <ua>]   # send from the session wallet (prompts; --yes for scripts)
+python3 -m kiosk inbox <contrib_id>                  # the whisper that returned to that one offering of this session
+python3 -m kiosk session close                       # overwrite and delete the wallet, its identity and the sent secrets
 python3 -m kiosk pool wallets/test/L --notes 3        # a named spending wallet: make sure it holds N spendable notes
-python3 -m kiosk offer "text" --from wallets/test/A  # operator / seeding: a named wallet, labelled as such
-python3 -m kiosk qr "text" [--reply <ua>] --png qr.png   # phone offering: ZIP-321 QR with the ASCII envelope
-python3 -m kiosk speak "text" --from wallets/test/B  # the god's own voice: a conductor line the choir pays to itself
-python3 -m kiosk speak "text" --from wallets/test/A --forge   # demo forgery: every renderer shows NOT THE GOD
+printf '%s' '…' | python3 -m kiosk offer - --from wallets/test/A --yes   # operator / seeding: a named wallet, labelled
+python3 -m kiosk qr [--reply <ua>] --png qr.png      # phone offering: ZIP-321 QR with the ASCII envelope
+printf '%s' '…' | python3 -m kiosk speak - --from wallets/test/B   # the god's own voice: the choir pays itself
+printf '%s' '…' | python3 -m kiosk speak - --from wallets/test/A --forge   # demo forgery: renderers show NOT THE GOD
 python3 -m kiosk reveal --from wallets/test/B [--to key.txt]  # the Eye opens: publish the full viewing key (M5)
 ```
 
-- The session wallet lives under `wallets/kiosk/current/` (git-ignored) and is deleted on `close`. Its `sent_notes`
-  hold the secrets sent from it; that is why it is ephemeral.
-- `--reply` embeds a fresh diversified address of the session wallet; the kiosk keeps only `contrib_id → txid` in
-  `state.json` so `inbox` can match replies while the session is open. The address itself is stored nowhere else.
+- **The text never goes on the command line.** `preview`, `offer`, `qr` and `speak` read it from the prompt (no
+  argument) or from stdin (`-`); any other argument is refused with a message, because it would land in the shell
+  history and in `ps`. (The wallet tool still holds the memo, base64, on its own argv for the seconds of `pay`:
+  `docs/privacy-review.md`, residual exposure.)
+- The session wallet lives under `wallets/kiosk/current/` (git-ignored). Its `sent_notes` hold the secrets sent from
+  it; that is why it is ephemeral. `close` overwrites every file under it (`shred -x -z -n 1`, or zeros + fsync when
+  `shred` is missing) and then deletes it. On SSDs, copy-on-write file systems and VM disks (WSL's ext4.vhdx is one)
+  an in-place overwrite is best-effort: old blocks may survive below the file system.
+- Whisper Back at the kiosk, two choices, both stated before every send:
+  - `--reply` embeds a fresh diversified address **of the session wallet**. The reply lands in that wallet, which the
+    operator holds until the session closes: the operator can read it. `inbox <contrib_id>` shows the reply to the one
+    offering whose contrib_id the visitor types (printed after the send), not a list of everyone's; that is a courtesy
+    at the screen, not a protection from the operator. The kiosk keeps only `contrib_id → txid` in `state.json`; the
+    address itself is stored nowhere else.
+  - `--reply-to <ua>` embeds the visitor's **own** wallet address (checked: a unified address of the choir's network,
+    checksum included). The reply then travels directly from the listener's wallet to the visitor's and never reaches
+    the kiosk. The web kiosk takes the same choice as `reply_to` in the `/kiosk/offer` body.
 - The kiosk prints txids (display order) and byte counts only; never an address, never the text.
 - Every command that talks to lightwalletd (`session open`, `offer`, `speak`, `inbox`, `pool`, the web kiosk) goes
   over Tor by default, so the server sees a Tor exit address, not the kiosk. `--connection direct` or

@@ -11,13 +11,13 @@ Scope: the product code (`protocol/`, `renderer/`, `kiosk/`, `web/`), its output
 | renderer | `out/score.json`, `out/render_hash`, `out/mix.wav` | score (txids, heights, codec, byte counts, `has_reply`, `conductor`), timeline, hashes, pins; the mixed audio | OK: public content only; no reply addresses (`has_reply` is a flag) |
 | renderer | `out/cache/<sha256>.c2` | Codec2 frames of text offerings (ghost voice of public chain content) | OK on a renderer; **removed from the kiosk** (see fixes) |
 | renderer whisper | stdout | the reply request URI (contains the offering's reply address) + QR | Intended: the listener must pay it. Printed on demand, never written |
-| renderer summon | stderr | birthday, wallet path | OK: the key comes from a file or `SUMMON_KEY`, never argv, never logged |
+| renderer summon | stderr | birthday, wallet path | OK: the key comes from a file or `SUMMON_KEY`, never on our command line, never logged; the wallet tool receives it on its own argv for the moment `init-fvk` runs (see residual exposure; the key is public from 24 Oct) |
 | web server | nothing (request logging disabled) | — | OK |
-| web `/whisper/<txid>` | JSON to the browser | reply address inside the URI | Intended, on demand, not persisted |
+| web `/whisper/<txid>` | JSON to the browser | reply address inside the URI | Intended, on demand, not persisted; loopback clients only (404 to the LAN), Host must name the server |
 | kiosk preview/offer/qr/speak | stdout | byte counts, contrib_id, txid + explorer link, labels | OK: never the text, never an address |
 | kiosk `--wav` / `--png` | files the operator names | the ghost voice / the QR (= the request incl. memo) | Operator's explicit choice |
-| kiosk session | `wallets/kiosk/current/state.json` | `contrib_id → txid` for `inbox` matching, funding/split txids | Documented; wiped by `session close` |
-| kiosk inbox | stdout | the whisper's text | Intended: it is addressed to this wallet |
+| kiosk session | `wallets/kiosk/current/state.json` | `contrib_id → txid` for `inbox` matching, funding/split txids | Documented; overwritten and deleted by `session close` (best-effort on SSD/VM disks) |
+| kiosk inbox | stdout | the whisper's text, for the one `contrib_id` typed in | Intended: it is addressed to this wallet. The operator holds the wallet and can read every reply to a `--reply` address; the kiosk statement says so |
 | kiosk reveal | stdout (+ `--to` file on request) | the choir's full viewing key | The sanctioned publication act (M5) |
 | devtool wrapper errors | exception text | exit code + last line with addresses replaced by `<address>` (+ the Tor hint) | OK |
 | kiosk offer / speak | stdout | one `route to lightwalletd: Tor …` / `DIRECT …` line | OK: says what the server could see |
@@ -56,6 +56,37 @@ An independent review of the product code found **one DQ-class bug**, fixed the 
 - Robustness items (not privacy): output write order, daemon resilience, offer locking, CLI EOF, terminal escape
   sequences in `inbox`, `setup.sh` patch check. Tracked with the rehearsals work.
 
+## Third pass (privacy audit, 24 Oct)
+
+No disqualifying leak; seven claims that were not exactly true, or holes in the local servers, fixed:
+
+1. **Kiosk replies went through the operator** while the copy implied otherwise. The statement now says a kiosk
+   `--reply` lands in the session wallet the operator holds and can read; `kiosk offer --reply-to <ua>` (and
+   `reply_to` on the web kiosk) embeds the visitor's own wallet address instead (unified-address checksum and network
+   checked); `kiosk inbox <contrib_id>` shows only that offering's reply, not every visitor's
+   (`test_inbox_shows_only_the_reply_for_the_typed_contrib_id`, `test_reply_to_must_be_a_unified_address_…`).
+2. **Route line.** The statement still said "lightwalletd sees the kiosk's IP address" after Tor became the default.
+   It is now built at runtime: the CLAUDE.md §6 Tor wording when the kiosk goes over Tor, an explicit
+   "CONNECTED DIRECTLY … sees this kiosk's IP" when the operator chose direct (CLI `confirm` and `/kiosk/copy`;
+   `test_privacy_statement_uses_the_section_6_wording`, `test_confirm_prints_the_route_this_process_uses`,
+   `test_kiosk_copy_states_the_route_in_use`).
+3. **"Wiped" was `rmtree`.** `session close` now overwrites every file under the session (`shred -x -z -n 1`, or
+   zeros + fsync) before deleting it; the copy says "overwritten and deleted … best-effort" on SSD/VM disks
+   (`test_session_close_overwrites_every_file_before_deleting`, both paths, checked through a hard link).
+4. **`/whisper/<txid>` answered the LAN** when the server ran with `--bind 0.0.0.0`: it now returns 404 unless the
+   client is loopback, like `/kiosk/*` and `/eye/open` (`test_whisper_post_body_and_loopback_only`).
+5. **DNS rebinding.** `same_origin()` compared Origin with Host only, so a page on a domain re-pointed at 127.0.0.1
+   passed. Every POST and every `/eye`, `/whisper/*`, `/kiosk/*` request now needs a Host of `127.0.0.1`,
+   `localhost` or `[::1]` with the server's port, the explicit `--bind` address, or an `--allow-host`; anything else
+   is 403 (`test_dns_rebinding_host_is_refused_on_every_guarded_endpoint`, 10 endpoints × 5 foreign Hosts).
+6. **Secrets on argv.** `preview`, `offer`, `qr` and `speak` refused nothing: a positional text is now refused with
+   the reason (stdin `-` and the prompt stay); `renderer whisper --text` is refused, the whisper comes from stdin,
+   `--text-file` or the prompt; `/whisper/<txid>` accepts the text in a POST JSON body (GET `?text=` still works
+   until the page switches) (`test_a_secret_on_the_command_line_is_refused`,
+   `test_text_on_the_command_line_is_refused_before_any_wallet_is_opened`). `scripts/demo.sh` pipes the whisper.
+7. **The key on argv.** The docs said "never argv" for `summon`; the wallet tool does take it on its own argv
+   (below). Wording fixed here and in `renderer/__main__.py`.
+
 ## Known residual exposure (say it, do not hide it)
 
 - **The sending wallet remembers.** `sent_notes` holds the plaintext memo and the destination; the kiosk wallet is
@@ -63,10 +94,19 @@ An independent review of the product code found **one DQ-class bug**, fixed the 
 - **`ps` on the kiosk during a send.** `devtool-aegis wallet pay --payment-uri …` carries the memo (base64) on its
   command line for the seconds the transaction is built. Only local processes on the kiosk can see it. Mitigation
   needs a devtool change (payment request on stdin); not done in the hackathon window.
-- **`ps` during a Watcher's first run.** `renderer summon` passes the full viewing key to `devtool-aegis wallet
-  init-fvk --fvk …` for the seconds of that command (found 23 Oct while checking the Tor runs). The key is meant
-  to be public, so this exposes nothing new to the world, but it is visible to local processes; same mitigation
-  as above (devtool change), not done.
+- **`ps` during a Watcher's first run.** The key never goes on *our* command line (`--key-file` or `SUMMON_KEY`),
+  but the wallet tool receives it on its own argv: `renderer summon` runs `devtool-aegis wallet init-fvk --fvk …`
+  for the few seconds of that command, once per Watcher (found 23 Oct while checking the Tor runs). Local processes
+  can see it there. The choir key is published on purpose from 24 Oct (site + README), so this is now low risk: it
+  exposes nothing that is not already public. Same mitigation as above (devtool change), not done.
+- **A kiosk `--reply` goes through the operator.** The reply address is a fresh address of the kiosk's session
+  wallet, which the operator holds until the session closes, so the operator can read every reply to it (`inbox`
+  shows only the one typed `contrib_id`, but that is a courtesy, not a protection). "Replies travel directly between
+  two wallets, never through us" is true only for a reply address of the visitor's own wallet (`kiosk qr --reply`,
+  `kiosk offer --reply-to`). The kiosk statement says this before every send.
+- **Overwrite is best-effort.** `session close` overwrites every file before deleting it, but on SSDs, copy-on-write
+  file systems and VM disks (WSL's `ext4.vhdx`) old blocks can survive below the file system. Full-disk encryption
+  or a tmpfs for `wallets/kiosk/` is the stronger setup for a hardened kiosk.
 - **Tor state on disk.** Arti keeps the public Tor directory and this wallet's guard relays in `<wallet dir>/tor/`
   (git-ignored with `wallets/`; no own IP, hostname or server name in it, checked 23 Oct). The kiosk session's copy
   is deleted with the session.

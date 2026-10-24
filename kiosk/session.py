@@ -4,21 +4,28 @@ open:   create a fresh wallet (new mnemonic, own age identity), fund it from the
         wait until the funds are spendable, split them into a pool of small notes so offerings can go out
         back-to-back (a rejected broadcast locks one note for ~40 blocks, not the whole balance).
 offer:  speak the text, build the memos, pay the choir. Optionally embed a fresh diversified reply address.
-inbox:  replies received at this wallet, matched by contrib_id, shown only while the session is open.
-close:  delete the wallet directory and its identity. The wallet's sent_notes (the secrets) go with it.
+        Or embed the visitor's own address (`reply_to`): then the reply never reaches the kiosk at all.
+inbox:  the reply to one offering, for the contrib_id the visitor types in; shown only while the session is open.
+        This is a courtesy, not a protection: the operator holds this wallet and can read every reply that
+        reaches a session address (the kiosk statement says so).
+close:  overwrite every file of the session (wallet database, identity, state, Tor state) and delete it. The
+        wallet's sent_notes (the secrets) go with it. On SSDs and VM disks an overwrite is best-effort.
 
 Nothing about an offering is written anywhere by the kiosk except the wallet's own database.
 """
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import subprocess
 import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import protocol
+from protocol.address import bech32m_decode
 from renderer.tts import Voice
 
 from .devtool import Devtool, DevtoolError
@@ -96,14 +103,19 @@ class Session:
         raise DevtoolError("funds did not become spendable in time")
 
     def close(self) -> None:
-        """Wipe the wallet, its identity and the session state. The secrets sent from it are gone with it."""
-        shutil.rmtree(self.dir)
+        """Overwrite and delete the wallet, its identity and the session state (`wipe`)."""
+        wipe(self.dir)
 
     # --- offerings -----------------------------------------------------------------------------------------------
 
-    def offer(self, text: str, voice: Voice, choir: Choir, want_reply: bool) -> tuple[Offering, str]:
+    def offer(self, text: str, voice: Voice, choir: Choir, want_reply: bool,
+              reply_to: str | None = None) -> tuple[Offering, str]:
+        """`want_reply`: embed a fresh address of this session wallet (the operator can read what lands there).
+        `reply_to`: embed the visitor's own wallet address instead (checked by `check_reply_to`)."""
+        if want_reply and reply_to:
+            raise ValueError("either a session reply address or the visitor's own, not both")
         with _LOCK:
-            reply = self.wallet.generate_address() if want_reply else None
+            reply = reply_to or (self.wallet.generate_address() if want_reply else None)
             offering = make_offering(text, voice, reply)
             # sync first: a transaction built from a stale chain tip gets an expiry height that has already passed
             # and is rejected at broadcast ("must not be mined at a block Height greater than its expiry"; rehearsal #1)
@@ -122,20 +134,14 @@ class Session:
         return {"ready": "ready" in st, "spendable_zat": spendable, "offerings": len(st.get("offerings", [])),
                 "notes_left": None if spendable is None else spendable // NOTE_ZAT}
 
-    def inbox(self) -> list[dict]:
-        """Replies received at this wallet (any form), matched against the offerings sent in this session."""
+    def inbox(self, contrib_id: int) -> list[dict]:
+        """Replies received at this wallet (any form) for the one offering `contrib_id` of this session.
+
+        Replies for other offerings are not returned, so one visitor does not read another's at the kiosk screen.
+        """
         self.wallet.sync()
         self.wallet.enhance()
-        mine = {o["contrib_id"]: o["txid"] for o in self.state().get("offerings", [])}
-        out = []
-        for memo in _received_memos(self.dir / "wallet" / "data.sqlite"):
-            try:
-                r = protocol.decode_any_reply(memo)
-            except protocol.ProtocolError:
-                continue
-            out.append({"contrib_id": r.contrib_id, "for_txid": mine.get(r.contrib_id), "codec": r.codec,
-                        "text": r.data.decode("utf-8", "replace") if r.codec == protocol.CODEC_TEXT else None})
-        return out
+        return replies_for(self.dir / "wallet" / "data.sqlite", self.state(), contrib_id)
 
 
 def seed_tor_cache(src_wallet: Path, dst_wallet: Path) -> bool:
@@ -229,6 +235,70 @@ def ensure_pool(wallet: Devtool, notes: int, log=print, wait_minutes: int = 30) 
             return have
         time.sleep(20)
     raise DevtoolError("the split did not become spendable in time")
+
+
+def replies_for(db_path: Path, state: dict, contrib_id: int) -> list[dict]:
+    """The decoded replies in a wallet DB addressed to `contrib_id`, if that offering was sent in this session."""
+    mine = {o["contrib_id"]: o["txid"] for o in state.get("offerings", [])}
+    if contrib_id not in mine:
+        return []
+    out = []
+    for memo in _received_memos(db_path):
+        try:
+            r = protocol.decode_any_reply(memo)
+        except protocol.ProtocolError:
+            continue
+        if r.contrib_id == contrib_id:
+            out.append({"contrib_id": r.contrib_id, "for_txid": mine[contrib_id], "codec": r.codec,
+                        "text": r.data.decode("utf-8", "replace") if r.codec == protocol.CODEC_TEXT else None})
+    return out
+
+
+def check_reply_to(address: str, network: str) -> str:
+    """The visitor's own reply address: a unified address (its checksum verified) of the choir's network."""
+    address = (address or "").strip()
+    if not protocol.is_unified_address(address):
+        raise ValueError("that reply address does not parse as a unified address (check it was copied whole)")
+    hrp = bech32m_decode(address)[0]
+    if hrp.endswith("test") != (network == "test"):
+        raise ValueError(f"that reply address is not a {'testnet' if network == 'test' else 'mainnet'} address")
+    return address
+
+
+def _overwrite(path: Path) -> None:
+    """Zeros over the whole file, flushed to the disk, then unlink (the fallback when `shred` is missing)."""
+    left = path.stat().st_size
+    with open(path, "r+b", buffering=0) as f:
+        while left > 0:
+            n = min(left, 1 << 20)
+            f.write(b"\0" * n)
+            left -= n
+        os.fsync(f.fileno())
+    path.unlink()
+
+
+def wipe(root: Path) -> None:
+    """Overwrite every regular file under `root` in place, then delete the tree.
+
+    `shred -x -z -n 1` when it exists (one random pass, then zeros, in place, exact size), else zeros + fsync in Python; then
+    unlink. (Not `shred -u`: it also truncates, which leaves nothing to check that the overwrite happened.)
+    Symlinks are removed, never followed. On SSDs, copy-on-write file systems and VM disks the
+    old blocks may survive an in-place overwrite: this is best-effort there, and the kiosk statement says so.
+    """
+    root = Path(root)
+    if not root.exists():
+        return
+    shred = shutil.which("shred")
+    for dirpath, _dirs, files in os.walk(root, topdown=False, followlinks=False):
+        for name in files:
+            f = Path(dirpath) / name
+            if f.is_symlink() or not f.is_file():
+                f.unlink()
+            elif shred and subprocess.run([shred, "-x", "-z", "-n", "1", str(f)], capture_output=True).returncode == 0:
+                f.unlink()
+            else:
+                _overwrite(f)
+    shutil.rmtree(root)
 
 
 def _received_memos(db_path: Path) -> list[bytes]:

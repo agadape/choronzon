@@ -26,7 +26,8 @@ def served(tmp_path):
     servers = {}
 
     def start(**kw):
-        srv = make_server("127.0.0.1", 0, out_dir=out, wallet_dir=None, **kw)
+        kw.setdefault("wallet_dir", None)
+        srv = make_server("127.0.0.1", 0, out_dir=out, **kw)
         threading.Thread(target=srv.serve_forever, daemon=True).start()
         servers[srv] = srv.server_address[1]
 
@@ -46,6 +47,7 @@ def served(tmp_path):
             payload = r.read()
             c.close()
             return r.status, dict(r.getheaders()), payload
+        req.port = servers[srv]
         return req
 
     yield start, {"out": out, "secret": secret, "key": key}
@@ -124,6 +126,114 @@ def test_whisper_rejects_bad_txids(served):
     assert req("GET", "/whisper/not-a-txid")[0] == 404
     assert req("GET", "/whisper/" + "g" * 64)[0] == 404
     assert req("POST", "/whisper/" + "0" * 64)[0] == 404
+
+
+GUARDED = [("GET", "/eye", None), ("POST", "/eye/open", {}), ("GET", "/whisper/" + "0" * 64, None),
+           ("POST", "/whisper/" + "0" * 64, {"text": "x"}), ("GET", "/kiosk.html", None), ("GET", "/kiosk.js", None),
+           ("GET", "/kiosk/copy", None), ("POST", "/kiosk/preview", {"text": "x"}),
+           ("POST", "/kiosk/offer", {"text": "x"}), ("POST", "/anything", {})]
+
+
+@pytest.mark.parametrize("method,path,body", GUARDED)
+def test_dns_rebinding_host_is_refused_on_every_guarded_endpoint(served, method, path, body):
+    """A page on evil.example whose DNS now points at 127.0.0.1: same-origin to itself, but the Host is not ours."""
+    start, d = served
+    req = start(kiosk=True, key_file=str(d["key"]))
+    assert req("POST", "/eye/open", {})[0] == 200            # even an opened Eye is not served to a rebound name
+    p = req.port
+    for host in ("evil.example", f"evil.example:{p}", f"127.0.0.1.evil.example:{p}", f"127.0.0.1:{p + 1}", ""):
+        status, _, payload = req(method, path, body, {"Host": host, "Origin": f"http://{host}"})
+        assert status == 403, (method, path, host, status)
+        assert b"uvftest1example" not in payload
+
+
+def test_loopback_names_are_allowed(served):
+    start, d = served
+    req = start(kiosk=True, key_file=str(d["key"]))
+    for host in (f"127.0.0.1:{req.port}", f"localhost:{req.port}", f"LOCALHOST:{req.port}", f"[::1]:{req.port}"):
+        assert req("GET", "/kiosk/copy", headers={"Host": host})[0] == 200, host
+        assert req("POST", "/eye/open", {}, {"Host": host, "Origin": f"http://{host}"})[0] == 200, host
+        assert req("GET", "/eye", headers={"Host": host})[0] == 200, host
+    from web.__main__ import allowed_hosts
+    assert allowed_hosts("127.0.0.1", 8765) == {"127.0.0.1:8765", "localhost:8765", "[::1]:8765"}
+
+
+def test_allowed_hosts_for_an_explicit_bind_and_allow_host():
+    from web.__main__ import allowed_hosts
+    assert "192.168.1.5:8765" in allowed_hosts("192.168.1.5", 8765)
+    wild = allowed_hosts("0.0.0.0", 8765)
+    assert "0.0.0.0:8765" not in wild and "192.168.1.5:8765" not in wild
+    extra = allowed_hosts("0.0.0.0", 8765, ("192.168.1.5", "Laptop.local:9000"))
+    assert {"192.168.1.5:8765", "laptop.local:9000"} <= extra
+    assert {"localhost", "127.0.0.1"} <= allowed_hosts("127.0.0.1", 80)     # port 80: browsers omit it
+
+
+def test_public_pages_do_not_need_a_known_host(served):
+    """Static, public content is the same for everyone; only keys, wallets and sends are guarded."""
+    start, _ = served
+    req = start()
+    for path in ("/", "/out/score.json", "/config/brand.json"):
+        assert req("GET", path, headers={"Host": "evil.example"})[0] == 200, path
+
+
+@pytest.fixture
+def whisper_target(monkeypatch):
+    """A fake offering with a reply address, so /whisper/<txid> can be exercised without a wallet."""
+    from protocol import address
+    from renderer import wallet, whisper
+    ua = address.bech32m_encode("utest", [i % 32 for i in range(170)])
+    target = whisper.ReplyTarget("ab" * 32, 4242, ua)
+    monkeypatch.setattr(wallet, "WalletDB", lambda path: object())
+    monkeypatch.setattr(whisper, "find_target", lambda db, txid: target if txid == target.txid else None)
+    return target
+
+
+def _memo_of(uri):
+    import base64
+    memo = uri.split("memo=", 1)[1]
+    return base64.urlsafe_b64decode(memo + "=" * (-len(memo) % 4))
+
+
+def test_whisper_post_body_and_loopback_only(served, whisper_target, tmp_path, monkeypatch):
+    import web.__main__ as srvmod
+    start, _ = served
+    req = start(wallet_dir=tmp_path)
+    path = f"/whisper/{whisper_target.txid}"
+    status, _, body = req("POST", path, {"text": "the text goes in the body"})
+    assert status == 200
+    doc = json.loads(body)
+    assert doc["contrib_id"] == 4242 and b"the text goes in the body" in _memo_of(doc["uri"])
+    status, _, body = req("POST", path, {"text": "phone form", "phone": True})
+    assert status == 200 and _memo_of(json.loads(body)["uri"]).startswith(b"GC1R:4242:phone form")
+    assert req("POST", path, {"text": "x"}, {"Origin": "http://evil.example"})[0] == 403
+    assert req("POST", path, raw_body=b"text=x", headers={"Content-Type": "text/plain"})[0] == 400
+    # GET with ?text= keeps working until the page switches to POST
+    status, _, body = req("GET", path + "?text=still%20works")
+    assert status == 200 and b"still works" in _memo_of(json.loads(body)["uri"])
+    assert req("GET", "/whisper/" + "cd" * 32)[0] == 404                  # no reply address
+    # a client that is not this machine never gets a reply address, by GET or POST
+    monkeypatch.setattr(srvmod, "LOOPBACK", ())
+    for method, b in (("GET", None), ("POST", {"text": "x"})):
+        status, _, payload = req(method, path, b)
+        assert status == 404 and whisper_target.address.encode() not in payload, method
+
+
+def test_kiosk_copy_states_the_route_in_use(served, monkeypatch):
+    start, _ = served
+    req = start(kiosk=True)
+    monkeypatch.setenv("LWD_CONNECTION", "tor")
+    assert "Tor exit" in json.loads(req("GET", "/kiosk/copy")[2])["privacy"]
+    monkeypatch.setenv("LWD_CONNECTION", "direct")
+    assert "CONNECTED DIRECTLY" in json.loads(req("GET", "/kiosk/copy")[2])["privacy"]
+
+
+def test_kiosk_offer_reply_to_is_checked_before_anything_is_sent(served):
+    start, _ = served
+    req = start(kiosk=True)
+    status, _, body = req("POST", "/kiosk/offer", {"text": "x", "reply": True, "reply_to": "utest1abc"})
+    assert status == 400 and b"not both" in body
+    status, _, body = req("POST", "/kiosk/offer", {"text": "x", "reply_to": 5})
+    assert status == 400
 
 
 def test_default_bind_is_loopback():

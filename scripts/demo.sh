@@ -47,7 +47,7 @@ speak_retry(){ # $1 text (bash argument, not a process argv), rest: kiosk speak 
 whisper_retry(){ # $1 offering txid (the listener pool has spare notes)
   local out attempt
   for attempt in $(seq 1 $ATTEMPTS); do
-    out=$(python3 -m renderer whisper "$1" --wallet $V --text "you are not alone. (rehearsal)" --send-from $L 2>&1) \
+    out=$(printf '%s' "you are not alone. (rehearsal)" | python3 -m renderer whisper "$1" --wallet $V --send-from $L 2>&1) \
       && { echo "$out" | grep -E "^route|^whisper sent|^\(the choir"; return 0; }
     echo "   whisper attempt $attempt failed: $(echo "$out" | tail -1 | cut -c1-200)" >&2
     [ $attempt -lt $ATTEMPTS ] && sleep "${PAUSES[$((attempt-1))]}"
@@ -83,7 +83,9 @@ step "2 offer: live, from the ephemeral session wallet, with a reply address"
 OFFER_OUT=$(printf 'rehearsal %s: i practised this secret until it stopped being one' "$(date -u +%H:%M)" | python3 -m kiosk offer - --reply --yes 2>&1) || die "offer failed: $(echo "$OFFER_OUT" | grep -E "^devtool|Error" | tail -1)"
 echo "$OFFER_OUT" | grep -E "^(ghost voice|text|route|sent)"
 OFFER_TX=$(echo "$OFFER_OUT" | grep -oE "txid [0-9a-f]{64}" | cut -d' ' -f2)
+OFFER_CID=$(echo "$OFFER_OUT" | grep -oE "contrib_id [0-9]+" | head -1 | cut -d' ' -f2)
 [ -n "$OFFER_TX" ] || die "no txid from the kiosk"
+[ -n "$OFFER_CID" ] || die "no contrib_id from the kiosk (the inbox shows a reply only for its contrib_id)"
 mark offer
 
 step "3 heard: the public-key renderer picks it up"
@@ -94,7 +96,7 @@ step "4 whisper: L replies directly; the session inbox receives it"
 if [ -n "$OFFER_TX" ]; then
   if whisper_retry "$OFFER_TX"; then
     t0=$(date +%s); ok=0
-    for i in $(seq 1 28); do python3 -m kiosk inbox 2>/dev/null | grep -q "a whisper returned for your offering ${OFFER_TX:0:12}" && { ok=1; break; }; sleep 15; done
+    for i in $(seq 1 28); do python3 -m kiosk inbox "$OFFER_CID" 2>/dev/null | grep -q "a whisper returned for your offering ${OFFER_TX:0:12}" && { ok=1; break; }; sleep 15; done
     [ $ok = 1 ] && echo "   inbox received the whisper after $(( $(date +%s) - t0 ))s" || die "whisper not received within 7 min"
   else die "whisper failed $ATTEMPTS times"; fi
 fi

@@ -3,7 +3,10 @@
 The reply address embedded in an offering is public to every key holder (it is in the memo), but the renderer never
 persists it: score.json carries only `has_reply`. When a listener presses "whisper back", the address is read again
 from the wallet database for that one txid, turned into a ZIP-321 payment request, and shown (QR / URI) so the
-listener's wallet can pay it. The reply goes straight to the contributor's wallet; it never passes through the choir.
+listener's wallet can pay it. The reply goes straight to the wallet that owns the reply address and never passes
+through the choir: the contributor's own wallet when they gave its address (`kiosk qr --reply`, `kiosk offer
+--reply-to`), or, for a kiosk `--reply` offering, the kiosk's session wallet, which the operator holds (and can
+read) until the session closes.
 """
 from __future__ import annotations
 

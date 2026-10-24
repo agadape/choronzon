@@ -2,7 +2,7 @@
 
   python3 -m renderer once   --wallet wallets/test/V [--as-of N|tip|last] [--sync] [--out DIR]
   python3 -m renderer daemon --wallet wallets/test/V [--interval 30] [--out DIR]
-  python3 -m renderer whisper <txid> --wallet wallets/test/V [--text ...] [--phone] [--send-from wallets/test/L]
+  python3 -m renderer whisper <txid> --wallet wallets/test/V [--text-file F | text on stdin] [--phone] [--send-from wallets/test/L]
   python3 -m renderer summon --key-file key.txt --birthday 4503120 --wallet wallets/watcher [--as-of N]
 
 `daemon` loops sync -> enhance -> render at the scanned height -> write out/score.json + out/render_hash.
@@ -28,6 +28,7 @@ from .score import load_skiplist
 from .wallet import NotReady, WalletDB, sync_and_enhance
 
 log = logging.getLogger("renderer")
+DEFAULT_WHISPER = "you are not alone."
 
 
 def _log_result(result: rnd.RenderResult, seen: set[str]) -> None:
@@ -116,11 +117,15 @@ def cmd_daemon(args) -> None:
 def cmd_whisper(args) -> None:
     """Whisper back to one offering: print (or send) a direct shielded reply to its embedded address."""
     from . import whisper
+    if args.text is not None:
+        sys.exit("refusing --text: the whisper would land in the shell history and in `ps`. Pipe it "
+                 "(printf '%s' '...' | python3 -m renderer whisper <txid> ...), use --text-file F, or type it at "
+                 "the prompt")
     db = _open_wallet(args)
     target = whisper.find_target(db, args.txid)
     if target is None:
         sys.exit("that offering carries no (valid) reply address")
-    uri = whisper.reply_uri(target, args.text, phone=args.phone)
+    uri = whisper.reply_uri(target, _whisper_text(args), phone=args.phone)
     if args.send_from:
         from kiosk.devtool import Devtool, DevtoolError
         wallet_dir = Path(args.send_from)
@@ -132,20 +137,35 @@ def cmd_whisper(args) -> None:
             sys.exit(f"cannot send the whisper from {wallet_dir.name}: {e}")
         print(network.describe(args.connection))
         print(f"whisper sent directly to the offering's reply address. txid {txid}")
-        print("(the choir's key holders cannot see this transaction)")
+        print("(the choir's key holders cannot see this transaction; it reaches whichever wallet owns the reply "
+              "address, for a kiosk --reply offering the kiosk's session wallet)")
     else:
         print(f"reply to contrib_id {target.contrib_id} of offering {target.txid[:12]}…")
-        print("pay this with any wallet that understands the address (the reply never passes through the choir):")
+        print("pay this with any wallet that understands the address (the reply never passes through the choir; "
+              "it reaches whichever wallet owns the reply address):")
         print(uri)
         print(whisper.qr_ascii(uri))
+
+
+def _whisper_text(args) -> str:
+    """The whisper: --text-file, else stdin (pipe), else a prompt; empty means the default line."""
+    if args.text_file:
+        text = Path(args.text_file).read_text(encoding="utf-8")
+    elif not sys.stdin.isatty():
+        text = sys.stdin.read()
+    else:
+        text = input("your whisper (Enter for 'you are not alone.'): ")
+    return text.strip() or DEFAULT_WHISPER
 
 
 def cmd_summon(args) -> None:
     """A new Watcher: from the published key alone, build a view-only wallet, sync it and evoke the god.
 
     This is the second-laptop proof: a machine that had nothing but the key prints the same hashes.
-    The key is read from --key-file or the SUMMON_KEY environment variable, never from the command line
-    (shell history) and never logged.
+    The key is read from --key-file or the SUMMON_KEY environment variable, never from our command line (shell
+    history) and never logged. The wallet tool itself takes it only as an argument: `init-fvk --fvk <key>` holds
+    it on the devtool's own argv (visible in `ps` to local processes) for the moment that command runs, once per
+    Watcher. The key is published on purpose from 24 Oct, so this is low risk; a fix needs a devtool change.
     """
     import os
     from kiosk.devtool import Devtool, DevtoolError
@@ -199,7 +219,9 @@ def main(argv: list[str] | None = None) -> None:
                    "Tor bootstrap takes minutes; guards are never copied)")
     w = sub.choices["whisper"]
     w.add_argument("txid", help="the offering to answer (display order)")
-    w.add_argument("--text", default="you are not alone.", help="the whisper (text)")
+    w.add_argument("--text", default=None, help="refused (shell history, ps): pipe the whisper on stdin, "
+                   "use --text-file, or type it at the prompt")
+    w.add_argument("--text-file", help="read the whisper from this file")
     w.add_argument("--phone", action="store_true", help="readable GC1R memo for a phone wallet")
     w.add_argument("--send-from", help="send the reply now from this wallet dir (its .age identity next to it)")
     args = p.parse_args(argv)

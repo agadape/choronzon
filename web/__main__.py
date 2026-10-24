@@ -1,15 +1,20 @@
 """Serve the listener page: python3 -m web [--port 8080] [--bind 127.0.0.1] [--out out]
 
 A plain static server (stdlib only) exposing web/, config/brand.json and the renderer's out/ directory, plus
-GET /whisper/<txid>[?text=...&phone] which builds a Whisper Back payment request from the view-only wallet, and
+POST /whisper/<txid> {"text": ..., "phone": bool} (GET /whisper/<txid>[?text=...&phone] still works until the page
+switches to POST) which builds a Whisper Back payment request from the view-only wallet, for the operator's own
+machine only (loopback; a reply address is never served to the LAN), and
 GET /eye which serves the published full viewing key once the server has --key-file AND the operator opened the
 Eye (POST /eye/open from the operator's own machine; the séance page does this when the button is pressed).
 Pages: / (listener), /?seance (hashes and key sealed until the Eye opens), /apparition.html (two evocations),
 /kiosk.html (type a secret on a screen; only with --kiosk and only from the kiosk machine itself: POST
 /kiosk/preview returns the ghost voice as WAV, POST /kiosk/offer sends from the open ephemeral session wallet).
 
-Binds to 127.0.0.1 by default; pass --bind 0.0.0.0 to let a second laptop read out/score.json + out/mix.wav
-(the only two files served with a CORS header). Every path is resolved and confined to its directory.
+Binds to 127.0.0.1 by default; pass --bind 0.0.0.0 (or a LAN address) to let a second laptop read the public
+pages, out/score.json + out/mix.wav (the only files served with a CORS header) and the opened Eye. Every path is
+resolved and confined to its directory. DNS rebinding: every POST and every /eye, /whisper/*, /kiosk/* request
+must carry a Host header naming this server (127.0.0.1, localhost or [::1] with its port, the explicit --bind
+address, or an --allow-host); anything else (Host: evil.example) gets 403.
 No analytics, no external requests; the page is just HTML + Canvas + WebAudio playback of out/mix.wav.
 """
 from __future__ import annotations
@@ -59,6 +64,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def is_loopback(self) -> bool:
         return self.client_address[0] in LOOPBACK
+
+    def host_allowed(self) -> bool:
+        """DNS rebinding guard: the Host header must name this server, not a domain that resolves to it."""
+        return (self.headers.get("Host") or "").strip().lower() in getattr(self.server, "allowed_hosts", ())
 
     def same_origin(self) -> bool:
         """For POSTs: an Origin header, when present, must name this server (no cross-site sends from another tab)."""
@@ -126,8 +135,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         rel = self.rel_path()
         self._cors = rel in CORS_FILES
         try:
+            if self.guarded(rel) and not self.host_allowed():
+                return self.send_error(403, "unknown Host")
             if rel.startswith("whisper/"):
-                return self.whisper(rel[8:])
+                query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                return self.whisper(rel[8:], query.get("text", [""])[0], "phone" in query)
             if rel == "eye":
                 return self.eye()
             if rel in ("kiosk.html", "kiosk.js", "kiosk/copy"):
@@ -135,43 +147,69 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     return self.send_error(404, "kiosk not enabled on this server (start it with --kiosk, local only)")
                 if rel == "kiosk/copy":
                     from kiosk import copy
-                    return self.send_json({"privacy": copy.PRIVACY, "cta": copy.cta(), "brand": copy.brand()})
+                    from renderer import network
+                    # the route line as the kiosk's sends will go (Devtool reads the same setting)
+                    return self.send_json({"privacy": copy.privacy(network.default_connection()), "cta": copy.cta(),
+                                           "brand": copy.brand()})
             super().do_GET()
         except (BrokenPipeError, ConnectionResetError):
             pass
 
     def do_HEAD(self):
-        self._cors = self.rel_path() in CORS_FILES
+        rel = self.rel_path()
+        if self.guarded(rel) and not self.host_allowed():
+            return self.send_error(403, "unknown Host")
+        if rel.startswith("whisper/") or rel.startswith("kiosk") or rel == "eye":
+            return self.send_error(404)        # dynamic routes answer GET/POST only
+        self._cors = rel in CORS_FILES
         super().do_HEAD()
 
     def do_POST(self):
         rel = self.rel_path()
         try:
+            if not self.host_allowed():
+                return self.send_error(403, "unknown Host")
             if rel == "eye/open":
                 return self.eye_open()
             if rel in ("kiosk/preview", "kiosk/offer"):
                 return self.kiosk_post(rel)
+            if rel.startswith("whisper/"):
+                if not self.same_origin():
+                    return self.send_error(403, "cross-origin request refused")
+                body = self.read_json() if self.headers.get("Content-Length") not in (None, "0") else {}
+                if body is None:
+                    return self.send_json({"error": "expected a small application/json object"}, 400)
+                text = body.get("text", "")
+                return self.whisper(rel[8:], text if isinstance(text, str) else "", bool(body.get("phone")))
             self.send_error(404)
         except (BrokenPipeError, ConnectionResetError):
             pass
 
+    @staticmethod
+    def guarded(rel: str) -> bool:
+        """The routes that touch keys, wallets or sends: only for a Host that names this server."""
+        return rel == "eye" or rel.startswith(("eye/", "whisper/", "kiosk/")) or rel in ("kiosk.html", "kiosk.js")
+
     # --- whisper back ------------------------------------------------------------------------------------------------
 
-    def whisper(self, txid: str) -> None:
-        """Whisper Back: re-read the reply address of one offering from the wallet DB (never from score.json)."""
+    def whisper(self, txid: str, text: str, phone: bool) -> None:
+        """Whisper Back: re-read the reply address of one offering from the wallet DB (never from score.json).
+
+        Only for the operator's own machine (loopback): a reply address is public to every key holder, but this
+        server does not hand it to the LAN (the public site does not publish reply addresses either).
+        """
         from protocol import ProtocolError
         from renderer import whisper
         from renderer.wallet import WalletDB
         txid = txid.lower()
-        if self.wallet_dir is None or not _TXID.match(txid):
+        if not self.is_loopback() or self.wallet_dir is None or not _TXID.match(txid):
             return self.send_error(404)
         target = whisper.find_target(WalletDB(self.wallet_dir), txid)
         if target is None:
             return self.send_error(404, "no reply address")
-        query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
-        text = query.get("text", ["you are not alone."])[0][:400]
+        text = (text or "").strip()[:400] or "you are not alone."
         try:
-            uri = whisper.reply_uri(target, text, phone="phone" in query)
+            uri = whisper.reply_uri(target, text, phone=phone)
         except (ProtocolError, ValueError) as e:
             return self.send_json({"error": f"that whisper cannot be encoded: {e}"}, 400)
         self.send_json({"txid": txid, "contrib_id": target.contrib_id, "uri": uri, "qr_svg": whisper.qr_svg(uri)})
@@ -214,6 +252,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not isinstance(text, str) or not text.strip():
             return self.send_json({"error": "nothing to send"}, 400)
         text = text.strip()
+        reply_to = body.get("reply_to") or None
+        if reply_to is not None and not isinstance(reply_to, str):
+            return self.send_json({"error": "reply_to must be an address"}, 400)
+        if reply_to and body.get("reply"):
+            return self.send_json({"error": "either a kiosk reply address or your own, not both"}, 400)
         from kiosk.devtool import DevtoolError
         from kiosk.offering import Choir, make_offering
         from protocol import ProtocolError
@@ -226,13 +269,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if rel == "kiosk/preview":
                 o = make_offering(text, voice, None)
                 return self.send_wav(Decoder().decode(o.codec, o.frames), o)
-            from kiosk.session import Session
+            from kiosk.session import Session, check_reply_to
+            choir = Choir.load()
+            if reply_to:
+                try:
+                    reply_to = check_reply_to(reply_to, choir.network)
+                except ValueError as e:
+                    return self.send_json({"error": str(e)}, 400)
             s = Session.current()
             if not s or not s.status()["ready"]:
                 return self.send_json({"error": "no ready session on this kiosk: python3 -m kiosk session open"}, 409)
-            o, txid = s.offer(text, voice, Choir.load(), bool(body.get("reply")))
+            o, txid = s.offer(text, voice, choir, bool(body.get("reply")), reply_to)
             return self.send_json({"txid": txid, "contrib_id": o.contrib_id, "memos": len(o.memos),
-                                   "seconds": round(o.seconds, 1), "bytes": len(o.frames), "reply": o.has_reply})
+                                   "seconds": round(o.seconds, 1), "bytes": len(o.frames), "reply": o.has_reply,
+                                   "reply_to_own_wallet": bool(reply_to)})
         except ProtocolError as e:                 # e.g. too-long: the ghost voice does not fit in three memos
             return self.send_json({"error": f"too long for the god: shorten it ({e.code})"}, 400)
         except (DevtoolError, TTSError) as e:      # DevtoolError messages are already stripped of addresses
@@ -258,9 +308,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
 
-def make_server(bind: str, port: int, **handler_kwargs) -> http.server.ThreadingHTTPServer:
+WILDCARD_BINDS = ("", "0.0.0.0", "::")
+
+
+def allowed_hosts(bind: str, port: int, extra: tuple[str, ...] = ()) -> frozenset[str]:
+    """Host header values that name this server: loopback names, the explicit --bind address, any --allow-host."""
+    names = ["127.0.0.1", "localhost", "[::1]"]
+    if bind not in WILDCARD_BINDS and bind not in ("127.0.0.1", "localhost"):
+        names.append(f"[{bind}]" if ":" in bind else bind)
+    out = set()
+    for n in names + [h.strip() for h in extra if h.strip()]:
+        n = n.lower()
+        has_port = n.rsplit("]", 1)[-1].count(":") == 1 if n.startswith("[") else ":" in n
+        if has_port:
+            out.add(n)
+        else:
+            out.add(f"{n}:{port}")
+            if port == 80:
+                out.add(n)
+    return frozenset(out)
+
+
+def make_server(bind: str, port: int, allow_hosts: tuple[str, ...] = (), **handler_kwargs) \
+        -> http.server.ThreadingHTTPServer:
     srv = http.server.ThreadingHTTPServer((bind, port), functools.partial(Handler, **handler_kwargs))
     srv.eye_open = False
+    srv.allowed_hosts = allowed_hosts(bind, srv.server_address[1], tuple(allow_hosts))
     return srv
 
 
@@ -269,16 +342,20 @@ def main(argv=None):
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--port", type=int, default=8080)
     p.add_argument("--bind", default="127.0.0.1", help="0.0.0.0 to let a second laptop read out/ (default: local only)")
+    p.add_argument("--allow-host", action="append", default=[], metavar="HOST[:PORT]",
+                   help="another Host name the second laptop uses for this server (e.g. its LAN IP with --bind "
+                        "0.0.0.0); needed only for /eye from the LAN. Repeatable")
     p.add_argument("--out", default=str(REPO / "out"))
     p.add_argument("--wallet", default=str(REPO / "wallets" / "test" / "V"),
-                   help="view-only wallet used to look up reply addresses for Whisper Back ('' disables it)")
+                   help="view-only wallet used to look up reply addresses for Whisper Back, answered to loopback "
+                        "clients only ('' disables it)")
     p.add_argument("--key-file", help="published full viewing key (from `kiosk reveal --to`) for the séance page")
     p.add_argument("--birthday", type=int, help="birth height to show next to the key")
     p.add_argument("--kiosk", action="store_true",
                    help="enable /kiosk.html and the send endpoints, for loopback clients only (default off)")
     a = p.parse_args(argv)
     with make_server(a.bind, a.port, out_dir=Path(a.out), wallet_dir=Path(a.wallet) if a.wallet else None,
-                     key_file=a.key_file, birthday=a.birthday, kiosk=a.kiosk) as srv:
+                     key_file=a.key_file, birthday=a.birthday, kiosk=a.kiosk, allow_hosts=tuple(a.allow_host)) as srv:
         print(f"listener page on http://{a.bind}:{a.port}/  (out dir: {a.out})")
         srv.serve_forever()
 

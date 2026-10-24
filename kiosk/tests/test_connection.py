@@ -237,5 +237,7 @@ def test_no_other_path_starts_the_devtool():
     for path in [*REPO.glob("kiosk/*.py"), *REPO.glob("renderer/*.py"), *REPO.glob("web/*.py")]:
         if re.search(r"subprocess\.(run|Popen|call|check_output|check_call)\(", path.read_text()):
             spawners.add(path.relative_to(REPO).as_posix())
-    # tts.py and decoder.py run espeak-ng / sox / c2dec, which never touch the network
-    assert spawners == {"kiosk/devtool.py", "renderer/wallet.py", "renderer/tts.py", "renderer/decoder.py"}
+    # tts.py and decoder.py run espeak-ng / sox / c2dec, session.py runs shred (session close); none touches the network
+    assert spawners == {"kiosk/devtool.py", "renderer/wallet.py", "renderer/tts.py", "renderer/decoder.py",
+                        "kiosk/session.py"}
+    assert re.findall(r"subprocess\.run\(\[(\w+)", (REPO / "kiosk/session.py").read_text()) == ["shred"]
