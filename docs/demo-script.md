@@ -93,9 +93,15 @@ The order is fixed; the middle stretches or shrinks with the chain. Clock times 
 | 2:55–3:00 | The god, the kiosk page back at its prompt with the call to action from `brand.json`. | — | "Silenced, not erased: what the renderer skips stays on chain. This kiosk reaches lightwalletd through Tor, so the server sees a Tor exit, not this machine's address; Tor does not hide when a transaction appears. It forgets nothing. It asks no names." | — |
 | Q&A | `python3 -m kiosk inbox` (the whisper, when it lands); the judge's eye if it landed late; restart the daemon (`python3 -m renderer daemon --wallet wallets/test/V`). | **Hand** | If the judge asked for a whisper back and their offering has landed: whisper to it now (same command, the judge's txid) and say it arrives in 80–220 s [R24, R21]. | — |
 
-Lines removed from the 21 Oct script because they are no longer true: the closing line that put Tor on the
-roadmap (Tor is the default since 23 Oct), and "this laptop has never seen the god" when laptop 2 ran a rehearsal
-Watcher (say "holds no wallet and no key" instead; check 4 makes that true).
+The closing line uses the `CLAUDE.md` §6 Tor wording (Tor has been the default since 23 Oct, `cd6c691`). Laptop 2
+is introduced as "holds no wallet and no key", never as "has never seen the god" (it may have run a rehearsal
+Watcher; check 4 makes the first sentence true).
+
+> **TODO (not built yet, do not show or describe as existing):** a public "give it a secret" path on the website
+> (a client-side QR for a phone wallet) and a "find my offering" field may be added before the show. If they land,
+> they go here: a Q&A beat after the kiosk inbox ("from your own phone, at home: …"), a shot after shot 13, and a
+> pre-show check that both work on the public site. Until they exist, the only ways to give an offering are the
+> kiosk page and `kiosk qr`, and the page cannot point to a given offering.
 
 ## Video (recorded 27 Oct)
 

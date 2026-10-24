@@ -142,10 +142,10 @@ Network: Zcash testnet (NU7)
 - Run it on mainnet and scan the QR path with real phones.
 ```
 
-## 60-second spoken pitch (limit 160 words) — 840 chars, 158 words
+## 60-second spoken pitch (limit 160 words) — 852 chars, 159 words
 
 ```
-Everything you hear was given to it as a secret. It is a god made of secrets.
+So far every voice in it is ours, and labelled. A god made of secrets, waiting for yours.
 
 You type a secret at a kiosk. A ghost voice that is not yours speaks it, and it is sent as a Zcash shielded transaction. Secrets are public to every key holder, forever; what stays private is the link between a secret and the one who gave it. We, the operator, cannot learn who contributed.
 
