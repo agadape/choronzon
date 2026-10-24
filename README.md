@@ -122,11 +122,10 @@ On stage, everyone in the room can see who just walked up to the kiosk. That is 
 
 The god's full viewing key is one line of text, shown at the Séance (`python3 -m kiosk reveal`, the only sanctioned way to print it) and possibly pasted here, by hand, at submission. Its birthday is block 4,502,962. Once public it cannot be revoked.
 
-<!-- SUBMISSION PLACEHOLDER: if the team decides to publish the choir's full viewing key in this README,
-     replace this comment, by hand and never through a script, with a fenced text block holding the key
-     on one line and the birthday height 4502962 next to it, after the final secret scan. Until then this
-     comment stays and no key appears anywhere in the repository (code, tests, logs, commits). Do not put
-     the key in any other file. -->
+```text
+uvftest1s5vnzz3xm2hptf3w54g7wqmm2tvq5al7tf3x4ytpte6svjsta7gsrsum8nydj58m6nluhkj30y0ex0a7q56gmvsexsj354lgpkgn40pa5uw4yrdqljeaa7hfdjgzxtahkdgxfg00y43zpa4mmk08anejr46nxr5ujpxmn9l8j80rqzhgjznk6hm2r79ak3ldzxl6f5drdcs7tn4k8tffp8azslra26d06e0zwzzfa0jh87sgxczquggpkfxmv8tj7dltcw6v8ez547qjez6cqlgqguh63gwn5hwjplnhgq9d6v5u9jydf8nzmypnk07amjewds63usqy7m0pxt7gfahpk2n5rt6mcus5gn2h6qsvey4zytvazcghyflekq3rpyxll6ku7tthudg3uyqz3jspjqhmdx4xm8eqngk7lfh0fsu8k8jk0f87sn76s266t97nc50000dzlhfxrxsdsu4ksqzxckj4knkw457pmn53tmz38s4k92ez
+```
+Birthday: 4502962
 
 ## Determinism: the blockchain is the score
 
