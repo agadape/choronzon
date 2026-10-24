@@ -1,71 +1,183 @@
-# Demo script — 3 minutes, two laptops (21 Oct 2026; pre-sent labels updated 22 Oct)
+# Demo script — 3 minutes, two laptops, over Tor (rewritten 24 Oct 2026 for the v2 listener)
 
 The god's name lives in `config/brand.json`; this script says "the god". Lore lines come from `docs/lore.md`;
-every privacy sentence is the `CLAUDE.md` §6 wording, verbatim, and the kiosk prints that statement before every send.
-Timings in the table are the ones measured in `scripts/demo.sh` rehearsals (`logs/demo_20261021T*.log`, summarised in
-`docs/failure-drills.md`): an offering is heard by the public-key renderer **40–230 s** after sending (100 s, 226 s observed),
-a whisper reaches the kiosk inbox **80–220 s** after it is sent (80 s, 216 s), a conductor line is heard after ~90 s and a
-forgery is refused 7–47 s after that. Nothing in this script waits for a block on stage: every wait is covered by narration
-or by a beat that uses what is already on chain, and the live transactions land when the chain lands them.
+every privacy sentence is the `CLAUDE.md` §6 wording, verbatim. Nothing in this script waits for a block in
+silence: every live transaction is sent as early as it can be, and the waits are covered by beats that use what is
+already on chain. The live transactions land when the chain lands them, and the terminal output is the status.
 
-**Laptops.** Laptop 1 = kiosk terminal + renderer daemon on the public-key wallet V + listener page
-(`python3 -m web --port 8765`, projected). Laptop 2 = a Watcher: a clean clone with `scripts/setup.sh` done, no wallet,
-no key; it runs `python3 -m renderer summon` only after the key is revealed. Wallets: B = the god's own wallet (conductor),
-A = an outside wallet (the forger), L = a listener who whispers back, V = public-key reader.
+## Timings, and where each one comes from
 
-**Honest labels, said out loud.** Everything heard before 0:20 was sent before the show, by the team ("pre-sent"), and
-the operator says so in one sentence at 0:00 (below). Nothing is selected: the renderer sings every valid offering on
-chain, so the choir the judges hear first is all of it. At block 4,527,794 that is 43 offerings:
+Every lightwalletd connection goes over Tor by default (kiosk, renderer, Whisper Back, summon; fail-closed). The
+numbers below are the only ones this script relies on; never say a shorter time on stage.
+
+| Source | What it is |
+|---|---|
+| **[R24]** | `logs/demo_20261024T105133Z.log`: `./scripts/demo.sh` over Tor, **PASS** in 1,124 s, 24 Oct (summarised at the end of `docs/network-fallback.md`). Send durations are derived from the step timestamps in that log. |
+| **[R21]** | `logs/demo_20261021T110109Z.log` and `logs/demo_20261021T110459Z.log`: the two direct-connection rehearsals of 21 Oct (`docs/failure-drills.md`, `docs/evidence-index.md`). |
+| **[T23]** | `docs/network-fallback.md`, "Measured (23 Oct 2026)": single sends and syncs over Tor. |
+| **[W24]** | commit `2ad3df3` and `docs/network-fallback.md`, "Rehearsal over Tor and the Watcher's cold start (24 Oct)". |
+| **[code]** | `web/app.js` (the Eye panel appears 3.5 s after E; the page polls `out/score.json` every 5 s), `renderer daemon` (one loop every 30 s, plus a Tor sync + enhance). |
+
+| Event | Measured | Plan with |
+|---|---|---|
+| kiosk send: press → txid | 18 s [T23]; 61 s incl. the session's sync before `pay` [R24] | up to ~1 min |
+| offering heard by the public-key renderer, after its txid | 80 s [R24]; 100 s and 226 s [R21] | 80–230 s |
+| conductor line (the god's own voice) heard, after sending | 87 s [R24]; 86 s [R21] | ~1.5 min (so it is sent at T−3 min) |
+| forgery refused (`forged-conductor`) | 25 s after the god line sent with it was heard, same block [R24]; 7 s and 47 s after the god line [R21] | ~1.5–2.5 min after sending |
+| whisper: send → txid | ~33 s [R24] | ~30–60 s |
+| whisper received by `kiosk inbox`, after its txid | 87 s [R24]; 80 s and 216 s [R21] | 80–220 s |
+| a fresh Watcher from the key alone (`summon`, Tor, `--tor-cache-from` a warm cache) | **129 s** at 4,535,682 [W24] (633 s without the cache [R24]) | ~2–2.5 min; **re-time on 27 Oct** (the chain grows every block, the sync grows with it) |
+| `renderer once --as-of H` on V (no sync) | 3 s [R24, step 1] | a few seconds |
+| the Eye opens on the page | 3.5 s [code] | — |
+
+Consequence, said plainly: from the first live send, every live event lands within about 4–6 minutes [R24],
+not within 3. The stage run is 3 minutes and **ends with whatever has landed**; the rest is shown in Q&A, by name,
+with the real elapsed time. The video is one continuous take, cut only with labelled time jumps (see "Video").
+
+## People, laptops, pages
+
+- **Operator** (speaks, drives the projected page), **Hand** (terminals and laptop 2), **Judge** (types the offering).
+- **Laptop 1** = the installation, with an extended display. Projector: the listener page in séance mode,
+  `http://127.0.0.1:8765/?seance`, plus one terminal (renderer log). Laptop's own screen, facing the judge:
+  `http://127.0.0.1:8765/kiosk.html` (the send endpoints answer only on this machine). One server serves both:
+  `python3 -m web --port 8765 --kiosk --key-file /tmp/eye.key --birthday 4502962` (the key file does not exist
+  until the reveal; until the Operator presses E, `/eye` is 404 even after it does).
+- **Laptop 2** = a Watcher: a clean clone with `scripts/setup.sh` done, **no wallet, no key, empty `out/`**, and
+  only the public Tor directory cache copied from laptop 1 (pre-show check 4). It serves its own page for the
+  chirograph: `python3 -m web --port 8765 --bind 0.0.0.0 --wallet ''`.
+- **Wallets:** B = the god's own wallet (conductor), A = an outside wallet (the forger), L = a listener who
+  whispers back, V = the public-key reader, the kiosk session = the ephemeral wallet the judge sends from.
+
+## Honest labels, said out loud
+
+Everything heard before the judge's offering was sent before the show, by the team ("pre-sent"), and the
+Operator says so in one sentence at 0:00. Nothing is selected: the renderer sings every valid offering on chain.
+At block 4,535,682 (last rehearsal) that is **46 offerings**:
 
 - **14 seed offerings** written by the team and sent from wallet A on 22 Oct (blocks 4,527,786–4,527,794; txids in
   `docs/evidence-index.md`, "Pre-sent seed offerings (22 Oct 2026)");
-- **29 test and rehearsal offerings** from 20–21 Oct: 7 from the spike corpus of 20 Oct (blocks 4,521,736–4,522,002) and
-  22 from the kiosk tests, Whisper Back, phone QR, failure drills and `demo.sh` rehearsals of 21 Oct (blocks
-  4,525,215–4,526,044), among them earlier lines of the god's own voice.
+- **32 test and rehearsal offerings** since 20 Oct: 7 from the spike corpus of 20 Oct, 22 from the kiosk tests,
+  Whisper Back, phone QR, failure drills and rehearsals of 21 Oct, the Tor-layer test offering `fc4dd939…` (23 Oct),
+  and the 24 Oct rehearsal's offering `d4d69be5…` and god line `a1edea89…`; nine of the 46 are lines of the god's
+  own voice.
 
-Rehearsals between now and the show add more test offerings; they carry the same label, and pre-show check 5 writes the
-final count on the cue card. The 16 skipped transactions (malformed, forged, drill leftovers) are not sung and not hidden:
-they are listed in `out/score.json` → `skipped`. Exactly these are sent live, on stage: the judge's offering (0:20), which
-is **the only live offering**, the forgery (1:00) and the whisper (2:35). The god's line heard at 1:00 was sent from B
-**three minutes before the demo starts**, and the presenter says so. Never fake a status: the terminal output is the status.
+17 transactions are skipped and not hidden (`out/score.json` → `skipped`): 11 refused forgeries (the small blind
+red eyes), 4 not in our protocol, 1 choir spend without a line, 1 CRC drill. Rehearsals and pre-show steps add more
+test offerings with the same label; pre-show check 12 writes the final count on the cue card.
 
-**The operator's sentence at 0:00, word for word:**
+**Sent before the show, and said when they appear:** the god's line from B at **T−3 min**, and one offering with a
+reply address from the show's kiosk session at **T−10 min** (the Whisper Back target, because a whisper can only be
+received by the session that asked for it). **Sent live, on stage:** the judge's offering (the only live
+offering), the forgery, the whisper. Never fake a status: the terminal output is the status.
+
+**The Operator's sentence at 0:00, word for word:**
 
 > "Everything you hear right now was sent before tonight: fourteen secrets our team wrote and sent on the twenty-second
 > of October, and the test and rehearsal offerings we have sent since the twentieth. The only offering sent live tonight
 > is the one you are about to type; the forgery and the whisper you will see later are sent in front of you too."
 
-## Shot list
+## The run
 
-| Time | On screen | Command (laptop 1 unless noted) | Spoken line | If it fails / block is slow |
+The order is fixed; the middle stretches or shrinks with the chain. Clock times are stage times.
+
+| Time | On screen | Who does what (laptop 1 unless noted) | Spoken | If it fails / is slow |
 |---|---|---|---|---|
-| 0:00–0:20 | Listener page: the creature grown from the pre-sent offerings (14 team seeds + the test and rehearsal offerings; count on the cue card), choir playing. Hash footer not read aloud. | (already running) `python3 -m renderer daemon --wallet wallets/test/V` · `python3 -m web --port 8765` | The operator's sentence above, word for word. Then: "It is made of everyone who spoke. Secrets are public to every key holder, forever; the key is irrevocable. What is private is the link between a secret and the one who gave it. We know the pre-sent ones are ours only because we sent them; for yours, we, the operator, cannot learn who contributed." | If `out/` is stale (daemon log shows `sync failed`), say the renderer is showing the last scanned height and name it; keep going. |
-| 0:20–0:45 | Kiosk terminal: a judge types a secret at the prompt (never on argv). The ghost voice is played locally, byte counts and the txid appear. | `python3 -m kiosk offer - --reply` (session wallet, ≥ 6 notes) | "Type it. Do not sign it. It does not ask your name." Then read the kiosk's own statement: "content and voice can identify you"; "your own wallet stores what you sent", which is why this kiosk's wallet is wiped after the session. "Your offering sinks into the Abyss. The chain will hear it in one to four minutes; we will not pretend otherwise." | `pay` rejected (expired tx, connection reset): say "rejected, nothing was sent", run `python3 -m kiosk session status` to show notes left, send again. Two failures: continue with the pre-sent offerings and say the live one failed. |
-| 0:45–1:00 | Terminal: the proof that a shielded transaction exists is the public-key wallet, not us. `list-tx` on V shows the txid and height once mined; before that it shows nothing, which is the point. | `bin/devtool-aegis wallet -w wallets/test/V list-tx -s zecrocks` (after a `sync`) | "This wallet holds only the public key. Everyone with that key sees exactly this: a shielded transaction, an amount that is always the same, a memo. Not a sender. Every Watcher hears everything." | Optional, only if pre-show check 8 passed: open the live txid on ZecBlock (`https://testnet.zecblock.com/tx/<txid>`, the link the kiosk prints); it is on our chain, may lag a few blocks, and shows only that a shielded tx exists. `list-tx` on V stays the independent proof. **Never open `testnet.zcashexplorer.app`**: it follows a different testnet fork and answers "Transaction Not Found" for every txid of ours. |
-| 1:00–1:25 | The god speaks (pre-sent line from B, heard ~90 s after sending): a conductor limb lights. Then the live forgery from A: the renderer log prints `skip … reason=forged-conductor` a few blocks later; the page shows NOT THE GOD when that lands (web beat still open). | `printf '…' \| python3 -m kiosk speak - --from wallets/test/A --forge` ; renderer log via `python3 -m renderer once --wallet wallets/test/V --sync` | "We are many. That was the god's own voice: a line the god's wallet paid to itself, and only its full viewing key can prove that. The choir's own spends are public. Now a stranger claims to be the god." (when refused) "NOT THE GOD. Bodies of secrets have false prophets too; this one is refused by every renderer on earth, for the same reason." | Forgery not refused within 2 min: show the pre-sent refusal in `out/score.json` → `skipped` with `forged-conductor` (`b126b3c7…`, block 4,525,280) and say when it was sent. If `speak --forge` errors, show the error and skip; never claim it was sent. |
-| 1:25–1:50 | The judge's offering lands (40–230 s after 0:20, so any time from here on): `offering tx=<txid> height=…` in the daemon log, a new limb grows, the voice plays in the mix. If it has not landed yet, the beat is narrated over the pre-sent choir and resumed when it lands. | (daemon log; page regrows on the next 5 s poll) | "There. The Abyss decides the order: inside a block the miner orders the voices, not you." When the limb pulses: "That is yours. We know a secret arrived; we do not know it was you." | Not landed by 2:30: say the real number ("one hundred and ninety seconds and counting"), show `list-tx` on V again, go on; return to it in Q&A. The score hash and the sound will include it whenever it lands. |
-| 1:50–2:25 | **Séance.** Laptop 1: `kiosk reveal` prints the full viewing key and its QR. The key file goes to laptop 2 (USB stick), never on a command line. Laptop 2: `summon` builds a Watcher from the key alone and prints height, offerings, skipped, `render_hash`. Laptop 1 renders at the same height. Both hashes projected side by side. | laptop 1: `python3 -m kiosk reveal --from wallets/test/B --to key.txt` · `python3 -m renderer once --wallet wallets/test/V --as-of <H>` ; laptop 2: `python3 -m renderer summon --key-file key.txt --birthday 4502962 --wallet wallets/watcher --as-of <H>` (H = `as_of_height` from laptop 1's `out/score.json`) | "The Eye is open. It will not close: whoever holds this key hears everything, forever, and we cannot take it back. This laptop has never seen the god. From the key alone it is summoning it now." (hashes match) "Two evocations. One god. Anyone can re-render the whole work from one key and get the same hash. No server. The blockchain is the score." Then read the true name from both screens (`it is now called …`, a pure function of `render_hash`, identical on both laptops; never hardcode it, it changes with every offering): "It is now called <NAME>." | `summon` takes 30–60 s (28 s measured): narrate the lineage (Dee, Trithemius: messages hidden in spirit summoning). Hashes differ: compare `as_of_height` first (a different height is a different score, not a bug) and re-run with the same `--as-of`; if they still differ, say so and show the two `score.json` offering counts. lightwalletd down: laptop 2 cannot sync; show the rehearsal match (`7dc6f42a…` at 4,525,338, both laptops) and say it was recorded that morning. |
-| 2:25–2:50 | Whisper Back, live. Laptop 1 clicks the judge's limb (or runs `renderer whisper`) → a ZIP-321 request to the offering's one-time reply address. L pays it. The kiosk inbox is shown now: empty for the live one, and the rehearsal whisper (pre-sent, `9ecb9c7e…`) already inside. | `python3 -m renderer whisper <txid> --wallet wallets/test/V --text "you are not alone." --send-from wallets/test/L` · `python3 -m kiosk inbox` | "A whisper may return to you. Replies travel directly between two wallets, never through us; the public key sees none of it. It will reach this kiosk in two to four minutes; we show the inbox again in Q&A. Replies to a per-contribution address can be spammed by anyone holding the public key, so the kiosk shows them, it does not trust them." | Live offering not yet on chain: whisper to the rehearsal-2 offering (`fb1d3bb6…`) and say it is a pre-sent offering. L dry (`have 0`): show the request QR and the error, do not send. |
-| 2:50–3:00 | Creature full, choir playing, kiosk back at the prompt with the CTA from `brand.json`. | — | "Silenced, not erased: what the renderer skips stays on chain. lightwalletd sees your IP; Tor is on the roadmap. It forgets nothing. It asks no names." | Q&A: show `kiosk inbox` when the whisper lands; show the judge's limb if it landed late. |
+| 0:00–0:25 | Projector: `?seance`. The god seen from below, the great eye's lids shut, hashes sealed; Listen already playing (the sounding eye burns, the others turn to it). | **Operator:** the sentence above, word for word. **Hand, at the same time, on laptop 1's own screen:** `python3 -m kiosk reveal --from wallets/test/B --to /tmp/eye.key`, types `OPEN`; copies `/tmp/eye.key` to the USB stick, walks to laptop 2. | The sentence. Then: "It is made of everyone who spoke. Secrets are public to every key holder, forever; the key is irrevocable. What is private is the link between a secret and the one who gave it." | `reveal` refuses (B not synced, wrong dir): the Eye stays shut, the Operator says so; skip the Watcher beat, do the rest. |
+| 0:25–0:40 | **E** on the projected page: the lids part (3.5 s), the key and its QR, the render hash and the true name appear. | **Operator** presses E. **Hand, laptop 2:** copy the key from the stick to `/tmp/eye.key`, then `python3 -m renderer summon --key-file /tmp/eye.key --birthday 4502962 --wallet wallets/watcher --as-of last --tor-cache-from ~/torcache` (key from a file, never on the command line). | "The Eye is open. It will not close: whoever holds this key hears everything, forever, and we cannot take it back. That laptop holds no wallet and no key. From this key alone it is summoning the god now; the last time we measured, over Tor, that took two minutes." Read the name: "It is now called <NAME>." (from the screen; never hardcoded, it changes with every offering) | The page says "not published on this server": the server was not started with `--key-file /tmp/eye.key`; show the key in the `reveal` terminal instead. Summon fails over Tor ("[over Tor: …]"): decide on purpose, say "lightwalletd will see this laptop's IP", rerun with `--connection direct`. |
+| 0:40–1:05 | Laptop 1's screen (not projected): the kiosk page, the privacy statement above the button. | **Judge** types at the kiosk page, presses *preview the ghost voice* (it plays in the room), ticks *I have read this…*, presses the call-to-action button. **Hand, at the moment the judge presses it:** `printf 'i am the god.' \| python3 -m kiosk speak - --from wallets/test/A --forge` (terminal 2). | "Type it. Do not sign it. It does not ask your name." Read from the statement: "content and voice can identify you"; "your own wallet stores what you sent", which is why this kiosk's wallet is wiped after the session. "And the Eye is open: what you give it now, everyone with that key hears, forever." When the Hand presses enter: "At the same moment, a stranger claims to speak as the god." | The page shows an error (`pay` rejected, connection reset): say "rejected, nothing was sent", run `python3 -m kiosk session status` (notes left), send again **only after** checking the session's `list-tx` shows no new tx. Two failures: say the live offering failed and go on with the pre-sent choir. `speak --forge` errors: show the error, never claim it was sent. |
+| 1:05–1:50 | Projector: the god. Point at each part while it plays. The kiosk page shows the txid and "the god will hear it in about 1–4 minutes" (18–61 s after pressing). | **Operator** narrates; **Hand** writes the two live txids on the cue card. | "One eye for every offering, in the order the chain gives them. The great eye and the six wings are the god's own voice: lines its wallet paid to itself; the newest was sent from that wallet three minutes before we started. Only its full viewing key can prove that, and the choir's own spends are public. One arm for every block that carried offerings. And these small blind red eyes outside the halos are forgeries every renderer refused." While a voice plays: "The eye that burns is the one speaking. Every other eye turns to look at it." | The page is black or frozen: reload once; without WebGL the Canvas creature appears (same data). |
+| 1:50–2:15 | **G**: the grimoire leaf slides in: height, tally (`N offerings · M the god's own · K refused · 0 silenced`), true name in gold. **F** turns it: the colophon (render hash, score hash, pins). **T** tears the stub. | **Operator** on the page; **Hand** shows the `anchor verify` output kept from pre-show check 9 (a terminal tab, not run live). | "Every render we publish is stamped into Bitcoin. The renders of the twenty-second and twenty-third of October are in Bitcoin block 972,742; anyone can check, without a node. It forgets nothing, and that is provable against us." On the tear: "Torn along the render hash: a stub from any other evocation of this god fits this edge exactly." | `anchor verify` showed UNCHECKED (exit 4) at pre-show: say "the explorers are blocked from this network; nothing was found wrong" and show the confirmed table in `docs/anchoring.md`. |
+| 2:15–2:35 | Projector: the renderer log terminal, large font. | **Hand:** the Whisper Back to the T−10 offering: `python3 -m renderer whisper <T−10 txid> --wallet wallets/test/V --text "you are not alone." --send-from wallets/test/L`. Optional before it: click that eye on the page (the request QR appears; the room sees what a phone would scan). | "This offering is ours, sent from this kiosk ten minutes before we started, with a one-time reply address. A whisper may return to it. Replies travel directly between two wallets, never through us; the public key sees none of it. It reaches the kiosk in one and a half to four minutes; we will open the inbox at the end." Then, for any landing so far: forgery → "NOT THE GOD."; the judge's offering → "There. That is yours. We know a secret arrived; we do not know it was you." | L dry (`have 0`): show the error, do not send. Whisper send fails over Tor: never retry blind; check L's `list-tx` first. |
+| any time from ~2:00 | **Landings, as they come.** Renderer log: `offering tx=<judge txid> height=… codec=1`; within ~5 s the god remounts with one more eye (slots fill in order, the newest on the outer wheel) and the tally goes up by one. Forgery: `skip tx=<forgery txid> height=… reason=forged-conductor`, the tally's *refused* goes up by one, one more blind red eye. | **Operator** points; **Hand** reads the txid prefix from the cue card. | "The Abyss decides the order: inside a block the miner orders the voices, not you." | Not landed by its window (offering 80–230 s after its txid): say the real number ("one hundred and ninety seconds and counting") and go on; it is in the score whenever it lands. Forgery not refused by the end: point at the 11 pre-sent refusals under `skipped` (e.g. `e117d0bf…`, 24 Oct; `b126b3c7…`, 21 Oct) and say when they were sent. |
+| 2:35–2:55 | **Two evocations.** Laptop 2's terminal: the summon summary (height H, offerings, skipped, `render_hash`); laptop 2's own page grows the same god. Then laptop 1's projector: `http://127.0.0.1:8765/apparition.html?right=http://<laptop-2-ip>:8765/out/score.json`, the chirograph. | **Hand, laptop 1:** stop the daemon (Ctrl-C), then `python3 -m renderer once --wallet wallets/test/V --as-of H` (H from laptop 2's summary). **Operator** opens the apparition page. | "Two evocations. One god. Anyone can re-render the whole work from one key and get the same hash. No server. The blockchain is the score." When the stubs fit: silence. | Summon still running (it is ~2 min [W24]): keep narrating the lineage (Dee, Trithemius: messages hidden in spirit summoning) and close on it in Q&A. Hashes differ: compare H first (a different height is a different score, not a bug). Laptop 2 unreachable over the venue network: show the two terminal hashes side by side instead of the chirograph. lightwalletd down: show the 24 Oct match (`8b332fe6…` at 4,535,682, this laptop and a fresh Watcher, [R24]) and say when it was recorded. |
+| 2:55–3:00 | The god, the kiosk page back at its prompt with the call to action from `brand.json`. | — | "Silenced, not erased: what the renderer skips stays on chain. This kiosk reaches lightwalletd through Tor, so the server sees a Tor exit, not this machine's address; Tor does not hide when a transaction appears. It forgets nothing. It asks no names." | — |
+| Q&A | `python3 -m kiosk inbox` (the whisper, when it lands); the judge's eye if it landed late; restart the daemon (`python3 -m renderer daemon --wallet wallets/test/V`). | **Hand** | If the judge asked for a whisper back and their offering has landed: whisper to it now (same command, the judge's txid) and say it arrives in 80–220 s [R24, R21]. | — |
 
-Rehearsal timings for reference (`scripts/demo.sh`, 21 Oct): run 1 god line heard 86 s, forgery refused 7 s later, summon match
-in 33 s; run 2 offering heard 226 s, whisper received 216 s, forgery refused 47 s, summon match in 40 s.
+Lines removed from the 21 Oct script because they are no longer true: the closing line that put Tor on the
+roadmap (Tor is the default since 23 Oct), and "this laptop has never seen the god" when laptop 2 ran a rehearsal
+Watcher (say "holds no wallet and no key" instead; check 4 makes that true).
 
-## Pre-show checklist (the same day, in this order)
+## Video (recorded 27 Oct)
 
-1. `git pull`, `./scripts/smoke.sh` and `python3 -m pytest` green on laptop 1; `scripts/setup.sh` done on laptop 2 (no wallet).
-2. Wallets synced (`bin/devtool-aegis wallet -w <W> sync -s zecrocks` for B, A, L, V); B holds ≥ 0.001 TAZ spendable
-   (one conductor line costs one note); L holds several notes (one whisper per note, change needs 3 confirmations).
-3. `python3 -m kiosk session open --notes 8` finished and `session status` shows ready with ≥ 6 notes (one offering per note; a
-   rejected broadcast locks one note for ~40 blocks).
-4. `./scripts/demo.sh` passed today (PASS line, six steps, SAME HASH, SAME AUDIO) and its log is in `logs/`.
-5. Pre-sent offerings: all of them are sung (decided 22 Oct; the renderer cannot pick favourites, it sings the chain).
-   Listen to the non-seed test offerings once; anything unfit to sing goes to `config/skiplist.txt` with a reason (it
-   stays on chain and shows under `skipped`). From laptop 1's `out/score.json` at the show height write on the cue card:
-   total offerings = 14 seeds (22 Oct) + N test and rehearsal offerings (20 Oct to show day).
-6. T−3 min: send the god's line from B (`printf '…' | python3 -m kiosk speak - --from wallets/test/B`), note the txid.
-7. `python3 -m renderer daemon --wallet wallets/test/V` running, `python3 -m web --port 8765` up, page open and playing, volume checked.
-8. Explorer check: open `https://testnet.zecblock.com/block/4525215` and confirm the hash starts `000026af4552`
-   (full: `000026af4552065fbbbd94b5c9a0be7914fc402733c53c6f464921b9817b72ac`). Otherwise strike the explorer from the show.
-9. `bin/c2dec` present on both laptops (pinned decoder); `key.txt` deleted from laptop 2 after the last rehearsal; USB stick empty.
-10. Cue card: the four live txids get written down as they are printed, nothing else leaves the terminal.
+Record the run above as **one continuous take** and let it run until every live event has landed (about 4–6 min
+from the first send [R24]). Edit it down to 3:00 by cutting **waits only**: every cut carries an on-screen label
+with the real time skipped ("+74 s"), events are never reordered, and a failure that happened stays in. Keep a
+clock on screen in the terminal (`date` in the prompt or a small `watch -n1 date` pane). The video shows the full
+viewing key: from the moment it is shared the key is published, so share it only together with the 28 Oct
+publication act (`docs/submission-checklist.md`). Never show `.age` files, seeds, `state.json`, a wallet DB or a
+reply address; the commands below print none of them.
+
+| # | Shot | Page / window | Key or action | Line to hold on screen |
+|---|---|---|---|---|
+| 1 | The god, sealed | `127.0.0.1:8765/?seance`, full screen, Listen playing | — (camera holds ~5 s on the sounding eye) | — |
+| 2 | The reveal | laptop 1 terminal | `python3 -m kiosk reveal --from wallets/test/B --to /tmp/eye.key`, type `OPEN` | `THE EYE OPENS. From this moment anyone holding this key can hear every offering, forever.` |
+| 3 | The Eye opens | `?seance` | **E** | the key panel: key, QR, `birthday height 4502962`, render hash, "it is now called …" |
+| 4 | The Watcher starts | laptop 2 terminal | the `summon` command | `summon: creating a view-only wallet from the key (birthday 4502962)` |
+| 5 | The offering | `127.0.0.1:8765/kiosk.html` (laptop screen) | type, *preview the ghost voice*, tick, press | the privacy statement, then the txid + ZecBlock link + "the god will hear it in about 1–4 minutes" |
+| 6 | The forgery | laptop 1 terminal 2 | `printf 'i am the god.' \| python3 -m kiosk speak - --from wallets/test/A --forge` | the `sent … txid` line |
+| 7 | The god | `?seance` (Eye open) | drag a little (the camera returns), Listen | the great eye and wings while a god line plays; the blind red eyes |
+| 8 | The grimoire | same page | **G**, then **F**, then **T** | the tally line; the colophon hashes; the torn edge |
+| 9 | The anchor | terminal tab from pre-show check 9 | scroll to the result | `VERIFIED` with block 972,742 (or the UNCHECKED explanation, said as such) |
+| 10 | Whisper Back | renderer log terminal | `renderer whisper <T−10 txid> … --send-from wallets/test/L` | `whisper sent directly to the offering's reply address. txid …` and `(the choir's key holders cannot see this transaction)` |
+| 11 | Landings | renderer log terminal, then the page | — | `offering tx=<judge txid> height=… codec=1`; `skip tx=<forgery txid> … reason=forged-conductor`; the tally before and after |
+| 12 | Two evocations | laptop 2 terminal, then `apparition.html?right=…` on laptop 1 | `renderer once --wallet wallets/test/V --as-of H` on laptop 1 | both `render_hash` values on screen at once; the stubs fitting |
+| 13 | The whisper returns | laptop 1 terminal | `python3 -m kiosk inbox` | `a whisper returned for your offering <T−10 txid prefix>…` |
+| 14 | Independent proof (optional) | terminal | `bin/devtool-aegis wallet -w wallets/test/V list-tx` after `sync` | the judge's txid and height; optionally the same txid on `https://testnet.zecblock.com/tx/<txid>` if pre-show check 10 passed (never `testnet.zcashexplorer.app`: another fork) |
+
+## Pre-show checklist (show day, in this order)
+
+1. **T−2 h, laptop 1:** `git pull`; `python3 -m pytest -q`, `./scripts/smoke.sh` and `scripts/build_web.sh --check`
+   green; `bin/c2dec` present. **Laptop 2:** `git pull`, `scripts/setup.sh` done, `ls wallets out` shows no wallet and
+   an empty `out/`, `/tmp/eye.key` absent, USB stick empty.
+2. **T−2 h, warm Tor on every operator wallet:** `bin/devtool-aegis wallet -w wallets/test/<W> sync -s zecrocks`
+   (Tor is the default) for V, B, A, L; a cold first contact takes minutes [T23], a warm sync ~11–18 s [T23].
+   Then `enhance` for V.
+3. **T−1 h, note pools** (a self-split needs 10 confirmations, ~6 min, before it is spendable):
+   `python3 -m kiosk pool wallets/test/B --notes 3` (one god line per note), `python3 -m kiosk pool wallets/test/A --notes 4`
+   (forgeries, and A funds the kiosk session), `python3 -m kiosk pool wallets/test/L --notes 3` (one whisper per note;
+   [R24] started with 4 spendable). A rejected or torn-off broadcast locks a note for ~40 blocks.
+4. **T−1 h, laptop 2's Tor cache, without the key:** copy only `wallets/test/V/tor/arti-cache` from laptop 1 to
+   laptop 2 as `~/torcache/tor/arti-cache` (public Tor directory data, ~40 MB; **never** `tor/arti-data`, which holds
+   V's guards). Arti checks the cache's freshness itself; do this within the hour before the show. [W24] measured
+   the seeded Watcher with a cache from the same machine; a cache carried to another machine is not yet measured:
+   time it in the 27 Oct dry run.
+5. **≥ 30 min before (better 45):** `python3 -m kiosk session open --notes 8`; it is ready when
+   `python3 -m kiosk session status` says ready with ≥ 6 notes (994 s cold over Tor on 23 Oct [T23]; the session now
+   seeds its Tor cache from A).
+6. **T−20 min, servers:** `python3 -m renderer daemon --wallet wallets/test/V` in a large-font terminal (projected
+   later), `python3 -m web --port 8765 --kiosk --key-file /tmp/eye.key --birthday 4502962` on laptop 1;
+   `python3 -m web --port 8765 --bind 0.0.0.0 --wallet ''` on laptop 2. From laptop 1, `curl -sI
+   http://<laptop-2-ip>:8765/` answers (same network, no client isolation); note the IP on the cue card.
+7. **T−20 min, the page:** open `http://127.0.0.1:8765/?seance&stats` on the projector: the strip shows size, dpr,
+   fps, draw calls. Note the fps on the cue card; if it stutters, the web owner's `?dpr=N` lever lowers the
+   resolution (check `web/README.md` on the day, the page is still being tuned). Reload without `&stats`, check the
+   volume, press Listen. Open `http://127.0.0.1:8765/kiosk.html` on the laptop's own screen: name, tagline and the
+   privacy statement shown, no "not started with --kiosk".
+8. **T−10 min:** one offering with a reply address from the show session, written by the team
+   (`python3 -m kiosk offer - --reply`, typed at the prompt); txid on the cue card, labelled "ours, T−10".
+9. **T−10 min, the anchor:** in a spare terminal tab,
+   `git show origin/anchors:4527794-e4700837f6db640b.json > /tmp/a.json && git show origin/anchors:4527794-e4700837f6db640b.json.ots > /tmp/a.json.ots && python3 -m anchor verify /tmp/a.json`
+   (after `git fetch origin anchors`). Exit 0 = VERIFIED, block 972,742. Exit 4 = UNCHECKED: fewer than two
+   explorers reachable from this network (on the team laptop's ISP blockstream.info and mempool.space are blocked);
+   nothing was found wrong, say so if it is shown. Exit 1 = MISMATCH: do not show the anchor, find out why.
+10. **Explorer:** `https://testnet.zecblock.com/block/4525215` shows a hash starting `000026af4552`
+    (full: `000026af4552065fbbbd94b5c9a0be7914fc402733c53c6f464921b9817b72ac`). Otherwise strike the explorer from the show.
+11. **T−3 min:** the god's line from B: `printf '…' | python3 -m kiosk speak - --from wallets/test/B`; txid on the cue
+    card. It should be heard by about T−1.5 min [R24]; if not, the Operator says so when pointing at the wings.
+12. **Cue card:** from laptop 1's `out/score.json` at that moment: total offerings = 14 seeds (22 Oct) + N test and
+    rehearsal offerings (20 Oct to show day, incl. the T−10 offering and the T−3 line), refused K. Listen to new test
+    offerings once; anything unfit to sing goes to `config/skiplist.txt` with a reason (it stays on chain, shown
+    under `skipped`, its lid sewn shut). Live txids are written down as they are printed; nothing else leaves the
+    terminal.
+13. **Fallbacks, ready before the show:**
+    - Tor blocked at the venue, direct works (check: `bin/devtool-aegis wallet -w wallets/test/V sync -s zecrocks
+      --connection direct`): decide on purpose and say it on stage ("lightwalletd will see the venue's IP address"),
+      then `export LWD_CONNECTION=direct` in every terminal on both laptops.
+    - zec.rocks down (both routes fail): stop sending; render from the pre-synced DBs
+      (`python3 -m renderer once --wallet wallets/test/V --as-of <height>`), say so, and play the demo video for the
+      live part. Never fake a status.
+    - The 27 Oct video on laptop 1, playable offline.
+
+**After the show:** `shred -u /tmp/eye.key` on both laptops and on the USB stick; restart the daemon if it was
+stopped; `python3 -m kiosk inbox` once more; `python3 -m kiosk session close` the same day (wipes the session wallet
+and the secrets sent from it).

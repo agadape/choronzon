@@ -14,6 +14,8 @@ track, prize paid in ZEC to a shielded address. The repo stays private until the
 - [ ] README privacy section still the exact §6 wording; no "anonymous" / "untraceable" anywhere in product copy
       (`git grep -niE "anonymous|untraceable" -- README.md docs/README.template.md kiosk web`)
 - [ ] `config/skiplist.txt` reviewed: anything on chain that must not be sung at the show is listed with a reason
+- [ ] the 27 Oct freeze + dry run (below) is green on the candidate commit, including the Tor wording in the
+      kiosk's own statement (`kiosk/copy.py`, row 12)
 - [x] decided 22 Oct: the choir's full viewing key is published in the README on submission day **and** revealed on
       stage at the Séance
 - [ ] **Submission day: the publication act.** Last step before the repository goes public, after every box above is
@@ -31,15 +33,17 @@ track, prize paid in ZEC to a shielded address. The repo stays private until the
       4. commit with a message that says this is the deliberate publication act (e.g. "README: publish the choir's
          full viewing key (deliberate publication act, irrevocable)", via `git commit -F`), then push
       5. `shred -u /tmp/eye.key`
-      6. re-run the secret scan (dry-run check 4): the key must now appear only in `README.md` and
-         `docs/README.template.md`, and only from the publication commit on
+      6. re-run the secret scan (22 Oct check 4, 27 Oct checks 5–7): the key must now appear only in `README.md`
+         and `docs/README.template.md`, and only from the publication commit on
 
 ## Submission form (thezecathon.com)
 
 - [ ] project name, tagline, one-liner: copy from `config/brand.json`
 - [ ] track: Wildcard
 - [ ] repository URL (public by then), commit hash of the submitted state, licence
-- [ ] demo video link (Day 8): real transactions, explorer shown, the two-laptop hash moment, whisper back
+- [ ] demo video link (Day 8): real transactions, the two-laptop hash moment, whisper back, the Bitcoin anchor;
+      ZecBlock only if pre-show check 10 of `docs/demo-script.md` passed. The video shows the full viewing key
+      (the Séance), so it is shared only together with the publication act above, never before
 - [ ] a short "why Zcash" paragraph: the README's "Why it needs Zcash" table
 - [ ] evidence: `docs/evidence-index.md` (every claim → txid → block)
 - [ ] team members and roles (A/B/C still unassigned in `TODO.md`)
@@ -50,7 +54,53 @@ track, prize paid in ZEC to a shielded address. The repo stays private until the
 
 - [ ] tag the submitted commit (`git tag -a zecathon-2026 -m "submitted"`), push the tag
 - [ ] keep `wallets/`, `logs/` and the submitted `out/` locally (evidence), do not delete the testnet wallets
-- [ ] post-hackathon items stay in `TODO.md` (grant proposal, Zcon email, Tor, Piper)
+- [ ] post-hackathon items stay in `TODO.md` (grant proposal, Zcon email, Piper, a random send delay; Tor is done)
+
+## 27 Oct 2026: freeze, then re-run the dry run
+
+Same idea as the 22 Oct dry run below, against the state that will be submitted. Run in WSL on laptop 1 (wallets
+present). No transaction, no spend, nothing made public; check 15 is the only one that sends, and only the user
+runs it. Keep the raw output in `logs/dryrun_20261027.log` (git-ignored). Every command prints counts or prefixes,
+never a key or an address.
+
+**Freeze.** Before the video: `git pull --rebase`, `git status` clean, write down `git rev-parse HEAD` as the
+candidate commit. After the freeze only docs change, plus the publication act on 28 Oct; anything else re-runs
+this table. Ask the web session to stop tuning first (it owns `web/`).
+
+| # | Check | Command | Pass when |
+|---|---|---|---|
+| 1 | Tests | `python3 -m pytest -q` | exit 0 (22 Oct: 142 passed with wallets) |
+| 2 | Smoke | `./scripts/smoke.sh` | exit 0: G6 regression `c46dd5de…` with 7 accepted; health at the tip, V and B agree |
+| 3 | Public web | `scripts/build_web.sh --check` | exit 0: no external script, style, font or import in `dist/` |
+| 4 | Generated files | `python3 scripts/gen_readme.py --check` | exit 0 |
+| 5 | Keys in tracked files | `git grep -nE '(uvf\|uvi\|uivk\|uview\|zxview\|secret-extended-key)[a-z0-9]{30,}'` | only the test dummies listed in row 4 of the 22 Oct table; anything else stops the release |
+| 6 | Keys in history (all branches, `anchors` included) | `git log --all -p \| grep -oE '(uvf\|uvi\|uivk\|uview\|zxview\|secret-extended-key)[a-z0-9]{30,}' \| cut -c1-24 \| sort \| uniq -c` | the same dummies only (prints 24-char prefixes, never a full key) |
+| 7 | The real key, without printing it | `K=$(bin/devtool-aegis wallet -w wallets/test/V list-accounts 2>/dev/null \| grep -oE 'uvftest1[0-9a-z]{100,}' \| head -1); [ -n "$K" ] && git log --all -p \| grep -cF "${K:8:40}"; unset K` | `0` before the publication act; after it, hits only in the publication commit's `README.md` and `docs/README.template.md` |
+| 8 | Full addresses | `git grep -nE '(zu\|tu\|u)test1[0-9a-z]{60,}'`; `git log --all -p \| grep -oE '(zu\|tu\|u)test1[0-9a-z]{60,}' \| cut -c1-20 \| sort \| uniq -c`; `grep -rcE '(zu\|tu\|u)test1' out/score.json dist/` | the choir's own address (public by design: `config/choir.json`, `radio/payment_uri.txt`, `ai/phone-test/T3_…`); `0` in `out/score.json` and `dist/`. **Known on 24 Oct:** `ai/phone-test/T1_testnet_R2.uri.txt` and `T2_testnet_R0.uri.txt` (spike evidence, 20 Oct) each hold the full address of a team test wallet that is not the choir (the phone-test destinations). The user decides before going public whether that evidence stays; any other full address stops the release until you know whose it is |
+| 9 | Age identities, mnemonics | `git log --all -p \| grep -c AGE-SECRET-KEY`; then the BIP39 run check below | `0` and `0` |
+| 10 | Forbidden paths | `git log --all --name-only --format= \| sort -u \| grep -E '^(wallets\|logs\|bin\|vendor)/\|\.(age\|sqlite\|db\|zip\|key)$'` | no output |
+| 11 | Forbidden wording | `git grep -niE "anonymous\|untraceable\|no one will ever know\|nobody can ever" -- README.md docs/README.template.md kiosk web docs/submission-form.md docs/demo-script.md docs/lore.md docs/user-test-kit.md` | only the expected lines of 22 Oct row 9 |
+| 12 | Tor wording | `git grep -nE "lightwalletd sees the kiosk's IP\|lightwalletd sees your IP \(Tor\|Tor is on the roadmap" -- README.md docs/README.template.md kiosk web docs/submission-form.md docs/demo-script.md` | no output. On 24 Oct `kiosk/copy.py` (the statement printed before every send, and shown on the kiosk page) still said "lightwalletd sees the kiosk's IP address"; it must carry the `CLAUDE.md` §6 Tor sentence before the freeze |
+| 13 | Fresh clone | `git clone https://github.com/agadape/choronzon.git /tmp/fc && cd /tmp/fc && ./scripts/setup.sh && python3 -m pytest -q`; then, with the key in a file outside the clone (`kiosk reveal --to /tmp/eye.key`, check 7's rules), `python3 -m renderer summon --key-file /tmp/eye.key --birthday 4502962 --wallet wallets/watcher --as-of 4525294`; afterwards `shred -u /tmp/eye.key` and `rm -rf /tmp/fc`. Do not `tee` this check into the dry-run log: `reveal` prints the key | pytest green without wallets (21 Oct: 121 passed, 2 skipped; setup 9 m 34 s); `render_hash` `8540a0a5…` (re-checked from V on 24 Oct). Over Tor a cold Watcher took 633 s and 905 s; `--connection direct` is faster and gives the same hash |
+| 14 | Bitcoin anchors | `git fetch origin anchors`; for each of `4522002-5e7a489d70dcc34c`, `4527794-e4700837f6db640b`, `4531929-a24dd50f32d34c79`: `git show origin/anchors:<f>.json > /tmp/<f>.json && git show origin/anchors:<f>.json.ots > /tmp/<f>.json.ots && python3 -m anchor verify /tmp/<f>.json; echo exit $?`; also the served pair (`curl -fsSO https://choronzon.vercel.app/anchor.json` + `.ots`) | exit 0 with blocks 972,742 / 972,742 / 972,778 (`docs/anchoring.md`, "Confirmed in Bitcoin"); the served pair 0 or 3 (a fresh deploy is PENDING for hours). Exit 4 = UNCHECKED: fewer than two explorers usable from this network (the team ISP blocks blockstream.info and mempool.space); retry over another network, it is not a failure. Exit 1 stops the release |
+| 15 | Rehearsal (user only, sends testnet transactions) | `./scripts/demo.sh` over Tor | PASS line, SAME HASH, SAME AUDIO; if its timings differ from the table in `docs/demo-script.md`, update that table from this log |
+| 16 | Repository still private | `gh repo view agadape/choronzon --json visibility` | `PRIVATE` until the publication act |
+
+BIP39 run check for row 9 (prints a count only):
+
+```bash
+git log --all -p | python3 -c '
+import glob, re, sys
+W = set(open(glob.glob("/home/dev/.cargo/registry/src/*/bip0039-*/words/english.txt")[0]).read().split())
+n = 0
+for line in sys.stdin:
+    if line[:1] not in "+-": continue
+    run = 0
+    for w in re.findall(r"[a-z]+", line.lower()):
+        run = run + 1 if w in W else 0
+        if run >= 12: n += 1; break
+print(n)'
+```
 
 ## Dry run 22 Oct 2026
 
