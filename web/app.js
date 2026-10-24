@@ -113,23 +113,38 @@ async function loadAnchor(doc) {
 }
 
 // the god: three.js when WebGL2 is there, else the Canvas 2D creature (same score, same meaning)
+// A canvas can hold one kind of context for its whole life: once the fallback has drawn with '2d' on it,
+// getContext('webgl2') returns null forever (and the other way round). So every mount gets a fresh <canvas>.
+function freshCanvas() {
+  const old = $("creature"), c = document.createElement("canvas");
+  c.id = "creature"; c.className = old.className;
+  old.replaceWith(c);
+  c.addEventListener("click", onCanvasClick);
+  return c;
+}
+let godRetried = false, godWaited = false;
 function mountGod(doc) {
-  const canvas = $("creature");
   if (window.God && God.supported()) {
     if (god) god.dispose();
     try {
-      god = God.mount(canvas, doc, { reducedMotion: CALM });
+      god = God.mount(freshCanvas(), doc, { reducedMotion: CALM });
       document.body.classList.add("webgl");
       window.__god = god;
       leafOffset();
       return;
     } catch (e) { god = null; document.body.classList.remove("webgl"); }
+  } else if (!window.God && !godWaited) {
+    // on a real network score.json lands before god.js + three (~680 KB): give the module a moment before the fallback
+    godWaited = true;
+    setTimeout(() => { if (!god && currentDoc && !body.count) mountGod(currentDoc); }, 6000);
+    return;
   }
+  if (god) { god.dispose(); god = null; }
+  if (!body.count) freshCanvas();                          // the 2D fallback needs a canvas no WebGL context has touched
   body = Creature.grow(doc.render.timeline, doc.score.offerings, doc.score.skipped);
   // a WebGL context can fail while the GPU process is still starting: ask once more before settling for the fallback
   if (window.God && !godRetried) { godRetried = true; setTimeout(() => { if (!god && currentDoc && God.supported()) mountGod(currentDoc); }, 2000); }
 }
-let godRetried = false;
 addEventListener("god-ready", () => { if (currentDoc && !god) mountGod(currentDoc); });
 
 async function loadScore() {
@@ -270,7 +285,7 @@ async function whisper(txid) {
   $("whisper_uri").textContent = w.uri;
 }
 
-$("creature").addEventListener("click", (ev) => {
+function onCanvasClick(ev) {
   if (god) { if (god.wasDrag()) return; const tx = god.pick(ev.clientX, ev.clientY); if (tx) whisper(tx); return; }
   const c = $("creature"), r = c.getBoundingClientRect();
   const x = (ev.clientX - r.left) * devicePixelRatio, y = (ev.clientY - r.top) * devicePixelRatio;
@@ -281,7 +296,8 @@ $("creature").addEventListener("click", (ev) => {
     if (d < bestD) { best = ch; bestD = d; }
   }
   if (best) whisper(best.tx);
-});
+}
+$("creature").addEventListener("click", onCanvasClick);
 $("whisper_close").addEventListener("click", () => { $("qr").innerHTML = ""; $("whisper_status").textContent = ""; $("whisper_uri").textContent = ""; });
 
 // the Eye opens (séance): the lids part, then the key (if this server publishes one) and the hashes

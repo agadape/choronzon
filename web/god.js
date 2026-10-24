@@ -17,6 +17,9 @@
 //   handle.dispose()                     -> free GPU resources (a new render_hash mounts a new god)
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "./vendor/three/BufferGeometryUtils.js";
+// ?slowgod=<ms> delays this module's arrival, to reproduce a slow network where score.json lands first (the fallback
+// must not keep the god from mounting afterwards: web/app.js gives every mount a fresh canvas)
+{ const ms = Number(new URLSearchParams(location.search).get("slowgod") || 0); if (ms > 0) await new Promise((r) => setTimeout(r, ms)); }
 
 const TAU = Math.PI * 2;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -284,7 +287,8 @@ function mount(canvas, doc, opts = {}) {
     // the arms: thickness and reach from how many offerings the block carried, curl from the wait before it
     const blocks = new Map(); for (const o of S.offerings) blocks.set(o.height, (blocks.get(o.height) || 0) + 1);
     const bl = [...blocks.entries()].sort((a, b) => a[0] - b[0]);
-    const TS = PHONE ? 40 : 60, RS = PHONE ? 6 : 8, arms = [];   // budget: ≤ 120k triangles desktop, ≤ 60k phone (spec §3)
+    // budget: ≤ 120k triangles desktop, ≤ 60k phone (spec §3); past 30 blocks the arms get coarser so the total holds
+    const nb = Math.max(1, bl.length), TS = Math.max(PHONE ? 24 : 32, Math.round((PHONE ? 40 : 60) * Math.min(1, 30 / nb))), RS = PHONE ? 6 : 8, arms = [];
     const ranked = bl.map((_, i) => i).sort((a, b) => bl[b][1] - bl[a][1] || a - b), frontIdx = ranked.slice(0, 2);
     const rest = bl.map((_, i) => i).filter((i) => !frontIdx.includes(i)), place = {};
     frontIdx.forEach((i, k) => (place[i] = { sd: k ? -1 : 1, f: 0.1, front: true }));
