@@ -115,11 +115,13 @@ def test_tor_failure_fails_closed_with_a_hint(monkeypatch, tmp_path):
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     r = Recorder(returncode=1, stderr="Error: tor bootstrap failed (to " + UA + ")")
     monkeypatch.setattr(subprocess, "run", r)
+    monkeypatch.setattr(devtool.Devtool, "READ_PAUSE_S", 0)
     with pytest.raises(devtool.DevtoolError) as e:
         devtool.Devtool(tmp_path).sync()
     msg = str(e.value)
     assert "--connection direct" in msg and "IP" in msg and UA not in msg
-    assert r.subcommands() == [("sync", "tor")]          # exactly one attempt, never a silent direct retry
+    # read-only sync is retried, but every attempt stays on Tor: never a silent direct retry
+    assert r.subcommands() == [("sync", "tor")] * devtool.Devtool.READ_ATTEMPTS
 
 
 def test_timeout_is_an_error_with_the_hint(monkeypatch, tmp_path):

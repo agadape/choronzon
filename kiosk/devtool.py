@@ -3,12 +3,13 @@
 Only the patched build can broadcast on NU7 testnet. Every command takes the wallet directory; spend commands
 also take the age identity file that decrypts the wallet's mnemonic. Every command that talks to lightwalletd
 goes over Tor unless the operator chose `direct` (renderer/network.py); a Tor failure is an error, never a retry
-over a direct connection.
+over a direct connection. Read-only sync/enhance are retried over the same route; sends never are.
 """
 from __future__ import annotations
 
 import re
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -92,11 +93,27 @@ class Devtool:
         m = _SPENDABLE.search(self._run("balance"))
         return int(m.group(1)) if m else 0
 
+    # read-only network commands are retried over the SAME route (a Tor circuit or lightwalletd drops a stream now
+    # and then: rehearsal 25 Oct, "stream closed because of a broken pipe" before an offer); never over direct, and
+    # never for send/pay, which may already have broadcast
+    READ_ATTEMPTS = 3
+    READ_PAUSE_S = 5
+
+    def _run_read(self, *args: str) -> str:
+        for attempt in range(1, self.READ_ATTEMPTS + 1):
+            try:
+                return self._run(*args)
+            except DevtoolError:
+                if attempt == self.READ_ATTEMPTS:
+                    raise
+                time.sleep(self.READ_PAUSE_S * attempt)
+        raise AssertionError("unreachable")
+
     def sync(self) -> None:
-        self._run("sync", "-s", self.server)
+        self._run_read("sync", "-s", self.server)
 
     def enhance(self) -> None:
-        self._run("enhance", "-s", self.server)
+        self._run_read("enhance", "-s", self.server)
 
     # --- state-changing ----------------------------------------------------------------------------------------------
 
