@@ -123,3 +123,14 @@ Before trusting any new server: `node spikes/s1_lightd.mjs test` must show branc
 - The Watcher step took **633 s**: a new wallet downloads the whole Tor directory (~40 MB) before its first sync.
 - Fix: `renderer summon --tor-cache-from <warm wallet>` copies only the public directory cache (`tor/arti-cache`, never the guards in `tor/arti-data`), as `kiosk session open` already does. `demo.sh` passes `--tor-cache-from wallets/test/V`. Measured: a fresh Watcher over Tor from the key alone in **129 s**, same `render_hash` `8b332fe6…`.
 - On a real second laptop: run one Watcher (or one Tor sync of any wallet) there before the show so its cache is warm, then pass `--tor-cache-from` that wallet.
+
+## Rehearsals after the privacy fixes (25 Oct)
+
+| Run | Log | Result | Cause / fix |
+|---|---|---|---|
+| 1 | `logs/demo_20261025T094951Z.log` | FAIL at the live offer | the kiosk's pre-pay `sync` over Tor died ("stream closed because of a broken pipe") and was not retried. Fix `df135d9`: kiosk `sync`/`enhance` retry 3x over the same route; `pay`/`send` never retry |
+| 2 | `logs/demo_20261025T100331Z.log` | FAIL in preflight | `demo.sh`'s own sync of B over Tor dropped once. Fix `db97866`: preflight syncs retry 3x over the same route |
+| 3 | `logs/demo_20261025T100439Z.log` | **PASS, 637 s** | offering `9722cf47…` heard after 60 s; whisper `a523f45c…` received by `kiosk inbox <contrib_id>` after 90 s; god line `c24752f1…` accepted after 88 s; forgery `be4a48ee…` refused as `forged-conductor` after 28 s; Watcher over Tor with the seeded cache in 173 s, `78d33def…` at 4,539,886, same audio |
+
+Tor drops a stream now and then (twice in two runs on 25 Oct). Read-only calls are retried over the same route; a send is never retried automatically. On stage keep `LWD_CONNECTION=direct` as the deliberate fallback (it tells lightwalletd the venue IP; say so).
+
