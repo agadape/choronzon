@@ -165,6 +165,30 @@ async function loadAnchor(doc) {
   } catch (e) { /* no WebCrypto (plain http on another host): the branch link alone */ }
   note.append(".");
   el.append(note);
+  return st;
+}
+
+// recompute render_hash here from the audio you hear (web/verify.js) and compare it with every published copy
+async function verifyHere(doc, wavBytes, anchorP) {
+  const el = $("verify_line");
+  if (!window.Verify || !(window.crypto && crypto.subtle)) { el.textContent = "This browser cannot hash the audio here (WebCrypto needs https or localhost)."; return; }
+  let res;
+  const anchor = await anchorP;      // a statement for another height is another render (the anchor line says so), not a mismatch
+  const sameHeight = (x) => x && Number(x.as_of_height) === Number(doc.score.as_of_height);
+  try { res = await Verify.check({ wav: wavBytes, score: doc, statik: STATIC && STATIC.static && sameHeight(STATIC) ? STATIC : null, anchor: sameHeight(anchor) ? anchor : null }); }
+  catch (e) { el.textContent = `Could not recompute the render hash here: ${e.message}`; el.className = "bad"; return; }
+  if (currentHash !== doc.render_hash) return;                    // a newer render arrived meanwhile
+  const short = `${res.computed.slice(0, 8)}…${res.computed.slice(-8)}`, names = res.checks.map((c) => c.name).join(", ");
+  if (res.ok) {
+    el.className = "quiet";
+    el.textContent = `Verified in this browser: SHA-256(score hash ‖ the audio you hear ‖ ${doc.render.composer}) = ${short}, ` +
+      `the render hash in ${names}.` + (res.checks.some((c) => c.name === "anchor.json")
+        ? " The audio you hear is the audio of the statement anchored in Bitcoin (OpenTimestamps)." : "");
+  } else {
+    const bad = res.checks.filter((c) => !c.render || !c.score).map((c) => c.name).join(", ");
+    el.className = "bad";
+    el.textContent = `MISMATCH: recomputed ${short} from the audio here, but ${bad} says otherwise. Do not trust this snapshot; re-render from the key.`;
+  }
 }
 
 // the god: three.js when WebGL2 is there, else the Canvas 2D creature (same score, same meaning)
@@ -245,10 +269,11 @@ async function loadScore() {
     + ((doc.render.decoder.matches_pin && doc.render.voice.matches_pin) ? " · decoder and voice match the pinned builds" : " · WARNING: decoder or voice differs from the pinned build");
   $("link_block").href = ZECBLOCK + height;
   $("status").textContent = `${n === 0 ? "nothing has been given yet" : "evoked"} at height ${fmt(height)}`;
-  loadAnchor(doc);
+  const anchorP = loadAnchor(doc);
   if (firstLoad) setTimeout(findFromHash, 0);              // #tx= / #offering= in the link
   const r = await fetch("out/mix.wav", { cache: "no-store" });
   const ab = await r.arrayBuffer();
+  verifyHere(doc, new Uint8Array(ab.slice(0)), anchorP);          // a copy: decoding detaches the buffer
   if (audioCtx) buffer = await audioCtx.decodeAudioData(ab);
   else pendingWav = ab;
 }

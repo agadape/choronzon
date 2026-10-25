@@ -228,6 +228,7 @@
             <div class="keyrow"><code class="key_text"></code><button class="key_copy" type="button">copy</button></div>
             <p class="quiet">Summon it yourself: <code class="key_cmd"></code></p>
           </div>
+          <p class="quiet" id="verify_line"></p>
           <p class="quiet" id="anchor"></p>
           <p class="quiet" id="snapshot"></p>
           <div class="links">
@@ -311,7 +312,7 @@
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
 <script>
   // cache-busting for the local scripts: browsers kept the old creature.js even with Cache-Control: no-store
-  for (const f of ["name.js", "creature.js", "leaf.js", "dpr.js", "vendor/qrcode/qrcode.js", "offering.js", "give.js", "app.js"])
+  for (const f of ["name.js", "creature.js", "leaf.js", "dpr.js", "vendor/qrcode/qrcode.js", "offering.js", "give.js", "verify.js", "app.js"])
     document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
   document.write(`<script type="module" src="god.js?v=${Date.now()}"><\/script>`);   // three.js, vendored; no CDN
 </script>
