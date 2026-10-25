@@ -40,7 +40,7 @@ allowed() {
   for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || basename "$f"; done
   for f in web/*.css; do [ -e "$f" ] || continue; basename "$f"; done
   # vendored three.js (MIT) and the self-hosted type (OFL): THIRD_PARTY_NOTICES.md lists every file with its sha256
-  for f in web/vendor/three/* web/fonts/*; do [ -e "$f" ] || continue; echo "${f#web/}"; done
+  for f in web/vendor/three/* web/vendor/qrcode/* web/fonts/*; do [ -e "$f" ] || continue; echo "${f#web/}"; done
   true
 }
 
@@ -85,8 +85,9 @@ cp web/index.html web/apparition.html "$DIST/"
 for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || cp "$f" "$DIST/"; done
 for f in web/*.css; do [ -e "$f" ] && cp "$f" "$DIST/"; done
 cp config/brand.json "$DIST/config/brand.json"
-mkdir -p "$DIST/vendor/three" "$DIST/fonts"
+mkdir -p "$DIST/vendor/three" "$DIST/vendor/qrcode" "$DIST/fonts"
 cp web/vendor/three/* "$DIST/vendor/three/"                   # three.js r160 (MIT): THIRD_PARTY_NOTICES.md
+cp web/vendor/qrcode/* "$DIST/vendor/qrcode/"                 # qrcode-generator 1.4.4 (MIT): THIRD_PARTY_NOTICES.md
 cp web/fonts/* "$DIST/fonts/"                                 # IM Fell English (SIL OFL 1.1): web/fonts/OFL.txt
 cp docs/brand/logo.svg "$DIST/logo.svg"                       # favicon
 [ -f web/og.png ] && cp web/og.png "$DIST/og.png"             # link preview image (rendered from the page, committed)
@@ -106,9 +107,11 @@ fi
 python3 - "$OUT/score.json" "$DIST/static.json" "$HAS_KEY" "$BIRTHDAY" <<'EOF'
 import json, sys, datetime
 score = json.load(open(sys.argv[1]))
+choir = json.load(open("config/choir.json"))   # public: where offerings go and how much ("give it a secret")
 doc = {"static": True, "as_of_height": score["score"]["as_of_height"], "render_hash": score["render_hash"],
        "score_hash": score["score_hash"],
-       "rendered_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+       "rendered_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+       "choir": {"network": choir["network"], "address": choir["address"], "amount_zat": int(choir["amount_zat"])}}
 if sys.argv[3] == "1":   # the key itself is only in key.txt; here just where it is and its birthday
     doc["key"] = {"file": "key.txt", "birthday": int(sys.argv[4])}
 json.dump(doc, open(sys.argv[2], "w"), indent=1); open(sys.argv[2], "a").write("\n")

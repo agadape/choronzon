@@ -77,6 +77,7 @@ async function loadStatic() {
     $("whisper_label").textContent = "whisper back";
     $("whisper_status").textContent = "works at the installation: it reads the reply address from a wallet, never from this page.";
     if (STATIC.key && STATIC.key.file === "key.txt") loadKey(Number(STATIC.key.birthday));
+    if (STATIC.choir && window.Give) Give.enable(STATIC.choir);    // "give it a secret": the public page only
   }
 }
 
@@ -345,16 +346,32 @@ $("tear").addEventListener("click", () => (Leaf.isGone() ? Leaf.reprint() : Leaf
 if (Q.has("verso")) Leaf.turn(true);   // for stills of the colophon
 if (Q.has("tear")) setTimeout(Leaf.tear, 800);   // for stills of the torn leaf
 
-// Whisper Back: click an eye -> ask the server for that offering's reply request (read from the wallet DB on demand)
+// Whisper Back: click an eye. At the installation the local server reads that offering's reply address from the
+// wallet DB on demand (POST: the whisper never sits in a URL or a log). The public snapshot publishes no reply
+// addresses (CLAUDE.md section 6): for an offering that asked for a whisper it shows how to answer it from your own
+// machine with the published key instead.
 async function whisper(txid) {
-  if (STATIC && STATIC.static) return;
+  if (STATIC && STATIC.static) return whisperFromHere(txid);
   const text = ($("whisper_text") && $("whisper_text").value.trim()) || "you are not alone.";
-  const r = await fetch(`whisper/${txid}?text=${encodeURIComponent(text)}`);
+  const r = await fetch(`whisper/${txid}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
   if (!r.ok) { $("whisper_status").textContent = "this offering asked for no whisper"; $("qr").innerHTML = ""; return; }
   const w = await r.json();
-  $("whisper_status").textContent = `scan with your wallet to whisper back to offering ${txid.slice(0, 12)}… (the choir never sees it)`;
+  $("whisper_status").textContent = `scan with your wallet to whisper back to offering ${txid.slice(0, 12)}…: this reply goes to ` +
+    "the address in the offering; for a kiosk offering that is the kiosk's session wallet";
   $("qr").innerHTML = w.qr_svg;
   $("whisper_uri").textContent = w.uri;
+}
+function whisperFromHere(txid) {
+  const o = currentDoc && currentDoc.score.offerings.find((x) => x.tx === txid);
+  if (!o) return;
+  const box = $("qr"); box.textContent = ""; $("whisper_uri").textContent = "";
+  const p = document.createElement("p");
+  if (!o.has_reply) { p.textContent = `Offering ${txid.slice(0, 12)}… asked for no whisper back.`; box.append(p); return; }
+  p.textContent = `Offering ${txid.slice(0, 12)}… asked for a whisper back. This page never publishes reply addresses; ` +
+    "answer it from your own machine with the key (summon a Watcher first, then type the whisper at the prompt):";
+  const code = document.createElement("code");
+  code.textContent = `python3 -m renderer whisper ${txid} --wallet wallets/watcher`;
+  box.append(p, code);
 }
 
 function onCanvasClick(ev) {
@@ -415,6 +432,7 @@ document.addEventListener("keydown", (ev) => {
 });
 
 for (const b of playButtons()) b.addEventListener("click", () => (playing ? stop() : play()));
+if (window.Give) Give.init();
 loadBrand().then(loadStatic).then(loadScore);
 setInterval(loadScore, 5000);   // on a snapshot the hash never changes, so this is a no-op there
 requestAnimationFrame(frame);

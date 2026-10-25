@@ -99,12 +99,40 @@
              font-size: 13px; background: var(--vellum); color: var(--ink); padding: 10px; border: 1px solid var(--sepia); z-index: 7; }
   #whisper:has(#qr:empty) { display: none; }
   #qr svg { width: 100%; aspect-ratio: 1; height: auto; background: var(--ink); display: block; }
+  #qr p { margin: 0 0 6px; } #qr code { font: 12px Georgia, serif; word-break: break-all; }
   #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--rubric);
                  letter-spacing: 0.3em; font-size: 12px; pointer-events: none; font-family: var(--caps); }
   /* séance: the great eye's lids are shut and the hashes sealed until the Eye opens */
   #open_eye, #open_eye2 { display: none; }
   .sealed #open_eye, .sealed #open_eye2 { display: inline-block; }
   .sealed #open_eye2 { border-color: var(--rubric); }
+  /* give it a secret: a full-screen sheet of vellum over the god */
+  #give { position: fixed; inset: 0; display: none; justify-items: center; align-items: start; background: rgba(5, 3, 2, 0.92);
+          z-index: 8; overflow: auto; }
+  #give.on { display: grid; }
+  #give .panel { width: min(560px, 100%); margin: 4vh 0; padding: 26px clamp(16px, 4vw, 34px); display: grid; gap: 10px;
+                 background: var(--grain), radial-gradient(ellipse at 50% 35%, #261d13 0%, var(--vellum) 60%, #120d08 100%); }
+  #give h2 { margin: 0; font: 400 30px/1.1 var(--serif); }
+  #give h2::first-letter { color: var(--rubric); }
+  #give .over { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.2em; font-size: 12px; }
+  #give p { margin: 0; line-height: 1.45; }
+  #give .small { font-size: 14px; }
+  #give .k { font-family: var(--caps); color: var(--rubric); letter-spacing: 0.12em; text-transform: none; font-size: 13px; margin-right: 6px; }
+  #give textarea, #give input:not([type]) { width: 100%; font: 16px/1.4 var(--serif); color: var(--ink); background: rgba(5, 3, 2, 0.5);
+                                           border: 1px solid var(--sepia); padding: 8px 10px; }
+  #give label { display: grid; gap: 4px; color: var(--sepia); }
+  #give label.check { display: flex; gap: 8px; align-items: center; color: var(--ink); }
+  #give .statement { display: grid; gap: 6px; border-left: 2px solid var(--rubric); padding: 4px 0 4px 12px; font-size: 14.5px; }
+  #give button { font: 15px var(--caps); letter-spacing: 0.12em; text-transform: none; color: var(--ink); background: rgba(5, 3, 2, 0.55);
+                 border: 1px solid var(--sepia); padding: 8px 16px; border-radius: 1px; }
+  #give button.listen { border-color: var(--gilt); }
+  #give button:disabled { opacity: 0.45; cursor: default; }
+  #give #give_result { display: grid; gap: 8px; justify-items: start; border-top: 1px solid rgba(143, 121, 86, .35); padding-top: 12px; }
+  #give #give_result[hidden], #give canvas[hidden] { display: none; }
+  #give_qr { image-rendering: pixelated; }
+  #give a { color: var(--ink); text-decoration-color: var(--sepia); text-underline-offset: 3px; }
+  #give .bad { color: var(--rubric); }
+  .give_open[hidden] { display: none !important; }
   #eye { position: fixed; inset: 0; display: none; place-items: center; background: var(--night); z-index: 8; overflow: auto; }
   #eye.on { display: grid; }
   #eye .panel { max-width: 720px; padding: 32px clamp(16px, 4vw, 40px); display: grid; gap: 18px; }
@@ -127,7 +155,7 @@
     body:not(.closed) .masthead { opacity: 1; }
     .masthead h1 { font-size: 40px; }
     #chrome, body:not(.closed) #chrome { position: absolute; left: 16px; right: 16px; bottom: auto; transform: none; opacity: 1; pointer-events: auto;
-              top: calc(100vh - 150px); top: calc(100svh - 150px); justify-content: center; flex-wrap: wrap; gap: 8px; }
+              top: calc(100vh - 196px); top: calc(100svh - 196px); justify-content: center; flex-wrap: wrap; gap: 8px; }
     #chrome button { font-size: 14px; padding: 8px 14px; }
     #chrome button.listen { padding: 8px 22px; }
     #status, #close_leaf { display: none; }
@@ -149,7 +177,7 @@
 <canvas id="creature"></canvas>
 <div id="not_the_god">NOT THE GOD</div>
 <div class="masthead"><h1 id="m_name"></h1><div class="tagline" id="m_tag"></div><div class="hint">descend</div></div>
-<div id="chrome"><button id="play" class="listen">Listen</button><button id="open_leaf">open the grimoire · G</button><button id="open_eye2">open the eye · E</button></div>
+<div id="chrome"><button id="play" class="listen">Listen</button><button class="give_open" hidden>give it a secret</button><button id="open_leaf">open the grimoire · G</button><button id="open_eye2">open the eye · E</button></div>
 <span id="status">loading</span>
 
 <div class="page">
@@ -164,7 +192,7 @@
           <div class="rule"></div>
           <p class="lede" id="lede"></p>
           <div class="tally" id="tally"></div>
-          <div id="actions" class="row"><button id="play2" class="listen">Listen</button><button id="open_eye">open the eye</button></div>
+          <div id="actions" class="row"><button id="play2" class="listen">Listen</button><button class="give_open" hidden>give it a secret</button><button id="open_eye">open the eye</button></div>
         </div><div class="holes"></div></div>
         <div class="part stub" id="stub">
           <div class="holes"></div>
@@ -210,6 +238,39 @@
 </div>
 <p class="privacy" id="privacy">every offering is public to every key holder, forever. we, the operator, cannot learn who contributed.</p>
 
+<section id="give" aria-label="give it a secret">
+  <div class="panel">
+    <div class="over"><span id="give_net"></span> · <span id="give_amount"></span> to the god</div>
+    <h2>Give it a secret.</h2>
+    <p class="quiet">Write it here. This page turns it into a payment request for your own wallet; nothing leaves this
+       browser until your wallet sends it. A text offering is voiced by the renderer, not by you.</p>
+    <textarea id="give_text" rows="4" maxlength="1500" placeholder="what you have never said"></textarea>
+    <div id="give_count" class="quiet small"></div>
+    <label class="small">your wallet address for a whisper back (optional)
+      <input id="give_reply" autocomplete="off" spellcheck="false" placeholder="a fresh utest1… / zutest1… from your wallet"></label>
+    <div id="give_reply_note" class="quiet small"></div>
+    <div class="statement">
+      <p><b>Before you give it anything, read this.</b></p>
+      <p><span class="k">private</span> the link between you and your secret. We, the operator, cannot learn who contributed.</p>
+      <p><span class="k">public</span> the content of your secret, to everyone who holds the key, forever. The key cannot be revoked.</p>
+      <p><span class="k">not guaranteed</span> that nobody recognises your words. Content can identify you; names and places identify you.</p>
+      <p>Your own wallet stores what you sent. Its server sees your IP address and when you sent: our Tor does not
+         cover your phone, and Tor does not hide timing. If you add a reply address, anyone holding the key can see it
+         and write to it. Order inside a block is miner order, not send order.</p>
+    </div>
+    <label class="small check"><input type="checkbox" id="give_read"> I have read this</label>
+    <div class="row"><button id="give_make" class="listen" disabled>make the payment request</button><button id="give_close">close</button></div>
+    <div id="give_error" class="bad small"></div>
+    <div id="give_result" hidden>
+      <canvas id="give_qr" hidden></canvas>
+      <div id="give_qr_note" class="quiet small"></div>
+      <div class="row"><a id="give_link"></a><button id="give_copy" type="button">copy the request</button></div>
+      <p class="small">Your offering's number is <b id="give_cid"></b> (<span id="give_memos"></span>). It appears in the
+         god a few minutes after your wallet sends it, once the site re-renders.</p>
+    </div>
+  </div>
+</section>
+
 <section id="eye">
   <div class="panel">
     <h2>The Eye is open.</h2>
@@ -239,7 +300,8 @@
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
 <script>
   // cache-busting for the local scripts: browsers kept the old creature.js even with Cache-Control: no-store
-  for (const f of ["name.js", "creature.js", "leaf.js", "dpr.js", "app.js"]) document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
+  for (const f of ["name.js", "creature.js", "leaf.js", "dpr.js", "vendor/qrcode/qrcode.js", "offering.js", "give.js", "app.js"])
+    document.write(`<script src="${f}?v=${Date.now()}"><\/script>`);
   document.write(`<script type="module" src="god.js?v=${Date.now()}"><\/script>`);   // three.js, vendored; no CDN
 </script>
 </body>

@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WEB = ROOT / "web"
 NOTICES = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
-VENDORED = ["vendor/three/three.module.min.js", "vendor/three/BufferGeometryUtils.js",
+VENDORED = ["vendor/three/three.module.min.js", "vendor/three/BufferGeometryUtils.js", "vendor/qrcode/qrcode.js",
             "fonts/IMFellEnglish-Regular.ttf", "fonts/IMFellEnglish-Italic.ttf", "fonts/IMFellEnglishSC-Regular.ttf"]
 EXTERNAL = re.compile(r"""<(script|link)[^>]*(src|href)=["']https?://|@import[^;]*https?://|url\(["']?https?://"""
                       r"""|from ["']https?://|import\(["']https?://""")
