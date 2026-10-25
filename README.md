@@ -10,7 +10,7 @@ Choronzon is a god made of secrets released through Zcash shielded transactions.
 
 **ZECATHON 2026** (by zkSNARKs) · Wildcard track · Zcash testnet (NU7) · built 13–28 Oct 2026 · MIT
 
-**Listen to it:** [choronzon.vercel.app](https://choronzon.vercel.app): a static snapshot of the god rendered from the public viewing key at the block of its newest transaction (the height and render time are printed on the page). Whisper Back, the kiosk and the key live at the installation, not on this page. A GitHub Actions job summons it from the key alone every 30 minutes and redeploys only when the render changed ([docs/auto-publish.md](docs/auto-publish.md)); manual fallback `scripts/publish_web.sh`.
+**Listen to it:** [choronzon.vercel.app](https://choronzon.vercel.app): a static snapshot of the god rendered from the public viewing key at the block of its newest transaction (the height and render time are printed on the page). From the page you can also **give it a secret** with your own testnet wallet (the page builds the same payment request as `kiosk qr` and sends nothing itself), **find your offering** by its transaction id or number (`#tx=<txid>`, `#offering=<n>`; fragments never reach a server log), and check that the audio you hear is the audio anchored in Bitcoin (the page recomputes the render hash from it). Whisper Back and the kiosk live at the installation; the key is [in this README](#the-key). The public site sends a strict Content-Security-Policy and no referrer. A GitHub Actions job summons it from the key alone every 30 minutes and redeploys only when the render changed ([docs/auto-publish.md](docs/auto-publish.md)); manual fallback `scripts/publish_web.sh`.
 
 ---
 
@@ -36,7 +36,7 @@ Messages hidden inside a summoning: that is what a shielded memo is.
 - Every offering costs the same 0.00001 TAZ, so the amount tells nothing.
 - The god's wallet publishes its **full viewing key**. Anyone holding that one key can read every offering, rebuild the whole work from the chain, and print the **same hash** as everyone else. No server of ours is involved.
 - We, the operator, cannot learn who contributed.
-- An offering may carry a fresh one-time reply address. A listener can **whisper back**: the reply is another shielded transaction that goes straight to that address. Replies travel directly between two wallets, never through us.
+- An offering may carry a one-time reply address. A listener can **whisper back**: the reply is another shielded transaction that goes straight to the wallet holding that address, and the choir's key holders cannot see it. When the address belongs to the sender's own wallet (a phone offering, or `kiosk offer --reply-to`), the reply travels directly between two wallets, never through us. A kiosk offering that asks for a reply uses an address of the kiosk's session wallet instead: the operator holds that wallet until the session closes and can read the reply; the kiosk says so before every send.
 - The god has a voice of its own: lines its wallet pays to itself. Every key holder can tell those from forgeries, which every renderer refuses.
 
 ## Why it needs Zcash
@@ -46,7 +46,7 @@ Messages hidden inside a summoning: that is what a shielded memo is.
 | On a public chain every confession is tied to an address forever. On a normal app the server knows your account. | A shielded transaction is a sealed envelope: sender, recipient, amount and memo are encrypted. We, the operator, cannot learn who contributed. |
 | A curator has to be trusted not to edit, reorder or delete. | One public viewing key is the score: anyone can re-render the whole work from one key and get the same hash. |
 | Anyone can post in the god's name. | The god's own lines are spends of its own notes, which only the spend key can make. Anyone with the viewing key can tell them from forgeries (spike S13, live on 21 Oct). |
-| A database cannot give two strangers a private channel without holding both ends. | Whisper Back: replies travel directly between two wallets, never through us. |
+| A database cannot give two strangers a private channel without holding both ends. | Whisper Back: the reply goes straight to the wallet holding the offering's reply address; with the sender's own wallet, it travels between two wallets, never through us. |
 
 ## How it works
 
@@ -73,18 +73,18 @@ flowchart TB
     Z -->|"same key, a machine that has never seen the god"| R2["Watcher: renderer summon<br/>init-fvk from the key alone → sync → render"]
     R2 --> H2["same score_hash, same render_hash"]
     subgraph wb ["Whisper Back"]
-        L["Listener wallet"] -.->|"direct shielded reply, never through us<br/>the key holder sees none of it"| A["The offering's one-time reply address<br/>(the kiosk's ephemeral wallet, or the phone)"]
+        L["Listener wallet"] -.->|"direct shielded reply<br/>the key holder sees none of it"| A["The offering's one-time reply address<br/>(the sender's own wallet, or the kiosk's session wallet, which the operator can read)"]
     end
     W -.->|"click a limb: reply request (ZIP-321)<br/>address re-read from the wallet DB on demand"| L
 ```
 
-1. **Offer.** The kiosk encodes the secret into 1–3 memos ([protocol below](#memo-protocol-v1)) and sends them in one shielded transaction from an ephemeral wallet that is wiped after the session. Phones send the same memo through a ZIP-321 QR; the god's own lines are the same body paid by its own wallet to itself.
+1. **Offer.** The kiosk encodes the secret into 1–3 memos ([protocol below](#memo-protocol-v1)) and sends them in one shielded transaction from an ephemeral wallet whose files are overwritten and deleted when the session closes (best-effort on SSDs and VM disks). Phones send the same memo through a ZIP-321 QR; the god's own lines are the same body paid by its own wallet to itself.
 2. **Discover.** The renderer holds only the public viewing key, and refuses to run on a wallet that holds a spending key. It syncs, fetches full transactions (memos are not in compact blocks), and collects every output received by the god's wallet up to an explicit `as_of_height`.
 3. **Order and validate.** Offerings are ordered by `(mined_height, tx_index, action_index)`. Incomplete chunks, CRC failures, unknown codecs, conductor lines not paid by the god's own wallet and flagged txids are skipped and logged with the reason; they stay on chain and are listed under `skipped`.
 4. **Compose.** Audio is decoded with a pinned Codec2 build and mixed offline with integer arithmetic into one buffer. The browser only plays that buffer.
 5. **Evoke.** The god's body is a pure function of the ordered offerings, `G_n = F(G_{n-1}, A_n, I_n)`, with no randomness anywhere. The listener draws it with three.js r160, vendored under `web/vendor/three/` (MIT), with IM Fell English self-hosted under `web/fonts/` (SIL OFL); the public page makes no request outside its own origin. One eye per offering, the great eye and the wings for the god's own lines, one arm per block, sewn lids for silenced offerings, blind red eyes for refused forgeries; without WebGL the Canvas 2D creature is shown instead. The grimoire leaf (G) is cut from the hashes: its deckle from the score hash, its tear line from the render hash, so a stub from any other evocation with the same render hash fits the edge exactly; `apparition.html` lays two such leaves against each other.
 6. **Prove.** Two machines with the same key print the same `render_hash`. A Watcher built from the key alone (`renderer summon`) is the second machine.
-7. **Whisper back.** A listener clicks a limb; the page builds a payment request to that offering's one-time reply address, read from the wallet database at that moment and stored nowhere else. The reply is a shielded transaction between the two wallets; the key holder sees none of it.
+7. **Whisper back.** At the installation a listener clicks an eye; the page builds a payment request to that offering's one-time reply address, read from the wallet database at that moment and stored nowhere else. The reply is a shielded transaction between the two wallets; the key holder sees none of it.
 
 ## Privacy: read this before you give it anything
 
@@ -97,7 +97,7 @@ Three layers, stated plainly:
 What we say, and can show:
 
 - we, the operator, cannot learn who contributed
-- replies travel directly between two wallets, never through us
+- replies to the sender's own wallet address travel directly between two wallets, never through us (a kiosk reply address belongs to the kiosk's session wallet, which the operator can read)
 - anyone can re-render the whole work from one key and get the same hash
 
 What you must know:
@@ -114,13 +114,13 @@ What we never claim: "anonymous", "untraceable", "nobody can ever connect you to
 
 Content: renderer may skip flagged txids (open list in repo) but never reorders/edits others; chain data remains.
 
-Handling: the full viewing key is published on purpose (in this README at submission, and at the Séance reveal), never in code, tests, logs or commits. Reply addresses are never stored outside the wallet database; the renderer's output only records whether a reply address exists. The kiosk prints this statement before every send and takes the secret from a prompt, never from the command line.
+Handling: the full viewing key is published on purpose (in this README since 24 Oct, and at the Séance reveal), never in code, tests, logs or commits. Reply addresses are never stored outside the wallet database; the renderer's output only records whether a reply address exists. The kiosk prints this statement before every send and takes the secret from a prompt or stdin; a secret given as a command-line argument is refused. (The wallet tool still holds the memo on its own command line while it builds the transaction; see Limits.)
 
 On stage, everyone in the room can see who just walked up to the kiosk. That is theatre, not the threat model; a random send delay for public deployments is on the roadmap.
 
 ### The key
 
-The god's full viewing key is one line of text, shown at the Séance (`python3 -m kiosk reveal`, the only sanctioned way to print it) and possibly pasted here, by hand, at submission. Its birthday is block 4,502,962. Once public it cannot be revoked.
+The god's full viewing key is the line below, published on 24 Oct so that anyone can summon the god and check every hash before judging; it is also shown at the Séance (`python3 -m kiosk reveal`). Its birthday is block 4,502,962. Once public it cannot be revoked: every offering, past and future, is readable by anyone who holds it.
 
 ```text
 uvftest1s5vnzz3xm2hptf3w54g7wqmm2tvq5al7tf3x4ytpte6svjsta7gsrsum8nydj58m6nluhkj30y0ex0a7q56gmvsexsj354lgpkgn40pa5uw4yrdqljeaa7hfdjgzxtahkdgxfg00y43zpa4mmk08anejr46nxr5ujpxmn9l8j80rqzhgjznk6hm2r79ak3ldzxl6f5drdcs7tn4k8tffp8azslra26d06e0zwzzfa0jh87sgxczquggpkfxmv8tj7dltcw6v8ez547qjez6cqlgqguh63gwn5hwjplnhgq9d6v5u9jydf8nzmypnk07amjewds63usqy7m0pxt7gfahpk2n5rt6mcus5gn2h6qsvey4zytvazcghyflekq3rpyxll6ku7tthudg3uyqz3jspjqhmdx4xm8eqngk7lfh0fsu8k8jk0f87sn76s266t97nc50000dzlhfxrxsdsu4ksqzxckj4knkw457pmn53tmz38s4k92ez
@@ -174,7 +174,7 @@ git clone https://github.com/agadape/choronzon.git && cd choronzon
 python3 -m pytest    # 121 passed, 2 skipped on a fresh clone (the 2 chain-regression tests need wallets/test/V)
 ```
 
-**The judge's path** ([docs/fresh-clone.md](docs/fresh-clone.md), run end to end on 21 Oct with measured times): put the published key in a file and summon a Watcher. The key is read from the file or from `SUMMON_KEY`, never from the command line.
+**The judge's path** ([docs/fresh-clone.md](docs/fresh-clone.md), run end to end on 21 Oct with measured times): put the published key in a file and summon a Watcher. The key is read from the file or from `SUMMON_KEY`, never from our command line; the wallet tool receives it on its own command line for the moment `init-fvk` runs (the key is public, so this reveals nothing new).
 
 ```bash
 python3 -m renderer summon --key-file key.txt --birthday 4502962 --wallet wallets/watcher --as-of 4525294 --out out
@@ -240,8 +240,9 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 
 **What stays exposed, by design or for now**
 
-- The sending wallet remembers: `sent_notes` holds the memo and the destination. The kiosk wallet is wiped after the session for that reason; a phone user's own wallet keeps what they sent.
+- The sending wallet remembers: `sent_notes` holds the memo and the destination. The kiosk wallet's files are overwritten and deleted when the session closes for that reason (best-effort on SSDs and VM disks); a phone user's own wallet keeps what they sent.
 - While a transaction is built, the memo sits on the wallet tool's command line for a few seconds, visible to other local processes on the kiosk. Fixing this needs a change in the wallet tool, not done in the hackathon window.
+- A kiosk offering that asks for a whisper back gets an address of the kiosk's session wallet; the operator can read replies to it until the session closes. A visitor who wants a reply only they can read gives their own wallet's address.
 - TTS and Codec2 use a temporary directory per call, deleted on return; a hardened kiosk points `TMPDIR` at a tmpfs.
 - lightwalletd sees which transactions were fetched and when. Since 23 Oct every connection the kiosk, the renderer, Whisper Back and `renderer summon` make goes through Tor by default (the wallet tool's built-in Arti client), so the server sees a Tor exit instead of the kiosk's or a Watcher's IP. It fails closed: if Tor cannot connect, the command stops and asks the operator to pass `--connection direct` deliberately; it never falls back on its own. Tor costs time (sync ~11–18 s instead of ~2 s) and sends over Tor fail more often (retried by the operator, never automatically). A phone wallet uses its own connection settings. The public web snapshot is rendered by a CI runner over a direct connection: its IP protects nobody. On 21 Oct `testnet.zec.rocks` was the only public lightwalletd on the NU7 testnet chain, so there is no second server to fall back to ([docs/network-fallback.md](docs/network-fallback.md)).
 - Reply addresses sit in the memo, so every key holder can write to them. The kiosk shows whispers; it does not trust them.
@@ -276,9 +277,10 @@ Done:
 - [x] Protocol package + tests (every malformed-memo case)
 - [x] Renderer daemon on a view-only wallet: `score.json`, `score_hash`, skip log; refuses a wallet with a spending key
 - [x] Offline composer: pinned decoder, pinned local voice, integer mix, `render_hash` + `mix.wav`
-- [x] Kiosk CLI: text → local TTS → Codec2 → shielded send from an ephemeral wallet with a note pool; secrets from a prompt, no cache, no argv
+- [x] Kiosk CLI: text → local TTS → Codec2 → shielded send from an ephemeral wallet with a note pool; secrets from a prompt or stdin (an argument is refused), no cache
 - [x] Listener page: the god seen from below (three.js, one eye per offering, Canvas 2D fallback) + playback of the mix, both hashes, the grimoire leaf, the séance and the two-evocation chirograph
-- [x] Whisper Back (limb click or `renderer whisper`, `kiosk inbox`), the god's own voice with forgeries refused, phone offerings by QR, the Séance (`kiosk reveal`, `renderer summon`)
+- [x] Public page: give it a secret (QR for your own wallet), find your offering, verify the audio against the anchored hash; strict CSP
+- [x] Whisper Back (eye click at the installation or `renderer whisper`, `kiosk inbox <contrib_id>`), the god's own voice with forgeries refused, phone offerings by QR, the Séance (`kiosk reveal`, `renderer summon`)
 - [x] Fresh-clone proof with measured times, privacy review, eight failure drills, two unattended rehearsals of the 3-minute demo
 - [x] Tor by default for every lightwalletd connection the product makes (kiosk, renderer, Whisper Back, summon), fail-closed, same hashes over Tor and direct
 - [x] Every published render anchored in Bitcoin with OpenTimestamps (`anchor/`, `anchors` branch, verifiable without a node)
