@@ -626,7 +626,7 @@ function mount(canvas, doc, opts = {}) {
   // at you on their own (9 s buckets of scene time). The great eye follows the pointer while it moves and for a few
   // seconds after, otherwise it alternates between watching you and looking around (6.5 s buckets). While a voice
   // sounds, every other eye turns to the one that sings. Targets are chosen at 20 Hz; the eyes turn every frame.
-  let px = 0, py = 0, playT = -1, eyeOpenV = 1, lastCalls = 0, lastTris = 0;
+  let px = 0, py = 0, playT = -1, eyeOpenV = 1, lastCalls = 0, lastTris = 0, focusTx = null;
   let pointerAt = -Infinity, attn = null, gazeAt = -Infinity;
   const onPointer = (e) => {
     px = (e.clientX / innerWidth) * 2 - 1; py = -(e.clientY / innerHeight) * 2 + 1;
@@ -702,7 +702,11 @@ function mount(canvas, doc, opts = {}) {
     let singer = -1, sw = 0, gw = 0;
     for (const g of gods) gw = Math.max(gw, wakeOf(g, t));
     eyeList.forEach((e, i) => {
-      if (e.kind === "ring") { e.socket.getWorldPosition(eyePos[i]); const w = wakeOf(e.it, t); e.w = w; if (w > sw) { sw = w; singer = i; } }
+      if (e.kind === "ring") {
+        e.socket.getWorldPosition(eyePos[i]);
+        const w = Math.max(wakeOf(e.it, t), focusTx && e.it.tx === focusTx ? 0.9 : 0);   // "find my offering": it burns
+        e.w = w; if (w > sw) { sw = w; singer = i; }
+      }
       else if (e.kind === "great") { eyePos[i].set(0, 0, 0); e.w = gw; }
       else if (e.kind === "dweller") { eyePos[i].copy(e.pos); e.w = 0; }
       else { const g = e.g, a = g[0] * TAU + time * (0.02 + 0.02 * g[1]), r = 6.5 + 2 * g[2]; eyePos[i].set(Math.cos(a) * r, (g[4] - 0.5) * 5, Math.sin(a) * r); e.w = 0; }
@@ -766,6 +770,7 @@ function mount(canvas, doc, opts = {}) {
     setEyeOpen(v) { eyeOpenV = v === undefined ? 1 : clamp01(v); },
     setViewOffset(pxOff) { wantOff = pxOff || 0; },
     setPaused(v) { paused = !!v; resume(); },
+    setFocus(tx) { focusTx = tx || null; },   // one offering's eye burns and the others turn to it (null: none)
     pick,
     wasDrag() { return moved > 6; },
     stats() { return { calls: lastCalls, triangles: lastTris, fps: Math.round(fps), dpr: Number(dpr.toFixed(2)), cap: Number(DPR.cap.toFixed(2)),

@@ -66,6 +66,12 @@
   .leaf .lede::first-letter { color: var(--rubric); font-size: 1.5em; line-height: 1; }
   .tally { font-family: var(--caps); color: var(--sepia); letter-spacing: 0.12em; font-size: 14px; }
   .leaf #actions { justify-content: center; gap: 10px; }
+  .find { display: flex; gap: 6px; width: 100%; max-width: 340px; }
+  .find input { flex: 1; min-width: 0; font: 14px var(--serif); color: var(--ink); background: rgba(5, 3, 2, 0.45);
+                border: 1px solid var(--sepia); padding: 4px 8px; }
+  .find button { font-size: 13px; padding: 3px 10px; }
+  .find button[hidden] { display: none; }
+  .find_note { font-size: 13.5px; line-height: 1.35; min-height: 0; max-width: 34ch; }
   .stub-content { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--H) - var(--cut));
                   display: grid; place-content: center; text-align: center; gap: 2px; padding: 6px 16px 0; }
   .stub-content .k { font-family: var(--caps); color: var(--rubric); letter-spacing: 0.3em; font-size: 12px; text-transform: none; }
@@ -192,6 +198,11 @@
           <div class="rule"></div>
           <p class="lede" id="lede"></p>
           <div class="tally" id="tally"></div>
+          <form id="find" class="find" autocomplete="off">
+            <input id="find_q" spellcheck="false" placeholder="find my offering: txid or number" aria-label="find my offering">
+            <button type="submit">find</button><button type="button" id="find_play" hidden>hear it</button>
+          </form>
+          <div id="find_note" class="quiet find_note"></div>
           <div id="actions" class="row"><button id="play2" class="listen">Listen</button><button class="give_open" hidden>give it a secret</button><button id="open_eye">open the eye</button></div>
         </div><div class="holes"></div></div>
         <div class="part stub" id="stub">
@@ -266,7 +277,7 @@
       <div id="give_qr_note" class="quiet small"></div>
       <div class="row"><a id="give_link"></a><button id="give_copy" type="button">copy the request</button></div>
       <p class="small">Your offering's number is <b id="give_cid"></b> (<span id="give_memos"></span>). It appears in the
-         god a few minutes after your wallet sends it, once the site re-renders.</p>
+         god a few minutes after your wallet sends it, once the site re-renders. Keep <a id="give_find">this link</a> to find it.</p>
     </div>
   </div>
 </section>

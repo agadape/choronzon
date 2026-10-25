@@ -246,6 +246,7 @@ async function loadScore() {
   $("link_block").href = ZECBLOCK + height;
   $("status").textContent = `${n === 0 ? "nothing has been given yet" : "evoked"} at height ${fmt(height)}`;
   loadAnchor(doc);
+  if (firstLoad) setTimeout(findFromHash, 0);              // #tx= / #offering= in the link
   const r = await fetch("out/mix.wav", { cache: "no-store" });
   const ab = await r.arrayBuffer();
   if (audioCtx) buffer = await audioCtx.decodeAudioData(ab);
@@ -257,19 +258,22 @@ function setPlaying(on, label) {
   playing = on;
   for (const b of playButtons()) { b.textContent = label; b.classList.toggle("live", on); }
 }
-async function play() {
+// play the whole mix, or one stretch of it (from / length in samples at 8 kHz: one offering's voice)
+async function play(fromSample = 0, samples = 0) {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (pendingWav) { buffer = await audioCtx.decodeAudioData(pendingWav); pendingWav = null; }
   }
   if (!buffer) return;
   stop();
-  source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.connect(audioCtx.destination);
-  source.onended = () => setPlaying(false, "Listen again");
-  startedAt = audioCtx.currentTime;
-  source.start();
+  const s = audioCtx.createBufferSource();
+  source = s;
+  s.buffer = buffer;
+  s.connect(audioCtx.destination);
+  s.onended = () => { if (source === s) { source = null; setPlaying(false, "Listen again"); if (god) god.setFocus(null); } };
+  const from = fromSample / 8000;
+  startedAt = audioCtx.currentTime - from;           // the timeline position stays sample-exact for the god
+  if (samples > 0) s.start(0, from, samples / 8000); else s.start(0, from);
   setPlaying(true, "Silence");
 }
 
@@ -432,6 +436,51 @@ document.addEventListener("keydown", (ev) => {
 });
 
 for (const b of playButtons()) b.addEventListener("click", () => (playing ? stop() : play()));
+
+// Find my offering: by its transaction id (64 hex, as wallets and explorers show it) or the number the give panel
+// showed (contrib_id). From the leaf, or a fragment: #tx=<txid> or #offering=<number>. Never a ?query: query strings
+// reach the host's logs, fragments never leave the browser.
+let found = null;
+function findOffering(q, autoplay = true) {
+  const note = $("find_note");
+  found = null; $("find_play").hidden = true;
+  q = String(q || "").trim().toLowerCase();
+  if (!currentDoc) { note.textContent = "the god has not been evoked here yet"; return; }
+  const doc = currentDoc, height = fmt(doc.score.as_of_height);
+  let hit = null;
+  if (/^[0-9a-f]{64}$/.test(q)) hit = doc.render.timeline.find((x) => x.tx === q);
+  else if (/^\d{1,10}$/.test(q)) hit = doc.render.timeline.find((x) => x.contrib_id === Number(q));
+  else { note.textContent = "give its transaction id (64 characters) or your offering's number"; return; }
+  if (hit) {
+    const off = doc.score.offerings.find((o) => o.tx === hit.tx);
+    const secs = (hit.samples / 8000).toFixed(1), at = Math.floor(hit.start / 8000);
+    note.textContent = `Found: mined at height ${fmt(off ? off.height : doc.score.as_of_height)}, ` +
+      `it sounds at ${Math.floor(at / 60)}:${String(at % 60).padStart(2, "0")} for ${secs} s. Its eye burns; the others turn to it.`;
+    if (god) god.setFocus(hit.tx);
+    found = hit; $("find_play").hidden = false;
+    if (autoplay) play(hit.start, hit.samples);   // a link opened cold cannot start audio: "hear it" does
+    return;
+  }
+  const skipped = /^[0-9a-f]{64}$/.test(q) && doc.score.skipped.find((s) => s.tx === q);
+  if (skipped) {
+    const why = { "not-protocol": "its memo is not an offering", flagged: "it is silenced (on the open skip list)",
+                  "forged-conductor": "it claims the god's own voice without being the god" }[skipped.reason] || skipped.reason;
+    note.textContent = `On chain at height ${fmt(skipped.height)}, but not voiced: ${why}.`;
+    return;
+  }
+  note.textContent = `Not in this snapshot yet (height ${height}). The site re-renders about every 30 minutes; ` +
+    "a new offering appears after it is mined and the next render.";
+}
+function findFromHash() {
+  const m = location.hash.match(/^#(?:tx|offering)=([0-9a-fA-F]{64}|\d{1,10})$/);
+  if (!m) return;
+  $("find_q").value = m[1];
+  setLeaf(true);
+  findOffering(m[1], false);
+}
+$("find").addEventListener("submit", (e) => { e.preventDefault(); findOffering($("find_q").value); });
+$("find_play").addEventListener("click", () => { if (found) { if (god) god.setFocus(found.tx); play(found.start, found.samples); } });
+addEventListener("hashchange", findFromHash);
 if (window.Give) Give.init();
 loadBrand().then(loadStatic).then(loadScore);
 setInterval(loadScore, 5000);   // on a snapshot the hash never changes, so this is a no-op there

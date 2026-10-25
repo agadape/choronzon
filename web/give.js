@@ -44,6 +44,7 @@ window.Give = (() => {
     const link = $("give_link");
     link.href = offering.uri; link.textContent = "open in a wallet on this device";
     $("give_cid").textContent = String(offering.contribId);
+    $("give_find").href = `#offering=${offering.contribId}`;   // a fragment: the number never reaches a server
     $("give_memos").textContent = offering.chunks === 1 ? "one memo" : `${offering.chunks} memos (one payment request)`;
     drawQR(offering.chunks === 1 ? offering.uri : null);
     $("give_result").hidden = false;
@@ -75,6 +76,7 @@ window.Give = (() => {
   function init() {
     for (const b of document.querySelectorAll(".give_open")) b.addEventListener("click", open);
     $("give_close").addEventListener("click", close);
+    $("give_find").addEventListener("click", close);   // the finder then takes over the fragment
     for (const id of ["give_text", "give_reply"]) $(id).addEventListener("input", () => { $("give_result").hidden = true; update(); });
     $("give_read").addEventListener("change", update);
     $("give_make").addEventListener("click", make);
