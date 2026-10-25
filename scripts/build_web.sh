@@ -64,6 +64,34 @@ verify() {
       echo "!! external runtime request in ${f#"$DIST"/}" >&2; bad=1
     fi
   done
+  # security headers: CSP (self only, no unsafe-eval, no inline scripts but hashed import maps), no referrer
+  if ! python3 - "$DIST" <<'PYCHECK' >&2
+import base64, hashlib, json, re, sys
+from pathlib import Path
+dist = Path(sys.argv[1]); bad = []
+try:
+    rules = json.loads((dist / "vercel.json").read_text())["headers"]
+except Exception as e:
+    print(f"!! vercel.json unreadable: {e}"); sys.exit(1)
+glob = {h["key"]: h["value"] for r in rules if r["source"] == "/(.*)" for h in r["headers"]}
+csp = glob.get("Content-Security-Policy", "")
+parts = {p.split()[0]: p.split()[1:] for p in csp.split(";") if p.strip()}
+if parts.get("default-src") != ["'self'"]: bad.append("CSP default-src is not 'self'")
+if "'unsafe-eval'" in csp: bad.append("CSP allows unsafe-eval")
+script = parts.get("script-src", [])
+if not script or script[0] != "'self'" or any(s in ("'unsafe-inline'", "*") or "://" in s for s in script): bad.append("CSP script-src is not 'self' + hashes")
+if parts.get("connect-src") != ["'self'"]: bad.append("CSP connect-src is not 'self'")
+if glob.get("Referrer-Policy") != "no-referrer": bad.append("Referrer-Policy is not no-referrer")
+for page in dist.glob("*.html"):
+    for attrs, body in re.findall(r"<script([^>]*)>(.*?)</script>", page.read_text(), re.S):
+        if "src=" in attrs: continue
+        if 'type="importmap"' not in attrs: bad.append(f"inline script in {page.name}")
+        elif "'sha256-" + base64.b64encode(hashlib.sha256(body.encode()).digest()).decode() + "'" not in script:
+            bad.append(f"import map in {page.name} not allowed by its hash")
+for b in bad: print("!! " + b)
+sys.exit(1 if bad else 0)
+PYCHECK
+  then bad=1; fi
   # the viewing key lives in key.txt and nowhere else (names only are printed, never the key)
   while IFS= read -r f; do
     [ "${f#"$DIST"/}" = key.txt ] && continue
@@ -120,20 +148,45 @@ python3 -m anchor statement --out "$OUT" --commit "${GITHUB_SHA:-}" --to "$DIST/
 if [ "$STAMP" = 1 ]; then
   python3 -m anchor stamp "$DIST/anchor.json" --soft >&2   # --soft: a failure prints a warning and exits 0
 fi
-cat > "$DIST/vercel.json" <<'EOF'
-{
-  "cleanUrls": true,
-  "headers": [
-    { "source": "/out/(.*)", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
-    { "source": "/static.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
-    { "source": "/key.txt", "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }] },
-    { "source": "/vendor/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
-    { "source": "/fonts/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
-    { "source": "/anchor.json", "headers": [{ "key": "Cache-Control", "value": "no-store" }] },
-    { "source": "/anchor.json.ots", "headers": [{ "key": "Cache-Control", "value": "no-store" },
-                                               { "key": "Content-Type", "value": "application/octet-stream" }] }
-  ]
-}
+# vercel.json: cache rules plus the security headers. The Content-Security-Policy allows scripts from this origin
+# only, plus each inline import map by its SHA-256 (computed here from the built pages); no 'unsafe-eval', no inline
+# scripts, nothing from another host. Styles may be inline (style attributes). verify() re-checks all of it.
+python3 - "$DIST" <<'EOF'
+import base64, hashlib, json, re, sys
+from pathlib import Path
+dist = Path(sys.argv[1])
+hashes = sorted({"'sha256-" + base64.b64encode(hashlib.sha256(m.encode()).digest()).decode() + "'"
+                 for page in dist.glob("*.html")
+                 for m in re.findall(r'<script type="importmap">(.*?)</script>', page.read_text(), re.S)})
+csp = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' " + " ".join(hashes),
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "media-src 'self' blob: data:",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+])
+nostore = [{"key": "Cache-Control", "value": "no-store"}]
+year = [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
+doc = {"cleanUrls": True, "headers": [
+    {"source": "/(.*)", "headers": [{"key": "Content-Security-Policy", "value": csp},
+                                    {"key": "Referrer-Policy", "value": "no-referrer"},
+                                    {"key": "X-Content-Type-Options", "value": "nosniff"}]},
+    {"source": "/out/(.*)", "headers": nostore},
+    {"source": "/static.json", "headers": nostore},
+    {"source": "/key.txt", "headers": [{"key": "Content-Type", "value": "text/plain; charset=utf-8"}]},
+    {"source": "/vendor/(.*)", "headers": year},
+    {"source": "/fonts/(.*)", "headers": year},
+    {"source": "/anchor.json", "headers": nostore},
+    {"source": "/anchor.json.ots", "headers": nostore + [{"key": "Content-Type", "value": "application/octet-stream"}]},
+]}
+(dist / "vercel.json").write_text(json.dumps(doc, indent=1) + "\n")
 EOF
 verify
 echo "built $DIST/ (snapshot at height $(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['as_of_height'])" "$DIST/static.json")):"

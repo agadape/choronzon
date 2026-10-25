@@ -10,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "build_web.sh"
 ALLOWED = {"index.html", "apparition.html", "static.json", "vercel.json", "config/brand.json", "out/score.json",
-           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "dpr.js", "god.js", "leaf.js", "name.js", "offering.js", "give.js", "verify.js",
+           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "dpr.js", "god.js", "leaf.js", "name.js", "offering.js", "give.js", "verify.js", "boot.js",
            "vendor/qrcode/qrcode.js", "vendor/qrcode/LICENSE", "key.txt",
            "style.css",
            "logo.svg", "og.png", "anchor.json", "anchor.json.ots",
@@ -126,6 +126,37 @@ def test_refuses_a_key_file_that_is_not_one_key(out, tmp_path, content):
     key.write_text(content)
     r = run("--out", str(out), "--dist", str(tmp_path / "dist"), "--key-file", str(key), check=False)
     assert r.returncode == 1 and "exactly one unified full viewing key" in r.stderr and FAKE_KEY not in r.stderr
+
+
+def test_security_headers_are_written(out, tmp_path):
+    dist = tmp_path / "dist"
+    run("--out", str(out), "--dist", str(dist))
+    rules = json.loads((dist / "vercel.json").read_text())["headers"]
+    glob = {h["key"]: h["value"] for r in rules if r["source"] == "/(.*)" for h in r["headers"]}
+    csp = glob["Content-Security-Policy"]
+    assert "default-src 'self'" in csp and "connect-src 'self'" in csp and "frame-ancestors 'none'" in csp
+    assert "unsafe-eval" not in csp and "script-src 'self' 'sha256-" in csp
+    assert "'unsafe-inline'" not in csp.split("script-src")[1].split(";")[0]
+    assert glob["Referrer-Policy"] == "no-referrer"
+
+
+@pytest.mark.parametrize("planted", ['<script>alert(1)</script>', '<script type="importmap">{"imports": {}}</script>'])
+def test_check_rejects_inline_scripts_the_policy_does_not_allow(out, tmp_path, planted):
+    dist = tmp_path / "dist"
+    run("--out", str(out), "--dist", str(dist))
+    page = dist / "apparition.html"
+    page.write_text(page.read_text().replace("</body>", planted + "\n</body>"))
+    r = run("--check", "--dist", str(dist), check=False)
+    assert r.returncode != 0 and ("inline script" in r.stderr or "not allowed by its hash" in r.stderr)
+
+
+def test_check_rejects_a_weakened_policy(out, tmp_path):
+    dist = tmp_path / "dist"
+    run("--out", str(out), "--dist", str(dist))
+    v = dist / "vercel.json"
+    v.write_text(v.read_text().replace("script-src 'self'", "script-src 'self' 'unsafe-eval'"))
+    r = run("--check", "--dist", str(dist), check=False)
+    assert r.returncode != 0 and "unsafe-eval" in r.stderr
 
 
 def test_dist_and_vercel_are_ignored():
