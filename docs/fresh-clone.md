@@ -78,7 +78,12 @@ recorded PCM, the voice fingerprint, kiosk parsing, README generation.
 The key is the choir wallet's unified full viewing key (`uvftest1…`, one line of 512 characters). It
 is published in the README and shown at the Séance; the operator prints it with
 `python3 -m kiosk reveal`. Put it in a file (or in the `SUMMON_KEY` environment variable); the renderer
-never takes it on the command line, so it stays out of your shell history.
+never takes it from our command line, so it stays out of your shell history; the wallet tool receives it on its
+own command line for the moment `init-fvk` runs (the key is public, so this reveals nothing new).
+
+`summon` connects over Tor by default. A fresh machine first downloads the Tor directory: a fresh Watcher took
+633 s and 905 s over Tor in our runs (`docs/network-fallback.md`). `--connection direct` gives the same hash
+faster (79 s at 4,527,794), but then lightwalletd sees your IP.
 
 ```bash
 # key.txt holds the one line shown at the Séance
