@@ -69,7 +69,9 @@ wait_seen(){ # $1 txid, $2 pattern (offering|skip), $3 max seconds -> renders V 
 step "preflight"
 echo "   connection to lightwalletd: $LWD_CONNECTION"
 python3 -m kiosk session status | python3 -c 'import json,sys; s=json.load(sys.stdin); assert s.get("ready") and (s.get("notes_left") or 0)>=1, s; print("   session ready, notes left", s["notes_left"])' || die "no ready kiosk session (python3 -m kiosk session open)"
-for W in $B $A $L; do bin/devtool-aegis wallet -w $W sync -s zecrocks --connection "$LWD_CONNECTION" >/dev/null 2>&1 || die "sync $W failed (over $LWD_CONNECTION)"; done
+# a sync is read-only, so it is retried over the same route (a Tor stream drops now and then: rehearsal 25 Oct)
+sync_retry(){ local i; for i in 1 2 3; do bin/devtool-aegis wallet -w "$1" sync -s zecrocks --connection "$LWD_CONNECTION" >/dev/null 2>&1 && return 0; echo "   sync $1 attempt $i failed (over $LWD_CONNECTION)"; sleep $((5 * i)); done; return 1; }
+for W in $B $A $L; do sync_retry $W || die "sync $W failed 3 times (over $LWD_CONNECTION)"; done
 [ -x bin/c2dec ] || die "pinned codec2 missing"
 python3 -m kiosk pool $L --notes 3 2>&1 | sed "s/^/   /" ; [ "${PIPESTATUS[0]}" = 0 ] || die "listener pool (python3 -m kiosk pool $L)"
 [ $fail = 0 ] || { echo "preflight failed"; exit 1; }
