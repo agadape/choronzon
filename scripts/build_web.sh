@@ -6,6 +6,11 @@
 #   scripts/build_web.sh --check [--dist dist]                  only verify an existing dist/ against the allow-list
 #   ... --key-file FILE [--birthday H]                           also publish the choir's viewing key as key.txt
 #
+# Which god: brand.json, choir.json and skiplist.txt come from config/ (the main god) unless GOD_CONFIG_DIR names
+# another directory (relative paths from the repo root), e.g. one written by scripts/new_god.sh. That god's own
+# og.png (link preview) is used when its directory has one; otherwise its build has no preview image. Its brand.json
+# may set "site_url" (where it is hosted) for the og:url tag; the default is https://<slug>.vercel.app.
+#
 # The key (decided 24 Oct, CLAUDE.md section 6): the publisher passes it from the CHOIR_UFVK secret (CI) or a key
 # file (laptop), never from a file in the repo. It lands in key.txt only, with its birthday in static.json; verify()
 # fails the build if anything shaped like a full viewing key appears in any other file of dist/.
@@ -20,6 +25,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT=out; DIST=dist; CHECK=0; STAMP=0; KEY_FILE=""; BIRTHDAY=4502962
+CONFIG_DIR=${GOD_CONFIG_DIR:-config}
 while [ $# -gt 0 ]; do
   case "$1" in
     --out) OUT=$2; shift 2;;
@@ -107,16 +113,23 @@ PYCHECK
 
 if [ "$CHECK" = 1 ]; then verify && echo "dist/ verified: allow-list only"; exit $?; fi
 
+for f in brand.json choir.json skiplist.txt; do
+  [ -f "$CONFIG_DIR/$f" ] || { echo "!! $CONFIG_DIR/$f missing (GOD_CONFIG_DIR names a god's config directory)" >&2; exit 1; }
+done
+[ "$CONFIG_DIR" = config ] || echo "building the god in $CONFIG_DIR (GOD_CONFIG_DIR)" >&2
 [ -f "$OUT/score.json" ] || { echo "!! $OUT/score.json missing: run python3 -m renderer once --wallet wallets/test/V --sync --out $OUT first" >&2; exit 1; }
 rm -rf "$DIST"; mkdir -p "$DIST/config" "$DIST/out"
 cp web/index.html web/apparition.html "$DIST/"
 # static <title> and link-preview tags, from config/brand.json (crawlers do not run the page's JavaScript; the name
 # stays out of the source, which only carries placeholders)
-python3 - "$DIST" <<'EOF'
+OG=""
+if [ -f "$CONFIG_DIR/og.png" ]; then OG="$CONFIG_DIR/og.png"
+elif [ "$CONFIG_DIR" = config ] && [ -f web/og.png ]; then OG=web/og.png; fi   # web/og.png shows the main god
+python3 - "$DIST" "$CONFIG_DIR/brand.json" "$OG" <<'EOF'
 import html, json, re, sys
 from pathlib import Path
-dist, b = Path(sys.argv[1]), json.load(open("config/brand.json"))
-site, esc = f"https://{b['slug']}.vercel.app", lambda s: html.escape(s, quote=True)
+dist, b = Path(sys.argv[1]), json.load(open(sys.argv[2]))
+site, esc = (b.get("site_url") or f"https://{b['slug']}.vercel.app").rstrip("/"), lambda s: html.escape(s, quote=True)
 def meta(text, attr, key, value):
     pat = re.compile(rf'(<meta {attr}="{re.escape(key)}" content=")[^"]*(">)')
     if not pat.search(text): raise SystemExit(f"!! {key} placeholder missing")
@@ -126,20 +139,20 @@ t = t.replace("<title>listener</title>", f"<title>{esc(b['name'])}</title>", 1)
 t = meta(t, "name", "description", b["one_liner"])
 t = meta(t, "property", "og:title", f"{b['name']}: {b['tagline']}")
 t = meta(t, "property", "og:description", b["one_liner"])
-t = meta(t, "property", "og:image", f"{site}/og.png")
+t = meta(t, "property", "og:image", f"{site}/og.png" if sys.argv[3] else "")
 t = t.replace('<meta property="og:type" content="website">', f'<meta property="og:type" content="website">\n<meta property="og:url" content="{site}/">', 1)
 p.write_text(t)
 a = dist / "apparition.html"; a.write_text(a.read_text().replace("<title>two evocations</title>", f"<title>{esc(b['name'])}: two evocations</title>", 1))
 EOF
 for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || cp "$f" "$DIST/"; done
 for f in web/*.css; do [ -e "$f" ] && cp "$f" "$DIST/"; done
-cp config/brand.json "$DIST/config/brand.json"
+cp "$CONFIG_DIR/brand.json" "$DIST/config/brand.json"
 mkdir -p "$DIST/vendor/three" "$DIST/vendor/qrcode" "$DIST/fonts"
 cp web/vendor/three/* "$DIST/vendor/three/"                   # three.js r160 (MIT): THIRD_PARTY_NOTICES.md
 cp web/vendor/qrcode/* "$DIST/vendor/qrcode/"                 # qrcode-generator 1.4.4 (MIT): THIRD_PARTY_NOTICES.md
 cp web/fonts/* "$DIST/fonts/"                                 # IM Fell English (SIL OFL 1.1): web/fonts/OFL.txt
 cp docs/brand/logo.svg "$DIST/logo.svg"                       # favicon
-[ -f web/og.png ] && cp web/og.png "$DIST/og.png"             # link preview image (rendered from the page, committed)
+[ -n "$OG" ] && cp "$OG" "$DIST/og.png"                     # link preview image (rendered from the page, committed)
 cp "$OUT/score.json" "$OUT/mix.wav" "$DIST/out/"
 [ -f "$OUT/render_hash" ] && cp "$OUT/render_hash" "$DIST/out/"
 HAS_KEY=0
@@ -153,10 +166,10 @@ if [ -n "$KEY_FILE" ]; then
   (umask 022; tr -d '\r' <"$KEY_FILE" | sed '/^[[:space:]]*$/d' >"$DIST/key.txt")
   HAS_KEY=1
 fi
-python3 - "$OUT/score.json" "$DIST/static.json" "$HAS_KEY" "$BIRTHDAY" <<'EOF'
+python3 - "$OUT/score.json" "$DIST/static.json" "$HAS_KEY" "$BIRTHDAY" "$CONFIG_DIR/choir.json" <<'EOF'
 import json, sys, datetime
 score = json.load(open(sys.argv[1]))
-choir = json.load(open("config/choir.json"))   # public: where offerings go and how much ("give it a secret")
+choir = json.load(open(sys.argv[5]))   # public: where offerings go and how much ("give it a secret")
 doc = {"static": True, "as_of_height": score["score"]["as_of_height"], "render_hash": score["render_hash"],
        "score_hash": score["score_hash"],
        "rendered_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -165,7 +178,7 @@ if sys.argv[3] == "1":   # the key itself is only in key.txt; here just where it
     doc["key"] = {"file": "key.txt", "birthday": int(sys.argv[4])}
 json.dump(doc, open(sys.argv[2], "w"), indent=1); open(sys.argv[2], "a").write("\n")
 EOF
-python3 -m anchor statement --out "$OUT" --commit "${GITHUB_SHA:-}" --to "$DIST/anchor.json"
+python3 -m anchor statement --out "$OUT" --skiplist "$CONFIG_DIR/skiplist.txt" --commit "${GITHUB_SHA:-}" --to "$DIST/anchor.json"
 if [ "$STAMP" = 1 ]; then
   python3 -m anchor stamp "$DIST/anchor.json" --soft >&2   # --soft: a failure prints a warning and exits 0
 fi

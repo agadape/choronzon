@@ -7,11 +7,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .config_dir import config_file
+
 REPO = Path(__file__).resolve().parents[1]
 
 
 def brand() -> dict:
-    return json.loads((REPO / "config" / "brand.json").read_text(encoding="utf-8"))
+    """config/brand.json, or the brand.json of the god named by GOD_CONFIG_DIR."""
+    return json.loads(config_file("brand.json").read_text(encoding="utf-8"))
 
 
 _STATEMENT = """Before you give it anything, read this.

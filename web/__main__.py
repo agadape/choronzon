@@ -17,6 +17,8 @@ resolved and confined to its directory. DNS rebinding: every POST and every /eye
 must carry a Host header naming this server (127.0.0.1, localhost or [::1] with its port, the explicit --bind
 address, or an --allow-host); anything else (Host: evil.example) gets 403.
 No analytics, no external requests; the page is just HTML + Canvas + WebAudio playback of out/mix.wav.
+Another god (scripts/new_god.sh): GOD_CONFIG_DIR=<its config dir> python3 -m web --out <its out> --wallet <its
+watcher>; brand.json and the kiosk's choir address then come from that directory (kiosk/config_dir.py).
 """
 from __future__ import annotations
 
@@ -45,7 +47,11 @@ def _confined(base: Path, sub: str) -> Path | None:
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
-    routes = {"config/brand.json": REPO / "config" / "brand.json", "logo.svg": REPO / "docs" / "brand" / "logo.svg"}
+    @property
+    def routes(self) -> dict:
+        """Fixed files outside web/. brand.json is the main god's (config/) unless GOD_CONFIG_DIR names another."""
+        from kiosk.config_dir import config_file
+        return {"config/brand.json": config_file("brand.json"), "logo.svg": REPO / "docs" / "brand" / "logo.svg"}
 
     def __init__(self, *a, out_dir: Path, wallet_dir: Path | None, key_file: str | None = None,
                  birthday: int | None = None, kiosk: bool = False, **k):

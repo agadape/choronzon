@@ -19,6 +19,8 @@ prints addresses, never writes the text anywhere.
 closes and can read the reply. --reply-to embeds the visitor's own wallet address: the reply goes there directly.
 Every command that talks to lightwalletd goes over Tor (the devtool's built-in client) unless `--connection direct`
 or LWD_CONNECTION=direct is given on purpose; if Tor fails, the command fails (renderer/network.py).
+Which god: config/ by default; GOD_CONFIG_DIR=<dir> sends to (and brands the screen as) another god, e.g. one
+made by scripts/new_god.sh (kiosk/config_dir.py).
 """
 from __future__ import annotations
 
@@ -35,6 +37,7 @@ from renderer.decoder import Decoder
 from renderer.tts import Voice
 
 from . import copy
+from .config_dir import config_file
 from .devtool import Devtool, DevtoolError
 from .offering import Choir, make_offering, payment_uri
 from .session import Session, check_reply_to
@@ -132,7 +135,17 @@ def sent(txid: str) -> str:
     return (f"sent. txid {txid}\n"
             f"public explorer (may lag a few blocks): {EXPLORER}{txid}\n"
             f"(it shows at most that a shielded transaction exists)\n"
-            f"independent proof: bin/devtool-aegis wallet -w wallets/test/V list-tx after sync")
+            f"independent proof: bin/devtool-aegis wallet -w {_watcher()} list-tx after sync")
+
+
+def _watcher() -> str:
+    """The view-only wallet that proves a send: the main god's V, or the watcher scripts/new_god.sh put next to
+    another god's config dir (GOD_CONFIG_DIR)."""
+    cfg = config_file("choir.json").parent.resolve()
+    if cfg == (REPO / "config").resolve():
+        return "wallets/test/V"
+    w = cfg.parent / "watcher"
+    return str(w.relative_to(REPO)) if w.is_relative_to(REPO) else str(w)
 
 
 def cmd_pool(a) -> None:
@@ -246,7 +259,7 @@ def cmd_reveal(a) -> None:
     key, birthday = Devtool(wallet_dir).full_viewing_key()
     choir = Choir.load()
     if Devtool(wallet_dir).default_address() != choir.address:
-        sys.exit(f"{wallet_dir.name} is not the choir wallet in config/choir.json")
+        sys.exit(f"{wallet_dir.name} is not the choir wallet in {config_file('choir.json')}")
     print(copy.banner())
     print("THE EYE OPENS. From this moment anyone holding this key can hear every offering, forever.")
     print("It cannot be closed again.\n")

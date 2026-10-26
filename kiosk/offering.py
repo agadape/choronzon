@@ -13,8 +13,10 @@ from pathlib import Path
 import protocol
 from renderer.tts import Voice
 
+from .config_dir import config_file
+
 REPO = Path(__file__).resolve().parents[1]
-CHOIR_CONFIG = REPO / "config" / "choir.json"
+CHOIR_CONFIG = REPO / "config" / "choir.json"     # the main god's; GOD_CONFIG_DIR picks another (config_dir.py)
 
 
 @dataclass(frozen=True)
@@ -24,7 +26,8 @@ class Choir:
     amount_zat: int
 
     @classmethod
-    def load(cls, path: Path = CHOIR_CONFIG) -> "Choir":
+    def load(cls, path: Path | None = None) -> "Choir":
+        path = Path(path) if path is not None else config_file("choir.json")
         doc = json.loads(path.read_text(encoding="utf-8"))
         if not protocol.is_unified_address(doc["address"]):
             raise ValueError(f"{path}: choir address does not parse")
