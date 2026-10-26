@@ -194,7 +194,7 @@ async function verifyHere(doc, wavBytes, anchorP) {
       (!anchored ? "" : p.bitcoin.length ? `The proof served with it is in Bitcoin, block ${p.bitcoin.map(fmt).join(", ")}. `
         : p.pending ? "The Bitcoin proof served with this snapshot is still pending: the calendars have it, Bitcoin does not yet. "
         : "No Bitcoin proof is served with this snapshot. ") +
-      "The score hash is taken from the snapshot; a Watcher with the key re-derives it from the chain.";
+      "The score hash is taken from the snapshot; anyone with the key can re-derive it from the chain.";
   } else {
     const bad = res.checks.filter((c) => !c.render || !c.score).map((c) => c.name).join(", ");
     el.className = "bad";
@@ -408,7 +408,7 @@ function whisperFromHere(txid) {
   const p = document.createElement("p");
   if (!o.has_reply) { p.textContent = `Offering ${txid.slice(0, 12)}… asked for no whisper back.`; box.append(p); return; }
   p.textContent = `Offering ${txid.slice(0, 12)}… asked for a whisper back. This page never publishes reply addresses; ` +
-    "answer it from your own machine with the key (summon a Watcher first, then type the whisper at the prompt):";
+    "answer it from your own machine with the key (summon the god from the key first, then type the whisper at the prompt):";
   const code = document.createElement("code");
   code.textContent = `python3 -m renderer whisper ${txid} --wallet wallets/watcher`;
   box.append(p, code);
