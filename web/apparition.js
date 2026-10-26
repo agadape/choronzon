@@ -29,7 +29,9 @@ if (EXPLAIN) {
 fetch("config/brand.json").then((r) => r.json()).then((b) => {
   brand = b;
   document.title = `${b.name}: two evocations`;
-  $("ci_link").href = `https://github.com/agadape/${b.slug}/actions/runs/39727405735`;
+  // the CI run that re-evoked the main god from its key alone; a community god (its own repo_url) has no such run
+  if (b.repo_url) $("ci_line").hidden = true;
+  else $("ci_link").href = `https://github.com/agadape/${b.slug}/actions/runs/39727405735`;
   for (const s of Object.values(sides)) s.nameH.textContent = b.name;
 });
 

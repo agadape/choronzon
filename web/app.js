@@ -5,7 +5,8 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const README = "https://github.com/agadape/";           // + slug; anchors below point into the generated README
+// the source repository: brand.json's optional repo_url (a community god's own), else the main repo by slug
+const repoUrl = () => String((brand && brand.repo_url) || `https://github.com/agadape/${brand ? brand.slug : ""}`).replace(/\/+$/, "");
 const ZECBLOCK = "https://testnet.zecblock.com/block/";
 const fmt = (n) => Number(n).toLocaleString("en-US");
 const blocks = (h) => h.match(/.{1,8}/g) || [];
@@ -64,7 +65,7 @@ async function loadBrand() {
   for (const sel of ['meta[name="description"]', 'meta[property="og:description"]'])
     document.querySelector(sel).setAttribute("content", brand.one_liner);
   document.querySelector('meta[property="og:title"]').setAttribute("content", `${brand.name}: ${brand.tagline}`);
-  $("link_readme").href = `${README}${brand.slug}#determinism-the-blockchain-is-the-score`;
+  $("link_readme").href = `${repoUrl()}#determinism-the-blockchain-is-the-score`;
 }
 
 async function loadStatic() {
@@ -155,8 +156,10 @@ async function loadAnchor(doc) {
   el.textContent = (same ? `Anchored: statement anchor/1 for height ${fmt(st.as_of_height)} carries these two hashes, ${st.offerings} offerings, commit ${String(st.repo_commit).slice(0, 7)}. `
                          : `Anchor statement is for height ${fmt(st.as_of_height)} (render ${String(st.render_hash).slice(0, 8)}…), not this render. `)
     + `OpenTimestamps: ${proof}. Verify: python3 -m anchor verify anchor.json.`;
-  // the upgraded proof lives on the append-only anchors branch as <height>-<sha256(anchor.json)[:16]>.json.ots
-  const repo = `https://github.com/agadape/${brand ? brand.slug : ""}`;
+  // the upgraded proof lives on the append-only anchors branch as <height>-<sha256(anchor.json)[:16]>.json.ots;
+  // a god that serves no proof (a community god without anchoring) shows no anchors links
+  if (!proofState.served) return { ...st, proof: proofState };
+  const repo = repoUrl();
   const note = document.createElement("span");
   note.append(" Proof made at deploy; any OpenTimestamps verifier fetches its Bitcoin confirmation from the calendars. ");
   const tree = document.createElement("a"); tree.href = `${repo}/tree/anchors`; tree.target = "_blank"; tree.rel = "noopener";
