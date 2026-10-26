@@ -1,8 +1,8 @@
 # Your own god: a box that cannot learn who wrote to it, and cannot hide what it received
 
-Any group can stand up its own god in about ten minutes: a team retro, a meetup, a DAO, a class, a memorial. It is
-the same engine as the main god, with its own address, its own published key, its own name and page. The main god
-is not touched.
+Any group can stand up its own god: a team retro, a meetup, a DAO, a class, a memorial. It is the same engine as the
+main god, with its own address, its own published key, its own name and page. The main god is not touched. Once the
+setup below is done, a new god takes about ten minutes.
 
 What you get:
 
@@ -19,10 +19,23 @@ What you get:
 What it does not do: it does not hide what people wrote. Read [What is public, what is private](#what-is-public-what-is-private)
 before you invite anyone.
 
+## Before you start (once per organiser)
+
+- **Linux or WSL** with the repo cloned and `./scripts/setup.sh` run: it builds the patched wallet tool
+  `bin/devtool-aegis` and the pinned voice decoder (about ten minutes; measured 9 min 34 s on a fresh clone).
+- **A funded testnet wallet** of your own, to send offerings and to fund a kiosk session. The faucet gives 0.125 TAZ
+  per day and wants an older-format `utest1…` address:
+  `POST https://faucet.testnet.valargroup.dev/api/claim {"address": "<utest1…>"}`. A kiosk session with 12 notes
+  takes 0.025 TAZ (12 × 0.002 plus a fee reserve), on top of the fees of your own sends.
+- **Patience with Tor the first time.** Every tool talks to lightwalletd over Tor by default; a wallet's first Tor
+  contact downloads the Tor directory, which can take minutes (up to ~20 on a slow network). Later commands reuse it.
+- **A static host account** (Vercel, Netlify, GitHub Pages, or any web server) for the public page.
+- **No automation for your god.** The main god's page is re-rendered and redeployed by CI; yours is not. After new
+  offerings arrive you render, rebuild and upload by hand (steps 3 and 5 below).
+
 ## The ten minutes
 
-You need the repo set up as in the README ("Run it": WSL or Linux, `./scripts/setup.sh`, which builds the patched
-wallet tool `bin/devtool-aegis` and the pinned voice decoder). Commands run from the repo root. Testnet only.
+Commands run from the repo root. Testnet only.
 
 ### 1. Make the god (1–5 min)
 
@@ -46,9 +59,12 @@ The script never prints the key. It is idempotent (run it again: it finishes a h
 and refuses to overwrite anything (another name for the same slug, a `key.txt` that is not this wallet's key).
 It talks to lightwalletd over Tor by default, like every tool here; `--connection direct` is a deliberate choice.
 
-From here on, **one setting picks the god**: `GOD_CONFIG_DIR=wallets/gods/retro-demo/config`. The kiosk, the web
-server and `scripts/build_web.sh` read that god's `choir.json`, `brand.json` and `skiplist.txt` instead of `config/`.
-Without it, everything serves the main god exactly as before.
+From here on, **one setting picks the god**: `GOD_CONFIG_DIR=wallets/gods/retro-demo/config`. With it, the kiosk
+reads that god's `choir.json` (its address) and `brand.json`; the renderer and the anchor statement read its
+`skiplist.txt` (and the network from its `choir.json`) unless you pass `--skiplist`; the web server and
+`scripts/build_web.sh` read its `brand.json`, `choir.json` and `skiplist.txt`. Without it, everything serves the
+main god exactly as before. `--repo-url https://…` (optional) puts your fork's address in `brand.json` as the page's
+source link; without it the page links no repository.
 
 ### 2. Give it a first offering (2–4 min)
 
@@ -69,13 +85,14 @@ Testnet coins: `POST https://faucet.testnet.valargroup.dev/api/claim {"address":
 ### 3. Render it (1 min after the offering is mined)
 
 ```bash
-python3 -m renderer once --wallet wallets/gods/retro-demo/watcher --sync \
-  --skiplist wallets/gods/retro-demo/config/skiplist.txt --out wallets/gods/retro-demo/out
+GOD_CONFIG_DIR=wallets/gods/retro-demo/config python3 -m renderer once --wallet wallets/gods/retro-demo/watcher \
+  --sync --out wallets/gods/retro-demo/out
 cat wallets/gods/retro-demo/out/render_hash
 ```
 
-The renderer only needs the watcher, which holds nothing but the key. Keep it current during an event with
-`python3 -m renderer daemon` and the same flags (minus `--sync`).
+The renderer only needs the watcher, which holds nothing but the key, and takes the god's skiplist from
+`GOD_CONFIG_DIR`. Keep it current during an event with `python3 -m renderer daemon` and the same flags (minus
+`--sync`).
 
 ### 4. See it (1 min)
 
@@ -98,7 +115,8 @@ GOD_CONFIG_DIR=wallets/gods/retro-demo/config scripts/build_web.sh --out wallets
 it), the key in `key.txt` and nowhere else, a strict Content-Security-Policy, and no request to any other host.
 Upload `dist/` to any static host: `npx vercel deploy wallets/gods/retro-demo/dist --prod`, `netlify deploy --dir`,
 GitHub Pages, or any web server. Publishing the key is irrevocable: from then on every offering, past and future,
-is readable by anyone who holds it. Rebuild and upload again after each render to refresh the page.
+is readable by anyone who holds it. Nothing refreshes the page for you: after new offerings, run step 3 again, then
+this build, then upload `dist/` again.
 
 Anyone can then check you, from the key alone:
 
@@ -150,11 +168,16 @@ python3 -m kiosk session open --notes 12 --pool <your funded testnet wallet dir>
 
 `session open` creates a fresh ephemeral wallet, funds it from your wallet, waits ~10 confirmations, then splits it
 into 12 notes (one per offering, plus spares for failed broadcasts). Over Tor with a cold cache it can take up to
-~20 minutes; start it first. Then, in two more terminals (same `GOD_CONFIG_DIR`):
+~20 minutes; start it first.
+
+One kiosk session per machine, whichever god: the session wallet lives in `wallets/kiosk/current/` for every god,
+and an offering goes to the god that `GOD_CONFIG_DIR` names when it is sent. Close one god's session before you open
+another's, and run every kiosk command of an event with the same `GOD_CONFIG_DIR`.
+
+Then, in two more terminals (same `GOD_CONFIG_DIR`):
 
 ```bash
-python3 -m renderer daemon --wallet wallets/gods/retro-demo/watcher \
-  --skiplist wallets/gods/retro-demo/config/skiplist.txt --out wallets/gods/retro-demo/out
+python3 -m renderer daemon --wallet wallets/gods/retro-demo/watcher --out wallets/gods/retro-demo/out
 python3 -m web --port 8765 --kiosk --out wallets/gods/retro-demo/out --wallet wallets/gods/retro-demo/watcher
 ```
 

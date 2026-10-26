@@ -116,7 +116,8 @@ if [ "$CHECK" = 1 ]; then verify && echo "dist/ verified: allow-list only"; exit
 for f in brand.json choir.json skiplist.txt; do
   [ -f "$CONFIG_DIR/$f" ] || { echo "!! $CONFIG_DIR/$f missing (GOD_CONFIG_DIR names a god's config directory)" >&2; exit 1; }
 done
-[ "$CONFIG_DIR" = config ] || echo "building the god in $CONFIG_DIR (GOD_CONFIG_DIR)" >&2
+IS_MAIN=0; [ "$(realpath -m "$CONFIG_DIR")" = "$(realpath -m config)" ] && IS_MAIN=1
+[ "$IS_MAIN" = 1 ] || echo "building the god in $CONFIG_DIR (GOD_CONFIG_DIR)" >&2
 [ -f "$OUT/score.json" ] || { echo "!! $OUT/score.json missing: run python3 -m renderer once --wallet wallets/test/V --sync --out $OUT first" >&2; exit 1; }
 rm -rf "$DIST"; mkdir -p "$DIST/config" "$DIST/out"
 cp web/index.html web/apparition.html "$DIST/"
@@ -124,7 +125,7 @@ cp web/index.html web/apparition.html "$DIST/"
 # stays out of the source, which only carries placeholders)
 OG=""
 if [ -f "$CONFIG_DIR/og.png" ]; then OG="$CONFIG_DIR/og.png"
-elif [ "$CONFIG_DIR" = config ] && [ -f web/og.png ]; then OG=web/og.png; fi   # web/og.png shows the main god
+elif [ "$IS_MAIN" = 1 ] && [ -f web/og.png ]; then OG=web/og.png; fi   # web/og.png shows the main god
 python3 - "$DIST" "$CONFIG_DIR/brand.json" "$OG" <<'EOF'
 import html, json, re, sys
 from pathlib import Path

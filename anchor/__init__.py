@@ -44,7 +44,11 @@ def repo_commit(cwd: Path = REPO) -> str:
     return sha if out.returncode == 0 and _COMMIT.match(sha) else "unknown"
 
 
-def network_name(choir_config: Path = REPO / "config" / "choir.json") -> str:
+def network_name(choir_config: Path | None = None) -> str:
+    """The chain the god lives on, from its choir.json (config/, or the god GOD_CONFIG_DIR names)."""
+    if choir_config is None:
+        from kiosk.config_dir import config_file
+        choir_config = config_file("choir.json")
     net = json.loads(choir_config.read_text())["network"]   # only this field is read: the file also holds an address
     if net not in NETWORKS:
         raise StatementError(f"unknown network {net!r} in {choir_config}")
@@ -103,8 +107,11 @@ def canonical(doc: dict) -> bytes:
     return (json.dumps(doc, sort_keys=True, indent=1, ensure_ascii=True) + "\n").encode("ascii")
 
 
-def from_out(out_dir: Path, skiplist: Path = REPO / "config" / "skiplist.txt", commit: str | None = None,
+def from_out(out_dir: Path, skiplist: Path | None = None, commit: str | None = None,
              network: str | None = None) -> bytes:
+    if skiplist is None:
+        from kiosk.config_dir import config_file
+        skiplist = config_file("skiplist.txt")
     score = json.loads((Path(out_dir) / "score.json").read_text())
     return canonical(build(score, Path(skiplist).read_bytes(), commit or repo_commit(),
                            network or network_name()))

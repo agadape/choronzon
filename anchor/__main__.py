@@ -29,7 +29,7 @@ def _proof_path(statement: Path, given: str | None) -> Path:
 
 
 def cmd_statement(a) -> int:
-    data = from_out(Path(a.out), Path(a.skiplist), a.commit or None)
+    data = from_out(Path(a.out), Path(a.skiplist) if a.skiplist else None, a.commit or None)
     if a.to:
         Path(a.to).write_bytes(data)
     else:
@@ -180,7 +180,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="command", required=True)
     s = sub.add_parser("statement")
     s.add_argument("--out", default=str(REPO / "out"), help="render directory holding score.json")
-    s.add_argument("--skiplist", default=str(REPO / "config" / "skiplist.txt"))
+    s.add_argument("--skiplist", default=None, help="default: config/skiplist.txt, or GOD_CONFIG_DIR's")
     s.add_argument("--commit", default="", help="repo commit (default: git rev-parse HEAD)")
     s.add_argument("--to", help="write here instead of stdout")
     s = sub.add_parser("stamp")

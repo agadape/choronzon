@@ -157,6 +157,15 @@ def test_rejects_bad_slugs(env, slug):
     assert not env.gods.exists() or not any(env.gods.iterdir())
 
 
+def test_repo_url_is_empty_unless_given(env):
+    env("--slug", "a1", "--name", "A")
+    assert json.loads((env.gods / "a1" / "config" / "brand.json").read_text())["repo_url"] == ""
+    env("--slug", "b1", "--name", "B", "--repo-url", "https://example.org/our/fork")
+    assert json.loads((env.gods / "b1" / "config" / "brand.json").read_text())["repo_url"] == \
+        "https://example.org/our/fork"
+    assert env("--slug", "c1", "--name", "C", "--repo-url", "javascript:alert(1)", check=False).returncode != 0
+
+
 def test_rejects_multiline_names(env):
     assert env("--slug", "ok", "--name", "a\nb", check=False).returncode != 0
 

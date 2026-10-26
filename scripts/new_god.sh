@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Stand up a new god for your own community (testnet):
 #
-#   scripts/new_god.sh --slug retro-demo --name "The Retro God" [--tagline "..."] [--connection tor|direct]
+#   scripts/new_god.sh --slug retro-demo --name "The Retro God" [--tagline "..."] [--repo-url https://…]
+#                      [--connection tor|direct]
 #
 # Creates wallets/gods/<slug>/ (git-ignored): the god's wallet + age identity, its full viewing key in key.txt
 # (mode 600, never printed), a view-only watcher made from that key, and config/ (choir.json, brand.json,

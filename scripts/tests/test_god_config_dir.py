@@ -57,6 +57,36 @@ def test_kiosk_names_the_chosen_gods_watcher_as_proof(monkeypatch, other):
     assert f"-w {other.parent / 'watcher'} list-tx" in sent("ab" * 32)
 
 
+def _renderer_args(monkeypatch, *argv):
+    import renderer.__main__ as rm
+    seen = {}
+    monkeypatch.setattr(rm, "cmd_once", lambda a: seen.setdefault("args", a))
+    rm.main(["once", "--wallet", "w", "--out", "", "--connection", "direct", *argv])
+    return seen["args"]
+
+
+def test_renderer_skiplist_default_follows_the_chosen_god(monkeypatch, other):
+    monkeypatch.delenv(cd.ENV, raising=False)
+    assert _renderer_args(monkeypatch).skiplist == str(ROOT / "config" / "skiplist.txt")
+    monkeypatch.setenv(cd.ENV, str(other))
+    assert _renderer_args(monkeypatch).skiplist == str(other / "skiplist.txt")
+    assert _renderer_args(monkeypatch, "--skiplist", "x.txt").skiplist == "x.txt"   # an explicit flag still wins
+
+
+def test_anchor_network_and_skiplist_follow_the_chosen_god(monkeypatch, other, out):
+    import hashlib
+    import anchor
+    monkeypatch.delenv(cd.ENV, raising=False)
+    assert anchor.network_name() == "zcash-testnet"
+    main_doc = json.loads(anchor.from_out(out, commit="a" * 40))
+    assert main_doc["skiplist_sha256"] == hashlib.sha256((ROOT / "config" / "skiplist.txt").read_bytes()).hexdigest()
+    (other / "choir.json").write_text(json.dumps({"network": "main", "address": OTHER_ADDR, "amount_zat": 1000}))
+    monkeypatch.setenv(cd.ENV, str(other))
+    assert anchor.network_name() == "zcash-mainnet"
+    doc = json.loads(anchor.from_out(out, commit="a" * 40))
+    assert doc["skiplist_sha256"] == hashlib.sha256(b"# none\n").hexdigest() and doc["network"] == "zcash-mainnet"
+
+
 def test_relative_paths_are_from_the_repo_root():
     assert cd.config_dir({cd.ENV: "wallets/gods/x/config"}) == ROOT / "wallets" / "gods" / "x" / "config"
 
@@ -132,6 +162,14 @@ def test_build_web_default_is_unchanged(out, tmp_path):
     import hashlib
     assert json.loads((dist / "anchor.json").read_text())["skiplist_sha256"] == \
         hashlib.sha256((ROOT / "config" / "skiplist.txt").read_bytes()).hexdigest()
+
+
+def test_build_web_an_absolute_path_to_the_main_config_is_the_main_god(out, tmp_path):
+    dist = tmp_path / "dist"
+    r = _build(out, dist, {cd.ENV: str(ROOT / "config")})
+    assert r.returncode == 0, r.stderr
+    assert "building the god in" not in r.stderr and (dist / "og.png").exists()
+    assert (dist / "config" / "brand.json").read_bytes() == (ROOT / "config" / "brand.json").read_bytes()
 
 
 def test_build_web_refuses_an_incomplete_config_dir(out, tmp_path):

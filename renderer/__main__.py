@@ -26,6 +26,7 @@ from .decoder import REPO, Decoder
 from .tts import Voice
 from .score import load_skiplist
 from .wallet import NotReady, WalletDB, sync_and_enhance
+from kiosk.config_dir import config_file   # which god: config/ unless GOD_CONFIG_DIR names another
 
 log = logging.getLogger("renderer")
 DEFAULT_WHISPER = "you are not alone."
@@ -202,7 +203,8 @@ def main(argv: list[str] | None = None) -> None:
         s = sub.add_parser(name)
         s.add_argument("--wallet", required=True, help="wallet directory (view-only)")
         s.add_argument("--out", default=str(REPO / "out"), help="output directory ('' = don't write, once only)")
-        s.add_argument("--skiplist", default=str(REPO / "config" / "skiplist.txt"))
+        s.add_argument("--skiplist", default=str(config_file("skiplist.txt")),
+                       help="silenced txids (default: config/skiplist.txt, or that of the god GOD_CONFIG_DIR names)")
         s.add_argument("--c2dec", default=str(REPO / "bin" / "c2dec"))
         s.add_argument("--devtool", default=str(REPO / "bin" / "devtool-aegis"))
         s.add_argument("--server", default="zecrocks")

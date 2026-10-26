@@ -68,7 +68,7 @@ def rel(p: Path) -> str:
         return str(p)
 
 
-def brand_doc(slug: str, name: str, tagline: str | None) -> dict:
+def brand_doc(slug: str, name: str, tagline: str | None, repo_url: str = "") -> dict:
     return {
         "name": name,
         "slug": slug,
@@ -77,6 +77,8 @@ def brand_doc(slug: str, name: str, tagline: str | None) -> dict:
                       f"cannot hide what it received. Anyone holding its published key hears every offering and "
                       f"re-renders it to the same hash."),
         "kiosk_cta": "Give it a secret. It does not ask your name.",
+        # where this god's code lives, for the page's source link; empty: the page links no repository
+        "repo_url": repo_url,
     }
 
 
@@ -99,6 +101,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--slug", required=True, help="lowercase letters, digits, dashes (e.g. retro-demo)")
     p.add_argument("--name", required=True, help="display name on its page and kiosk")
     p.add_argument("--tagline", help="one line under the name")
+    p.add_argument("--repo-url", default="", help="https URL of your fork, shown as the page's source link "
+                   "(default: none)")
     p.add_argument("--gods-dir", default=str(REPO / "wallets" / "gods"), help=argparse.SUPPRESS)  # tests
     p.add_argument("--devtool", default=str(DEFAULT_DEVTOOL), help="the patched zcash-devtool (bin/devtool-aegis)")
     p.add_argument("--server", default="zecrocks")
@@ -121,7 +125,9 @@ def main(argv: list[str] | None = None) -> int:
     base = Path(a.gods_dir) / a.slug
     cfg, out = base / "config", base / "out"
     god_dir, identity, watcher_dir, key_file = base / "god", base / "god.age", base / "watcher", base / "key.txt"
-    brand = brand_doc(a.slug, name, tagline)
+    if a.repo_url and not re.match(r"^https://[^\s\"<>]+$", a.repo_url):
+        p.error("--repo-url: an https:// URL")
+    brand = brand_doc(a.slug, name, tagline, a.repo_url)
 
     # same god, other words: refuse before anything runs
     if (cfg / "brand.json").exists():
@@ -227,8 +233,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  its address is in {c}/choir.json; its full viewing key is in {g}/key.txt (mode 600, not shown)")
     print(f"""
 next steps (from the repo root):
-  render it (the watcher holds only the key):
-    python3 -m renderer once --wallet {g}/watcher --sync --skiplist {c}/skiplist.txt --out {g}/out
+  render it (the watcher holds only the key; GOD_CONFIG_DIR gives the renderer this god's skiplist):
+    {env} python3 -m renderer once --wallet {g}/watcher --sync --out {g}/out
   give it an offering (a phone wallet scans the QR; the text is typed at the prompt):
     {env} python3 -m kiosk qr --png {g}/out/give.png
   or run a kiosk (an ephemeral session wallet funded from your own wallet):
@@ -240,6 +246,8 @@ next steps (from the repo root):
     {env} scripts/build_web.sh --out {g}/out --dist {g}/dist --key-file {g}/key.txt --birthday {birthday}
   deploy {g}/dist/ to your own static host, e.g.:
     npx vercel deploy {g}/dist --prod      (or netlify deploy --dir, GitHub Pages, any web server)
+  nothing refreshes it for you: after new offerings, render, build and upload again
+  one kiosk session per machine, whichever god (wallets/kiosk/current/): close one before opening another
   anyone else hears it from the key alone:
     python3 -m renderer summon --key-file key.txt --birthday {birthday} --wallet wallets/watcher
 walkthrough: docs/your-own-god.md""")
