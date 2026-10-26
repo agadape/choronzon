@@ -1,12 +1,13 @@
-# Submission checklist (deadline 28 Oct 2026, one submission, one track: Wildcard)
+# Submission checklist (deadline 28 Oct 2026 23:59 UTC, one submission, one track: Wildcard)
 
 Rules (official page, read by the user on 26 Oct): one person registers and submits, and the prize goes to that
 account (build with anyone); all code written during the build window (libraries are fine, existing products are
 not); open source at submission, and a private repo made public on 28 Oct counts; one submission per account, in
 exactly one track; submissions stay sealed until judging and **can be edited until the deadline** (so submit early,
 then refine); prizes are paid in ZEC to a shielded address, and the organisers contact winners on Telegram after
-judging to get it, so **no address goes into the form**. Help: the organisers' e-mail on the rules page. Not on the
-rules page: the deadline's hour and time zone (check the schedule page) and any rule on AI tools (we disclose anyway).
+judging to get it, so **no address goes into the form**. Help: the organisers' e-mail on the rules page. Schedule page: submissions open 28 Sep, **due 28 Oct 2026 23:59 UTC (29 Oct 06:59 WIB)**, judges revealed
+29 Oct, judging 29 Oct to 22 Nov, winners 23 Nov. The build window is the thirty days from 28 Sep; all of our work
+started 13 Oct (see `SPIKE_LOG.md`), inside it. No rule on AI tools on the page (we disclose anyway).
 
 ## Before making the repository public
 
