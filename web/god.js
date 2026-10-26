@@ -56,7 +56,7 @@ vec3 shade(vec3 alb, vec3 N, vec3 P, float rough, float sss, float ao){
   float fres = pow(1. - max(dot(N, V), 0.), 4.5);
   float back = smoothstep(-.3, .9, dot(uRim, -V)) * max(dot(N, uRim) + .35, 0.);
   vec3 Lu = uUnder - P; float du = length(Lu); float u = max(dot(N, Lu / du), 0.) * 12. / (1. + du * du * .06) * uUnderK;
-  vec3 Ls = uSingP - P; float ds = length(Ls); float sg = uSing * max(dot(N, Ls / ds), 0.) * 9. / (1. + ds * ds * .3);
+  vec3 Ls = uSingP - P; float ds = length(Ls); float sg = uSing * max(dot(N, Ls / ds), 0.) * 2.2 / (1. + ds * ds * 2.5);   // local: the voice lights its neighbours only
   float sp = pow(max(dot(N, normalize(uKey + V)), 0.), mix(140., 14., rough)) * (1. - rough);
   float spR = pow(max(dot(N, normalize(uRim + V)), 0.), mix(100., 10., rough)) * (1. - rough);
   return alb * ao * (vec3(.006, .008, .012) + vec3(.3, .35, .37) * mix(k, wrap, sss) + vec3(.62, .09, .04) * u + vec3(.45, 1., .7) * sg)
@@ -469,7 +469,7 @@ function mount(canvas, doc, opts = {}) {
         irc = mix(irc, vIris * 1.6, smoothstep(pr * 1.6, pr * 1.05, r) * .5);
         float im = smoothstep(ir + .02, ir - .02, r) * front;
         col = mix(col, irc, im);
-        emit = (vIris * 2.4 * st + vec3(.5, 1., .72) * .6) * vWake * im;
+        emit = (vIris * 1.1 * st + vec3(.5, 1., .72) * .35) * vWake * im;
         float pm = vEye.y > .5 ? smoothstep(1., .8, length(ip / vec2(pr * .28, pr * 1.15))) : smoothstep(pr + .015, pr - .015, r);
         pm *= front; col = mix(col, vec3(.003), pm); emit *= 1. - pm;
       } else col = mix(col, vec3(.5, .06, .04), .7);
@@ -501,6 +501,15 @@ function mount(canvas, doc, opts = {}) {
   const backTex = keep(new THREE.CanvasTexture(backC));
   const backLight = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: backTex, color: new THREE.Color(2.2, 3.0, 2.7), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false })));
   backLight.scale.setScalar(16); scene.add(backLight);
+  // the mark of the eye that sounds (or was found): a small cold halo around that one eye, drawn over the scene
+  const markC = document.createElement("canvas"); markC.width = markC.height = 128;
+  { const x = markC.getContext("2d"), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, "rgba(255,255,255,0)"); g.addColorStop(0.42, "rgba(255,255,255,0)"); g.addColorStop(0.5, "rgba(200,255,220,0.9)");
+    g.addColorStop(0.62, "rgba(140,240,190,0.35)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, 128, 128); }
+  const markTex = keep(new THREE.CanvasTexture(markC));
+  const mark = new THREE.Sprite(keep(new THREE.SpriteMaterial({ map: markTex, color: new THREE.Color(0.9, 1.4, 1.1), blending: THREE.AdditiveBlending,
+    depthWrite: false, depthTest: false, transparent: true, fog: false })));
+  mark.visible = false; mark.renderOrder = 10; scene.add(mark);
 
   // ---------------------------------------------------------------- lids: a shell of flesh with an almond cut, one instanced mesh
   const lidMat = mat(
@@ -713,10 +722,15 @@ function mount(canvas, doc, opts = {}) {
     });
     const sing = singer >= 0 && sw > 0.25;
     U.uSing.value = sing ? sw : 0; if (singer >= 0) U.uSingP.value.copy(eyePos[singer]);
+    if (singer >= 0 && sw > 0.05) {                       // the halo sits on that one eye and breathes a little
+      mark.visible = true; mark.position.copy(eyePos[singer]);
+      mark.scale.setScalar(eyeList[singer].r * (1 + 0.8 * sw) * 3.2 * (1 + 0.05 * Math.sin(time * 3)));
+      mark.material.opacity = Math.min(1, sw * 1.2);
+    } else mark.visible = false;
     if (once || now - gazeAt >= 50) { gazeAt = now; chooseGazes(now, time, sing, singer); }   // targets at 20 Hz
     eyeList.forEach((e, i) => {
       const P = eyePos[i]; let scale = e.r;
-      if (e.kind === "ring") scale = e.it.silent ? e.r * 0.9 : e.r * (1 + 0.15 * e.w);
+      if (e.kind === "ring") scale = e.it.silent ? e.r * 0.9 : e.r * (1 + 0.8 * e.w);   // the sounding / found eye grows
       else if (e.kind === "blind" && ((time * (0.15 + 0.1 * e.g[5]) + e.g[3]) % 1) >= 0.55) scale = 0;
       const want = gazeWant[i];
       if (!eyeLook[i]) eyeLook[i] = want.clone();

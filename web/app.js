@@ -229,6 +229,7 @@ function mountGod(doc) {
       document.body.classList.add("webgl");
       window.__god = god;
       god.setPaused(godOffscreen);
+      if (found) god.setFocus(found.tx);   // a #tx= link may be answered before the god has mounted
       leafOffset();
       return;
     } catch (e) { god = null; document.body.classList.remove("webgl"); }
