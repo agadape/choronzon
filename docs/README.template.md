@@ -50,6 +50,20 @@ Messages hidden inside a summoning: that is what a shielded memo is.
 | Anyone can post in the god's name. | The god's own lines are spends of its own notes, which only the spend key can make. Anyone with the viewing key can tell them from forgeries (spike S13, live on 21 Oct). |
 | A database cannot give two strangers a private channel without holding both ends. | Whisper Back: the reply goes straight to the wallet holding the offering's reply address; with the sender's own wallet, it travels between two wallets, never through us. |
 
+## Related work, and what is different here
+
+- **Memo boards on Zcash** (ZECpages and similar): shielded memos to an address whose viewing key is published, so
+  the content is public and the author hidden. That half of the idea already exists; we build on it. What is new
+  here: the chain is rendered into one work that any key holder can reproduce to the same `render_hash` (audio
+  included), the god's own lines are authenticated by its wallet paying itself (forgeries are refused on sight), and
+  an offering can carry a one-time address for a reply that goes straight to the giver's wallet, which the public key
+  never sees.
+- **Anonymous confession sites** (PostSecret, confession apps): a bigger audience and less friction, but the operator
+  holds the submissions and decides who sees what. Here there is no operator who knows the giver, and nothing to
+  trust: the key and the chain are the whole archive.
+- **Generative art from chain data:** works that turn public transactions into images or sound. Here the material is
+  the encrypted memo itself, readable only through a key the work chose to publish.
+
 ## How it works
 
 ```mermaid
@@ -213,7 +227,11 @@ python3 -m renderer whisper <txid> --wallet wallets/test/V            # reply re
 | `config/` | `brand.json` (name and copy), `skiplist.txt` (flagged offerings: still on chain, never sung) |
 | `scripts/` | `setup.sh`, `smoke.sh`, `demo.sh` (end-to-end rehearsal), `gen_readme.py` |
 | `docs/` | This template, [lore](docs/lore.md), [demo script](docs/demo-script.md), [fresh clone](docs/fresh-clone.md), [evidence index](docs/evidence-index.md), [privacy review](docs/privacy-review.md), [failure drills](docs/failure-drills.md), [network fallback](docs/network-fallback.md), [visual direction](docs/visual-direction.md), [submission checklist](docs/submission-checklist.md), concept and critical review |
-| `spikes/`, `SPIKE_LOG.md`, `ai/`, `radio/` | Research and on-chain evidence from 13–20 Oct, kept as it was |
+| `spikes/`, `SPIKE_LOG.md`, `ai/`, `radio/`, `topeng-spike/` | Research and on-chain evidence from 13–20 Oct, kept as it was |
+| `design/explorations/` | Visual mockups that led to the current god (never built or served) |
+| `CLAUDE.md`, `TODO.md` | The working handoff notes and day-by-day checklist, kept public as the build log |
+
+**How to read this repository:** the product is `protocol/`, `renderer/`, `kiosk/`, `web/`, `anchor/`, `config/` and `scripts/`; the claims are backed in `docs/evidence-index.md`. Everything else is the record of how it was built: research spikes, rejected ideas, mockups, audits (`docs/audit-26oct.md`) and working notes. Some early concept documents (the concept and critical review in `docs/`, `ai/phone-test/`) are partly in Indonesian, the team's working language, and carry the project's working title.
 
 ## Evidence (Zcash testnet, NU7)
 
