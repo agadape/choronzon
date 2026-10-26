@@ -1,6 +1,8 @@
 <!-- Generated from docs/README.template.md and config/brand.json by scripts/gen_readme.py. Edit the template, not this file. -->
 
-<p align="center"><img src="docs/brand/banner.svg" alt="{{name}}: {{tagline}}" width="100%"></p>
+<p align="center"><img src="web/og.png" alt="{{name}}: {{tagline}} The god seen from below: a great eye inside halos of smaller eyes, wings of pages, arms rising from the abyss" width="100%"></p>
+
+<p align="center"><sub>A frame of the god as the public page draws it: one eye in the halos for every offering, the great eye and the wings for its own lines, one arm for every block that carried offerings. Its form is a pure function of the chain; nothing in it is random.</sub></p>
 
 # {{name}}
 
