@@ -50,6 +50,62 @@ Messages hidden inside a summoning: that is what a shielded memo is.
 | Anyone can post in the god's name. | The god's own lines are spends of its own notes, which only the spend key can make. Anyone with the viewing key can tell them from forgeries (spike S13, live on 21 Oct). |
 | A database cannot give two strangers a private channel without holding both ends. | Whisper Back: the reply goes straight to the wallet holding the offering's reply address; with the sender's own wallet, it travels between two wallets, never through us. |
 
+## Against the judging criteria, with proofs
+
+The organisers score four things. Each claim below links to something you can check yourself; nothing here is
+self-assessment without evidence.
+
+**Privacy: "does it actually preserve privacy, or does it only look like it does?"**
+
+- The privacy comes from the protocol, not from a promise: every offering is a shielded payment of a fixed amount,
+  so the published key shows what was said and never who paid ([Why it needs Zcash](#why-it-needs-zcash)).
+- Three independent reviews found no disqualifying leak: a privacy audit (24 Oct), a read-only product audit
+  ([docs/audit-26oct.md](docs/audit-26oct.md): git history, 34 CI logs, the `anchors` branch and the live site
+  scanned) and an external judge-style review (26 Oct). Every issue they found was fixed and its claim corrected,
+  e.g. shielded-only reply addresses (`5aaaf0b`, `306f638`), no secrets on argv and a Host guard on the local server
+  (`29478a2`), no retry that could send twice (`50ec398`).
+- The kiosk sends from an ephemeral wallet that is overwritten and deleted after the session, and reaches
+  lightwalletd over Tor by default, failing closed (`cd6c691`, [docs/network-fallback.md](docs/network-fallback.md)).
+- The public page builds the payment request in the browser and makes no third-party request; a strict
+  Content-Security-Policy enforces it (`95eef53`).
+- What is not protected is written down, not hidden: [Privacy](#privacy-read-this-before-you-give-it-anything)
+  and [Limits](#limits).
+
+**Execution: "does it run? Working beats ambitious."**
+
+- It runs on Zcash testnet with real transactions, each with a txid in
+  [docs/evidence-index.md](docs/evidence-index.md): the first kiosk offering `91621cb4…`, Whisper Back
+  `8d02a6b0…` → `143f91ee…`, the god's own line `d6bcb9f7…` accepted and its forgery `b126b3c7…` refused, an
+  offering from the public page by a real phone wallet `efc5ef44…`.
+- The full three-minute demo passed end to end over Tor on 25 Oct in 637 s
+  ([docs/network-fallback.md](docs/network-fallback.md)).
+- A judge's path on a fresh clone passed on 26 Oct: `setup.sh` in 454 s, 280 tests passed, `renderer summon` from
+  the README key printed the live site's `render_hash` ([docs/audit-26oct.md](docs/audit-26oct.md)).
+- A machine we do not own reproduced the work from the key alone: GitHub Actions
+  [run 39727405735](https://github.com/agadape/choronzon/actions/runs/39727405735) printed the laptop's
+  `render_hash`.
+- 321 automated tests, including 45 hostile memos that all fail closed; published renders are anchored in Bitcoin
+  (the first ones in block 972,742, [docs/anchoring.md](docs/anchoring.md)).
+
+**Originality: "built for this hackathon, not repackaged."**
+
+- Built from scratch in the window: on-chain spikes from 13 Oct ([SPIKE_LOG.md](SPIKE_LOG.md)), this repository from
+  20 Oct, every commit public in its history.
+- Only libraries and tools come from outside, all credited ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)):
+  zcash-devtool with the Aegis Gate NU7 patch, Codec2, espeak-ng, three.js.
+- What is new compared with memo boards, confession sites and chain art:
+  [Related work](#related-work-and-what-is-different-here).
+
+**Usefulness: "would someone use this on Monday?"**
+
+- It is an artwork first, and that is the honest answer: its use is the act of giving a secret to something that
+  forgets nothing and cannot know who you are.
+- People did use it: at a kiosk session on 26 Oct, 6 of 16 invited people gave a secret (all real, by their own
+  account) and 10 declined after reading that it is public forever; one more offering came from the public page by
+  phone ([docs/evidence-index.md](docs/evidence-index.md)).
+- Anyone can give from the public page with their own wallet, find their offering, check the audio against the
+  anchored hash, and summon the whole god on their own machine from the published key.
+
 ## Related work, and what is different here
 
 - **Memo boards on Zcash** (ZECpages and similar): shielded memos to an address whose viewing key is published, so
