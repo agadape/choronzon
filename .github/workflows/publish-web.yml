@@ -197,8 +197,18 @@ jobs:
         if: steps.compare.outputs.changed == 'true'
         env:
           ANCHOR_OTS: ${{ steps.otsclient.outputs.ots }}
+          CHOIR_UFVK: ${{ secrets.CHOIR_UFVK }}
         # --stamp: anchor.json.ots from the public calendars; a failed stamp is a warning (docs/anchoring.md)
-        run: scripts/build_web.sh --out out --dist dist --stamp >/dev/null
+        # --key-file: the key is published as key.txt from 24 Oct (CLAUDE.md section 6, approved by the user 26 Oct);
+        # the file lives only for this step, is never echoed, and build_web.sh fails if the key lands anywhere else
+        run: |
+          umask 077
+          k="$RUNNER_TEMP/site.key"
+          printf '%s\n' "$CHOIR_UFVK" >"$k"
+          rc=0
+          scripts/build_web.sh --out out --dist dist --stamp --key-file "$k" --birthday "$CHOIR_BIRTHDAY" >/dev/null || rc=$?
+          shred -u "$k" 2>/dev/null || rm -f "$k"
+          exit $rc
 
       - name: Deploy to Vercel production
         if: steps.compare.outputs.changed == 'true'
