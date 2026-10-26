@@ -14,7 +14,7 @@
 
 **Listen to it:** [{{slug}}.vercel.app](https://{{slug}}.vercel.app): a static snapshot of the god rendered from the public viewing key at the block of its newest transaction (the height and render time are printed on the page). From the page you can also **give it a secret** with your own testnet wallet (the page builds the same payment request as `kiosk qr` and sends nothing itself), **find your offering** by its transaction id or number (`#tx=<txid>`, `#offering=<n>`; fragments never reach a server log), and check that the audio you hear is the audio anchored in Bitcoin (the page recomputes the render hash from it). Whisper Back and the kiosk live at the installation; the key is [in this README](#the-key). The public site sends a strict Content-Security-Policy and no referrer. A GitHub Actions job summons it from the key alone every 30 minutes and redeploys only when the render changed ([docs/auto-publish.md](docs/auto-publish.md)); manual fallback `scripts/publish_web.sh`.
 
-Also a tool: **any group can make its own god in about ten minutes**, a box that cannot learn who wrote to it and cannot hide what it received ([Use it on Monday](#use-it-on-monday-your-own-god)).
+Also a tool: **any group can make its own god with one command**, a box that cannot learn who wrote to it and cannot hide what it received ([Use it on Monday](#use-it-on-monday-your-own-god)).
 
 ---
 
@@ -108,7 +108,7 @@ self-assessment without evidence.
 - Anyone can give from the public page with their own wallet, see their eye appear at once as pending and open
   when the chain carries it, find it again later, check the audio against the anchored hash, and summon the whole
   god on their own machine from the published key.
-- **Monday:** any group can make its own god in about ten minutes, a box that cannot learn who wrote to it and
+- **Monday:** any group can make its own god with one command (`scripts/new_god.sh`), a box that cannot learn who wrote to it and
   cannot hide what it received ([Use it on Monday](#use-it-on-monday-your-own-god); proven with a second test god
   on 26 Oct, `e6971fa`).
 
@@ -117,7 +117,9 @@ self-assessment without evidence.
 The god is the first instance of a general tool: **an address with a published viewing key becomes a box that cannot
 learn who wrote to it and cannot hide what it received.** The protocol hides every sender; anyone with the key
 re-renders the box to the same hash and sees every offering, including the silenced ones with their reasons. Any
-group can stand up its own in about ten minutes:
+group can stand up its own with one command, about ten minutes once the tools are built (`scripts/setup.sh`, ~10 min
+the first time) and it holds a funded testnet wallet; its site is a static folder it uploads to any static host
+after each render (there is no CI for a community's god yet):
 
 - **a team retro or a class:** honest feedback the organiser cannot attribute and cannot quietly drop;
 - **a meetup, a town hall or an AMA:** questions without a name, in a record nobody can edit afterwards;
