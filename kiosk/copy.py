@@ -24,14 +24,18 @@ _STATEMENT = """Before you give it anything, read this.
                   are public to every key holder (full viewing key).
   Not guaranteed: that nobody recognises your words or your style.
                   Content and voice can identify you; names and places identify you.
+                  Timing can link you: at the kiosk the room sees who is typing,
+                  and one offering lands a minute or two later.
 
   Your own wallet stores what you sent. This kiosk sends from a session wallet
   that is overwritten and deleted when the session closes (on SSDs and VM disks
-  the overwrite is best-effort). If you send from your own phone, your phone remembers.
+  the overwrite is best-effort). If you send from your own phone, your phone remembers,
+  and {phone}
 
   Whisper back: if you ask for it here, the reply lands in this kiosk's session
   wallet, which the operator holds until the session closes: the operator can read it.
-  For a reply only you can read, give the address of your own wallet instead.
+  For a reply only you can read, give the address of your own wallet instead
+  (shielded-only, zutest1…).
   Replies to a per-offering address can be sent by anyone holding the public key.
 {route}
   Order inside a block is miner order, not send order.
@@ -47,9 +51,20 @@ _ROUTE = {
 }
 
 
+# the phone / QR path (section 6 MUST): printed by `kiosk qr` and part of the statement
+PHONE = ("your wallet's server sees your IP when you send and, because the god's key is public,\n"
+         "  can read that offering.")
+
+
 def privacy(connection: str) -> str:
     """The statement for the route this kiosk uses now ('tor' or 'direct'); an unknown route is refused."""
-    return _STATEMENT.format(route=_ROUTE[connection])
+    return _STATEMENT.format(route=_ROUTE[connection], phone=PHONE)
+
+
+def phone_note() -> str:
+    """One paragraph for the phone path: the contributor's own wallet sends, through its own server."""
+    return ("Sending from your own wallet: your wallet stores what you sent, and " + PHONE.replace("\n  ", " ")
+            + " Timing can link you: one offering lands a minute or two after you send.")
 
 
 def banner() -> str:

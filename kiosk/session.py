@@ -346,14 +346,27 @@ def replies_for(db_path: Path, state: dict, contrib_id: int) -> list[dict]:
     return out
 
 
+# A visitor's own reply address is embedded in the memo, which every key holder reads: only a shielded-only
+# Revision-2 UA (zutest1… / zu1…) is accepted. A Revision-0 UA (utest1… / u1…) may carry a transparent receiver,
+# and tutest1… / tu1… does by definition. Same wording in web/offering.js.
+SHIELDED_ONLY_HRPS = frozenset({"zutest", "zu"})
+NOT_SHIELDED_ONLY = ("this address may contain a transparent receiver that every key holder would see; use a "
+                     "shielded-only address (zutest1…) or leave it empty")
+
+
 def check_reply_to(address: str, network: str) -> str:
-    """The visitor's own reply address: a unified address (its checksum verified) of the choir's network."""
+    """The visitor's own reply address: a shielded-only unified address (checksum verified) of the choir's network.
+
+    Only for addresses a visitor types in; the kiosk's own `--reply` addresses come from the session wallet (zu…).
+    Never used by the decoder: score_hash is unchanged."""
     address = (address or "").strip()
     if not protocol.is_unified_address(address):
         raise ValueError("that reply address does not parse as a unified address (check it was copied whole)")
     hrp = bech32m_decode(address)[0]
     if hrp.endswith("test") != (network == "test"):
         raise ValueError(f"that reply address is not a {'testnet' if network == 'test' else 'mainnet'} address")
+    if hrp not in SHIELDED_ONLY_HRPS:
+        raise ValueError(NOT_SHIELDED_ONLY)
     return address
 
 

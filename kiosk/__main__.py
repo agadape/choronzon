@@ -203,6 +203,7 @@ def cmd_qr(a) -> None:
             sys.exit(str(e))
     o = make_offering(read_text(a), voice() if a.voice else None, a.reply, as_text=not a.voice, phone=True)
     uri = payment_uri(choir, o.memos)
+    print(copy.phone_note())
     print(describe(o) + f"; ASCII envelope, URI {len(uri)} chars")
     if a.png:
         from renderer.whisper import qr_png

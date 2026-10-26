@@ -231,6 +231,32 @@ def test_whisper_refuses_a_reply_address_of_another_network(served, tmp_path, mo
     assert status == 404 and ua.encode() not in payload and b"zcash:" not in payload
 
 
+@pytest.mark.parametrize("hrp,accepted", [("zutest", True), ("utest", False), ("tutest", False)])
+def test_kiosk_offer_reply_to_must_be_shielded_only(served, monkeypatch, hrp, accepted):
+    """A visitor's reply address is read by every key holder: no Revision-0 / transparent-capable UA."""
+    import kiosk.session as ks
+    import renderer.decoder
+    import renderer.tts
+    from protocol import address
+
+    class V:
+        def __init__(self, *a, **k):
+            pass
+
+        def available(self):
+            return True
+    monkeypatch.setattr(renderer.decoder, "Decoder", lambda *a: None)
+    monkeypatch.setattr(renderer.tts, "Voice", V)
+    monkeypatch.setattr(ks.Session, "current", classmethod(lambda cls: None))     # stop before any send
+    start, _ = served
+    ua = address.bech32m_encode(hrp, [i % 32 for i in range(170)])
+    status, _, body = start(kiosk=True)("POST", "/kiosk/offer", {"text": "x", "reply_to": ua})
+    if accepted:
+        assert status == 409                                     # passed the check, reached "no ready session"
+    else:
+        assert status == 400 and json.loads(body)["error"] == ks.NOT_SHIELDED_ONLY
+
+
 def test_kiosk_offer_whose_pay_failed_says_status_unknown(served, monkeypatch):
     """A failed pay may have broadcast: the kiosk page must not be told "not sent"."""
     import kiosk.session as ks

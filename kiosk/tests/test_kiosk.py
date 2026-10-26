@@ -145,6 +145,13 @@ def test_privacy_statement_uses_the_section_6_wording():
         # section 6 MUST: the choir's own spends are public (audit 26 Oct: missing until then)
         assert ("The god's own lines, and everything its wallet spends, are public to every key holder"
                 in " ".join(text.split())), route
+        # section 6 MUST lines added 26 Oct (external audit): timing, and the phone path
+        flat = " ".join(text.split())
+        assert ("Timing can link you: at the kiosk the room sees who is typing, and one offering lands a minute "
+                "or two later." in flat), route
+        assert ("your wallet's server sees your IP when you send and, because the god's key is public, can read "
+                "that offering" in flat), route
+        assert "{" not in text and "}" not in text, route
         for banned in ("anonymous", "untraceable", "nobody can ever", "no one will ever know", "wiped",
                        "never through us", "lightwalletd sees the kiosk's ip address."):
             assert banned not in text.lower(), (route, banned)
@@ -157,6 +164,17 @@ def test_privacy_statement_uses_the_section_6_wording():
     assert "Tor exit" not in direct
     with pytest.raises(KeyError):
         copy.privacy("carrier-pigeon")
+
+
+def test_phone_qr_prints_the_phone_path_lines(monkeypatch, capsys):
+    from kiosk.__main__ import main
+    monkeypatch.setenv("LWD_CONNECTION", "tor")
+    monkeypatch.setattr("sys.stdin", __import__("io").StringIO("a phone secret"))
+    main(["qr", "-"])
+    out = " ".join(capsys.readouterr().out.split())
+    assert ("your wallet's server sees your IP when you send and, because the god's key is public, can read that "
+            "offering" in out)
+    assert "Timing can link you" in out and "a phone secret" not in out
 
 
 def test_confirm_prints_the_route_this_process_uses(monkeypatch, capsys):
@@ -185,12 +203,30 @@ def test_reply_and_reply_to_are_exclusive():
     assert e.value.code == 2      # argparse: not allowed together
 
 
+@pytest.mark.parametrize("hrp,network,ok", [
+    ("zutest", "test", True), ("zu", "main", True),                         # shielded-only Revision 2
+    ("utest", "test", False), ("u", "main", False),                         # Revision 0: may carry a transparent receiver
+    ("tutest", "test", False), ("tu", "main", False),                       # carries a transparent receiver
+])
+def test_reply_to_accepts_only_shielded_only_addresses(hrp, network, ok):
+    from kiosk.session import NOT_SHIELDED_ONLY, check_reply_to
+    ua = address.bech32m_encode(hrp, [i % 32 for i in range(170)])
+    if ok:
+        assert check_reply_to(ua, network) == ua
+    else:
+        with pytest.raises(ValueError) as e:
+            check_reply_to(ua, network)
+        assert str(e.value) == NOT_SHIELDED_ONLY
+    assert NOT_SHIELDED_ONLY == ("this address may contain a transparent receiver that every key holder would see; "
+                                 "use a shielded-only address (zutest1…) or leave it empty")
+
+
 def test_reply_to_must_be_a_unified_address_of_the_choir_network():
     from kiosk.session import check_reply_to
-    good = address.bech32m_encode("utest", [i % 32 for i in range(170)])
+    good = address.bech32m_encode("zutest", [i % 32 for i in range(170)])
     assert check_reply_to(" " + good + "\n", "test") == good
     with pytest.raises(ValueError, match="not a testnet"):
-        check_reply_to(address.bech32m_encode("u", [i % 32 for i in range(170)]), "test")
+        check_reply_to(address.bech32m_encode("zu", [i % 32 for i in range(170)]), "test")
     with pytest.raises(ValueError, match="does not parse"):
         check_reply_to(good[:-1] + ("q" if good[-1] != "q" else "p"), "test")    # checksum broken
     with pytest.raises(ValueError, match="does not parse"):
