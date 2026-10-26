@@ -548,6 +548,33 @@ function mount(canvas, doc, opts = {}) {
   const bigLids = lidMesh(eyeList.filter((e) => e.lid && e.big), PHONE ? 22 : 28, PHONE ? 14 : 18);
   const lidGroups = [smallLids, bigLids];
 
+  // ---------------------------------------------------------------- pending eyes: an overlay, not the god
+  // The visitor's own offerings that the chain does not carry yet (the page keeps their numbers in localStorage).
+  // Each sits in the slot its real eye will take (the next free slots after the score's offerings), dim and half
+  // shut. Nothing about them reaches score.json or any hash, and no other visitor sees them.
+  const MAXP = 4;
+  const pendList = Array.from({ length: MAXP }, () => ({ kind: "pending", r: 0.28, iris: [0.16, 0.18, 0.18], stripes: 20, slit: 0,
+    seed: 1, blind: 0, socket: new THREE.Object3D(), cid: null }));
+  const pendEyes = eyeMesh(pendList, PHONE ? 10 : 12, PHONE ? 6 : 8), pendLids = lidMesh(pendList, PHONE ? 10 : 12, PHONE ? 6 : 8);
+  let pendN = 0;
+  pendEyes.mesh.count = 0; pendLids.mesh.count = 0;
+  function setPending(cids) {
+    const list = (cids || []).slice(0, MAXP);
+    list.forEach((cid, i) => {
+      const p = pendList[i], n = offers.length + i;
+      let k = 0, j = n; while (j >= cap(k)) { j -= cap(k); k++; }
+      let r, th;
+      if (k < rings.length) { r = rings[k]; th = (j / cap(k)) * TAU + k * 0.37; }
+      else { const kk = rings.length - 1, c = cap(kk); r = rings[kk]; th = (((n % c) + 0.5) / c) * TAU + kk * 0.37; }   // the outer halo, between slots
+      const nrm = new THREE.Vector3(Math.cos(th), 0, Math.sin(th));
+      const face = nrm.clone().multiplyScalar(0.3).add(new THREE.Vector3(0, 1, 0)).normalize();
+      p.cid = cid; p.socket.removeFromParent(); r.spinner.add(p.socket);
+      p.socket.position.copy(nrm.clone().multiplyScalar(r.R - 0.05)).add(new THREE.Vector3(0, 0.38 + p.r * 0.3, 0));
+      p.socket.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), face);
+    });
+    pendN = list.length; pendEyes.mesh.count = pendLids.mesh.count = pendN;
+  }
+
   // ================================================================ particles: dust that hangs, embers that rise
   function motes(N, seed, color, size, rise) {
     const pos = new Float32Array(N * 3), ph = new Float32Array(N);
@@ -750,6 +777,13 @@ function mount(canvas, doc, opts = {}) {
     });
     for (const g of eyeGroups) { g.mesh.instanceMatrix.needsUpdate = true; g.wakeAttr.needsUpdate = true; }
     for (const g of lidGroups) { g.mesh.instanceMatrix.needsUpdate = true; g.openAttr.needsUpdate = true; }
+    for (let i = 0; i < pendN; i++) {                    // pending: in its socket, looking out, lids half shut and breathing
+      const p = pendList[i];
+      M.copy(p.socket.matrixWorld); S4.makeScale(p.r, p.r, p.r); M.multiply(S4); pendEyes.mesh.setMatrixAt(i, M);
+      M.copy(p.socket.matrixWorld); S4.makeScale(p.r * 1.08, p.r * 1.08, p.r * 1.08); M.multiply(S4); pendLids.mesh.setMatrixAt(i, M);
+      pendLids.open[i] = 0.22 + 0.08 * Math.sin(time * 0.7 + i * 1.7);
+    }
+    if (pendN) { pendEyes.mesh.instanceMatrix.needsUpdate = true; pendLids.mesh.instanceMatrix.needsUpdate = true; pendLids.openAttr.needsUpdate = true; }
     shards.rotation.y = time * 0.01;
     placeWings(time, gw);
     backLight.position.copy(camP).sub(TARGET).normalize().multiplyScalar(-6).add(new THREE.Vector3(0, 0.3, 0)); uBackP.value.copy(backLight.position);
@@ -785,6 +819,16 @@ function mount(canvas, doc, opts = {}) {
     setViewOffset(pxOff) { wantOff = pxOff || 0; },
     setPaused(v) { paused = !!v; resume(); },
     setFocus(tx) { focusTx = tx || null; },   // one offering's eye burns and the others turn to it (null: none)
+    setPending,                               // [contrib_id, ...]: the visitor's own offerings not yet on chain (overlay)
+    // where each pending eye is on screen, in CSS pixels of the canvas: [{ cid, x, y, front }]
+    pendingScreen() {
+      const out = [], v = new THREE.Vector3(), w = canvas.clientWidth, h = canvas.clientHeight;
+      for (let i = 0; i < pendN; i++) {
+        pendList[i].socket.getWorldPosition(v); v.project(camera);
+        out.push({ cid: pendList[i].cid, x: (v.x + 1) / 2 * w, y: (1 - v.y) / 2 * h, front: v.z < 1 });
+      }
+      return out;
+    },
     pick,
     wasDrag() { return moved > 6; },
     stats() { return { calls: lastCalls, triangles: lastTris, fps: Math.round(fps), dpr: Number(dpr.toFixed(2)), cap: Number(DPR.cap.toFixed(2)),

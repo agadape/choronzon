@@ -44,6 +44,9 @@ window.Give = (() => {
     const link = $("give_link");
     link.href = offering.uri; link.textContent = "open in a wallet on this device";
     $("give_cid").textContent = String(offering.contribId);
+    // the pending eye: only the number and the time are kept, in this browser (web/pending.js); never the text
+    let store = null; try { store = window.localStorage; } catch (e) { store = null; }
+    if (store && window.Pending) { Pending.add(store, offering.contribId, Date.now()); dispatchEvent(new Event("pending-changed")); }
     $("give_find").href = `#offering=${offering.contribId}`;   // a fragment: the number never reaches a server
     $("give_memos").textContent = offering.chunks === 1 ? "one memo" : `${offering.chunks} memos (one payment request)`;
     drawQR(offering.chunks === 1 ? offering.uri : null);

@@ -107,6 +107,16 @@
   #whisper:has(#qr:empty) { display: none; }
   #qr svg { width: 100%; aspect-ratio: 1; height: auto; background: var(--ink); display: block; }
   #qr p { margin: 0 0 6px; } #qr code { font: 12px Georgia, serif; word-break: break-all; }
+  /* the visitor's own pending eye: a label next to it (an overlay, this browser only) */
+  .pending_label { position: fixed; z-index: 4; transform: translate(14px, -50%); pointer-events: none; white-space: nowrap;
+                   font: 13px var(--caps); letter-spacing: 0.1em; color: var(--ink); background: rgba(5, 3, 2, 0.6);
+                   border-left: 1px solid var(--gilt); padding: 2px 8px; text-shadow: 0 0 6px #000; }
+  .pending_label.left { transform: translate(calc(-100% - 14px), -50%); border-left: 0; border-right: 1px solid var(--gilt); }
+  @media (max-width: 600px) { .pending_label { font-size: 11.5px; padding: 2px 6px; } }
+  #opened_note { position: fixed; z-index: 7; left: 50%; top: 18vh; transform: translateX(-50%); max-width: min(34ch, calc(100vw - 32px));
+                 text-align: center; font: 16px/1.4 var(--serif); color: var(--ink); background: rgba(5, 3, 2, 0.78);
+                 border: 1px solid var(--gilt); padding: 10px 16px; }
+  #opened_note[hidden] { display: none; }
   #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--rubric);
                  letter-spacing: 0.3em; font-size: 12px; pointer-events: none; font-family: var(--caps); }
   /* séance: the great eye's lids are shut and the hashes sealed until the Eye opens */
@@ -188,6 +198,8 @@
 <body class="closed">
 <canvas id="creature"></canvas>
 <div id="not_the_god">NOT THE GOD</div>
+<div id="pending_labels" aria-live="polite"></div>
+<div id="opened_note" hidden></div>
 <div class="masthead"><h1 id="m_name"></h1><div class="tagline" id="m_tag"></div>
   <p class="plain">Send it a secret with a Zcash shielded payment. Everyone can hear it; the payment does not show who sent it.</p>
   <div class="hint">descend</div></div>
@@ -303,6 +315,8 @@
       <canvas id="give_qr" hidden></canvas>
       <div id="give_qr_note" class="quiet small"></div>
       <div class="row"><a id="give_link"></a><button id="give_copy" type="button">copy the request</button></div>
+      <p class="small"><b>This eye is yours. It opens when the chain carries it.</b> A dim eye now waits for it in the
+         god, in this browser only (it keeps the number, never your words).</p>
       <p class="small">Your offering's number is <b id="give_cid"></b> (<span id="give_memos"></span>). It appears in the
          god after your wallet sends it, usually within an hour: the page is a snapshot rebuilt about every 30 minutes,
          sometimes later. Keep <a id="give_find">this link</a> to find it.</p>
@@ -339,7 +353,7 @@
 </aside>
 <script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
 <!-- no inline scripts (the site's Content-Security-Policy forbids them); the import map above is allowed by its hash -->
-<script src="boot.js" data-scripts="name.js creature.js leaf.js dpr.js vendor/qrcode/qrcode.js offering.js give.js verify.js app.js"
+<script src="boot.js" data-scripts="name.js creature.js leaf.js dpr.js vendor/qrcode/qrcode.js offering.js pending.js give.js verify.js app.js"
         data-modules="god.js"></script>
 </body>
 </html>

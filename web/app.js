@@ -213,6 +213,47 @@ function freshCanvas() {
   return c;
 }
 let godRetried = false, godWaited = false;
+
+// ---- the visitor's own pending offerings (web/pending.js): an overlay in this browser only, never in a hash
+let pendingStore = null; try { pendingStore = window.localStorage; } catch (e) { pendingStore = null; }
+let pendingCids = [];
+function refreshPending(doc) {
+  if (!pendingStore || !window.Pending) return;
+  let list = Pending.load(pendingStore, Date.now());
+  if (doc) {
+    const rec = Pending.reconcile(list, doc.render.timeline);
+    for (const o of rec.opened) Pending.remove(pendingStore, o.cid, Date.now());
+    if (rec.opened.length) {                               // a snapshot carries it now: the real eye opens and burns
+      const o = rec.opened[rec.opened.length - 1];
+      found = doc.render.timeline.find((x) => x.tx === o.tx) || null;
+      if (god) god.setFocus(o.tx);
+      $("find_q").value = o.tx; $("find_play").hidden = !found;
+      const note = $("opened_note");
+      note.textContent = `Your offering #${o.cid} has opened. Its eye burns; the others turn to it.`;
+      note.hidden = false; setTimeout(() => { note.hidden = true; }, 15000);
+    }
+    list = Pending.load(pendingStore, Date.now());
+  }
+  pendingCids = list.map((e) => e.cid);
+  if (god) god.setPending(pendingCids);
+  const box = $("pending_labels"); box.textContent = "";
+  for (const cid of pendingCids) {
+    const d = document.createElement("div"); d.className = "pending_label"; d.style.display = "none";
+    d.textContent = innerWidth <= 600 ? `yours · pending · #${cid}` : `yours · pending · offering #${cid}`; box.append(d);
+  }
+}
+addEventListener("pending-changed", () => refreshPending(currentDoc));
+function placePendingLabels() {
+  const labels = $("pending_labels").children;
+  if (!labels.length) return;
+  const pts = god ? god.pendingScreen() : [];
+  for (let i = 0; i < labels.length; i++) {
+    const p = pts[i], el = labels[i];
+    if (!p || !p.front) { el.style.display = "none"; continue; }
+    el.style.display = ""; el.style.left = `${Math.round(p.x)}px`; el.style.top = `${Math.round(p.y)}px`;
+    el.classList.toggle("left", p.x > innerWidth * 0.55);   // on the right half the label sits left of the eye
+  }
+}
 // the god stops drawing once the page has scrolled past it (phones: reading the leaf); it keeps its last frame
 let godOffscreen = false;
 if ("IntersectionObserver" in window) {
@@ -230,6 +271,7 @@ function mountGod(doc) {
       window.__god = god;
       god.setPaused(godOffscreen);
       if (found) god.setFocus(found.tx);   // a #tx= link may be answered before the god has mounted
+      god.setPending(pendingCids);
       leafOffset();
       return;
     } catch (e) { god = null; document.body.classList.remove("webgl"); }
@@ -285,6 +327,7 @@ async function loadScore() {
   $("status").textContent = `${n === 0 ? "nothing has been given yet" : "evoked"} at height ${fmt(height)}`;
   const anchorP = loadAnchor(doc);
   if (firstLoad) setTimeout(findFromHash, 0);              // #tx= / #offering= in the link
+  refreshPending(doc);                                     // the visitor's own pending eyes; opens those it now carries
   // the mix is ~5 MB and only changes with the render: fetched by render hash, so the browser (and the CDN) may keep it
   const r = await fetch(`out/mix.wav?r=${doc.render_hash.slice(0, 16)}`, { cache: "default" });
   const ab = await r.arrayBuffer();
@@ -352,6 +395,7 @@ function frame(now) {
     if (f) { $("not_the_god").style.left = `${f.x / devicePixelRatio}px`; $("not_the_god").style.top = `${f.y / devicePixelRatio}px`; $("not_the_god").style.opacity = f.fade; }
   }
   Leaf.frame(now);
+  placePendingLabels();
   requestAnimationFrame(frame);
 }
 

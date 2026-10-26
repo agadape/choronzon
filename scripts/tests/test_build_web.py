@@ -10,7 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "build_web.sh"
 ALLOWED = {"index.html", "apparition.html", "static.json", "vercel.json", "config/brand.json", "out/score.json",
-           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "dpr.js", "god.js", "leaf.js", "name.js", "offering.js", "give.js", "verify.js", "boot.js",
+           "out/mix.wav", "out/render_hash", "app.js", "apparition.js", "creature.js", "dpr.js", "god.js", "leaf.js", "name.js", "offering.js", "give.js", "verify.js", "boot.js", "pending.js",
            "vendor/qrcode/qrcode.js", "vendor/qrcode/LICENSE", "key.txt",
            "style.css",
            "logo.svg", "og.png", "anchor.json", "anchor.json.ots",
