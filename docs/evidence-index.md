@@ -155,3 +155,12 @@ This is a machine that never saw ours, reproducing the work from one key. It is 
 | Render | its watcher (key only): `score_hash` `9214777e…`, `render_hash` `2add4cbb5bc14ad420ee72c8974958d6c187fa6f4cc47a644814e678c47d4d49`; its local page showed the name, the eye, 1 offering and the browser-recomputed hash |
 | Logs | `logs/new_god_retro-demo*.log` (local) |
 
+## The false prophet and the pending eye, tested live (26 Oct 2026)
+
+| What | Value |
+|---|---|
+| False prophet | the payment request built by the page's own encoder (`web/offering.js`, `asGod`, loaded as in a browser) and paid from team wallet A: [`1db059ee…`](https://testnet.zecblock.com/tx/1db059ee2cf4ac0080c9f45522cade0804705f5a0064c35ee90e2b5e0a57b75e) mined at 4,543,958, refused by the public-key renderer as `forged-conductor` (a blind red eye) |
+| A retry that did not double-send | the first attempt returned an error after building `c62a1376…`; it was never mined (expired at 4,543,996, absent at 4,543,999), so only one forgery is on chain. Lesson recorded: check a failed send before retrying (as `scripts/demo.sh` now does) |
+| Pending eye | on a local copy of the static build, making a request added the giver's eye at once as "yours · pending · offering #…"; the browser stored only `{cid, t}` (no text, no address) |
+| Review | a read-only review of the new features found no blocker; its fixes landed in `7ebb60f`, `75ff188`, `bbf5ff3` (web) and `466f1c2` (your own god); 357 tests and smoke pass |
+
