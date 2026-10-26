@@ -132,3 +132,16 @@ This is a machine that never saw ours, reproducing the work from one key. It is 
 | Seen by | the public-key wallet V (`renderer once --wallet wallets/test/V --sync --as-of tip`): accepted, render at 4,543,331 = `54a8744d…` |
 | Closes | audit 26 Oct S1 and the M3 "real Zingo scan" gap: the ZIP-321 request built in the browser (`web/offering.js`) is accepted by a real phone wallet and decoded by the renderer |
 
+## Kiosk session with invited people (26 Oct 2026)
+
+| What | Value |
+|---|---|
+| Setup | the kiosk page on the developer's laptop (`python3 -m web --port 8765 --kiosk`), an ephemeral session wallet over Tor; each person read the kiosk statement, typed alone (the operator stepped away), and chose to send or not; no names were recorded |
+| Invited | 16 people |
+| Gave a secret | **6** (by their own account, all six were real secrets, none a joke) |
+| Declined | **10**, after reading that what they give is public to every key holder, forever |
+| Confusing | nothing reported |
+| Offerings | `25909024…` 4,543,553 · `9ce71092…` 4,543,554 · `c199b28b…` 4,543,561 · `02b98687…` 4,543,561 · `de2ae25a…` · `d0cf3638…` 4,543,574, all accepted by the public-key wallet V (codec 1, voiced) |
+| After | the session wallet (which held what they sent in `sent_notes`) was overwritten and deleted the same day (`kiosk session close`) |
+| Note | these were sent from our kiosk wallet, so `scripts/outside_offerings.py` counts them as ours; the evidence that they came from other people is this session record, not the chain |
+

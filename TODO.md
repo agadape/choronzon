@@ -39,7 +39,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 - [x] **A** Note pool script: split N×0.002 from the funding wallet; monitor spendable count (`kiosk session open --notes N` / `session status`)
 - [x] **A** Optional reply address per contribution (`generate-address`), stored nowhere after sending (`kiosk offer --reply`; only `contrib_id → txid` kept in the session's `state.json` for `inbox`)
 - [x] **C** Kiosk UI copy: 3-layer privacy statement shown **before** send; content warning (names/places identify you) (`kiosk/copy.py`, §6 wording, tested)
-- [ ] **C** Run the 10-person test from the critical review §9 (real secret vs joke; "still want to send?" after permanence warning) (how: `docs/user-test-kit.md`: read-aloud script, kiosk web steps, the four questions, results table)
+- [x] **C** (26 Oct: 16 invited to a kiosk session, 6 gave real secrets, 10 declined after the permanence warning, nothing confusing; `docs/evidence-index.md`) Run the 10-person test from the critical review §9 (real secret vs joke; "still want to send?" after permanence warning) (how: `docs/user-test-kit.md`: read-aloud script, kiosk web steps, the four questions, results table)
 
 ## Day 5 (24 Oct) — God visual + vertical slice complete  [~12 h]
 - [x] **B** Canvas 2D creature: ≤3 parameters from audio features (energy, pitch, duration), state `G_n = F(G_{n-1}, A_n, I_n)`, no `Math.random()`; looks alive with 3 contributions (`web/creature.js`)

@@ -6,7 +6,7 @@ It publishes what was said and hides who paid: the key shows every memo, never t
 Limits we state: your secret is public to every key holder, forever; your words can identify you; your wallet keeps what you sent; your phone wallet's server sees your IP and, the key being public, can read that offering; timing can link (the kiosk room, our web host's logs); reply addresses must be shielded-only.
 
 WHAT IS REAL
-On Zcash testnet (NU7, Ironwood), each with a txid in docs/evidence-index.md: kiosk offerings heard 1-4 min after sending; Whisper Back end to end; the god's voice accepted and a forgery refused; a phone offering from the public page via Zingo!; a GitHub runner that, from the key alone, printed the same render_hash. Key at choronzon.vercel.app/key.txt.
+On Zcash testnet (NU7, Ironwood), each with a txid in docs/evidence-index.md: kiosk offerings heard in 1-4 min; Whisper Back end to end; the god's voice accepted and a forgery refused; a phone offering from the public page via Zingo!; a GitHub runner that, from the key alone, printed the same render_hash. Key at choronzon.vercel.app/key.txt.
 
 WHAT IS NOT
-Testnet only (Ironwood is NU7). Nearly all offerings are the developer's labelled seeds and tests; no stranger has used it yet. The site is a snapshot rebuilt ~every 30 min. Whisper Back works at the installation or by CLI, not on the public page.
+Testnet only (Ironwood is NU7). At a kiosk session, 6 of 16 invited people gave a secret (all real, they said); 10 declined after reading it is public forever. The rest are our labelled tests. The site is a snapshot rebuilt ~every 30 min. Whisper Back works at the installation or by CLI, not on the public page.

@@ -294,6 +294,7 @@ Open:
 - [ ] The gate on a second physical laptop (today the Watcher on a fresh clone stands in for it)
 - [x] A real phone offering from the public page (Zingo! on testnet, `efc5ef44…`, 26 Oct)
 - [x] Demo rehearsals end to end over Tor (PASS 25 Oct), labelled pre-sent offerings, submission
+- [x] User session: 16 people invited to the kiosk on 26 Oct; 6 gave a secret (all real, by their own account), 10 declined after reading that it is public forever ([evidence](docs/evidence-index.md))
 - [ ] Demo video
 
 ## Naming
