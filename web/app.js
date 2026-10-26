@@ -224,6 +224,7 @@ function refreshPending(doc) {
     const rec = Pending.reconcile(list, doc.render.timeline);
     for (const o of rec.opened) Pending.remove(pendingStore, o.cid, Date.now());
     if (rec.opened.length) {                               // a snapshot carries it now: the real eye opens and burns
+      forgedFound = null;
       const o = rec.opened[rec.opened.length - 1];
       found = doc.render.timeline.find((x) => x.tx === o.tx) || null;
       if (god) god.setFocus(o.tx);
@@ -343,6 +344,7 @@ function setPlaying(on, label) {
 }
 // play the whole mix, or one stretch of it (from / length in samples at 8 kHz: one offering's voice)
 async function play(fromSample = 0, samples = 0) {
+  forgedFound = null;                                      // a voice sounds now: the forgery is no longer the one marked
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (pendingWav) { buffer = await audioCtx.decodeAudioData(pendingWav); pendingWav = null; }
@@ -397,7 +399,7 @@ function frame(now) {
   Leaf.frame(now);
   placePendingLabels();
   if (god) {                                                // NOT THE GOD under a found forgery's burning red eye
-    const p = forgedFound ? god.markScreen() : null, el = $("not_the_god");
+    const m = forgedFound ? god.markScreen() : null, p = m && m.blind ? m : null, el = $("not_the_god");   // only on a forgery's eye
     el.style.display = p ? "block" : "none";
     if (p) { el.style.left = `${Math.round(p.x)}px`; el.style.top = `${Math.round(p.y + 22)}px`; el.style.opacity = 1; }
   }

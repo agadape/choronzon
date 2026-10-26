@@ -662,7 +662,7 @@ function mount(canvas, doc, opts = {}) {
   // at you on their own (9 s buckets of scene time). The great eye follows the pointer while it moves and for a few
   // seconds after, otherwise it alternates between watching you and looking around (6.5 s buckets). While a voice
   // sounds, every other eye turns to the one that sings. Targets are chosen at 20 Hz; the eyes turn every frame.
-  let px = 0, py = 0, playT = -1, eyeOpenV = 1, lastCalls = 0, lastTris = 0, focusTx = null;
+  let px = 0, py = 0, playT = -1, eyeOpenV = 1, lastCalls = 0, lastTris = 0, focusTx = null, markBlind = false;
   let pointerAt = -Infinity, attn = null, gazeAt = -Infinity;
   const onPointer = (e) => {
     px = (e.clientX / innerWidth) * 2 - 1; py = -(e.clientY / innerHeight) * 2 + 1;
@@ -755,7 +755,7 @@ function mount(canvas, doc, opts = {}) {
     U.uSing.value = sing ? sw : 0; if (singer >= 0) U.uSingP.value.copy(eyePos[singer]);
     if (singer >= 0 && sw > 0.05) {                       // the halo sits on that one eye and breathes a little
       mark.visible = true; mark.position.copy(eyePos[singer]);
-      const blindSinger = eyeList[singer].kind === "blind";
+      const blindSinger = eyeList[singer].kind === "blind"; markBlind = blindSinger;
       mark.scale.setScalar(eyeList[singer].r * (blindSinger ? 3.2 : 1 + 0.8 * sw) * 3.2 * (1 + 0.05 * Math.sin(time * 3)));
       mark.material.color.setRGB(...(blindSinger ? [1.6, 0.25, 0.15] : [0.9, 1.4, 1.1]));   // a forgery's halo is red
       mark.material.opacity = Math.min(1, sw * 1.2);
@@ -831,8 +831,8 @@ function mount(canvas, doc, opts = {}) {
     // where the burning (sounding or found) eye is on screen, in CSS pixels, or null
     markScreen() {
       if (!mark.visible) return null;
-      const v = mark.position.clone().project(camera);
-      return v.z < 1 ? { x: (v.x + 1) / 2 * canvas.clientWidth, y: (1 - v.y) / 2 * canvas.clientHeight } : null;
+      const v = mark.position.clone().project(camera);   // blind: the burning eye is a refused forgery's
+      return v.z < 1 ? { x: (v.x + 1) / 2 * canvas.clientWidth, y: (1 - v.y) / 2 * canvas.clientHeight, blind: markBlind } : null;
     },
     // where each pending eye is on screen, in CSS pixels of the canvas: [{ cid, x, y, front }]
     pendingScreen() {
