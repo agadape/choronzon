@@ -58,7 +58,7 @@ Hash anchors (the regression in `renderer/tests/test_chain_regression.py` pins t
 |---|---|---|---|---|
 | `score/1` | 4,522,002 | `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a` | chain-only score, decoder-independent | `scripts/smoke.sh`, pytest |
 | `render/1` (composer `choir/2`) | 4,522,002 | `9b6c1b9d3b61830b82848179e323276cb95b43cd90558c99e740d78addba2bc0` | score + pinned-decoder PCM + composer version | same |
-| Watcher from the key alone (`renderer summon`, fresh wallet, 28 s) == V | 4,525,294 | `8540a0a57d6f80d409d4ed5948789f64e524fc08252a15ea3bd904dd58fa1af5` | the second-laptop proof without a second laptop | TODO Day 5 gate |
+| Watcher from the key alone (`renderer summon`, fresh wallet, 49.8 s) == V | 4,525,294 | `8540a0a57d6f80d409d4ed5948789f64e524fc08252a15ea3bd904dd58fa1af5` | the second-laptop proof without a second laptop | TODO Day 5 gate |
 | Rehearsal 1 summon == V (14 offerings, 7 skipped), `mix.wav` byte-identical | 4,525,338 | `7dc6f42ac61c13b6f6017fb2f934858a9d73cb7f6e748dc88e2b08438427081e` | same, unattended | `logs/demo_20261021T110109Z.log` |
 | Rehearsal 2 summon == V (15 offerings, 8 skipped), `mix.wav` byte-identical | 4,525,371 | `bb2cf2dcb69bc7decaa454c7dada7055069ec6e53068092e5b76fe3be6c72cc9` | same | `logs/demo_20261021T110459Z.log` |
 
