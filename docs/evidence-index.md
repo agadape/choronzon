@@ -122,3 +122,13 @@ This is a machine that never saw ours, reproducing the work from one key. It is 
 | Test offering over Tor | [`fc4dd939…`](https://testnet.zecblock.com/tx/fc4dd93977c8490fc70b0b43be2d23bb82bee7681aeb8ed157b0d1aae5f5103c) at 4,531,929, sent in 18 s, seen by V (synced over Tor) 34 s later; the Tor-layer test offering, approved by the user |
 | Self-send timing | Tor `5de38970…` mined at 4,531,909; one failed Tor send `f2a373a4…` was built but never mined (expired), so no double spend |
 | Details | `docs/network-fallback.md` (commands, outputs, timings, fail-closed tests), `docs/privacy-review.md` |
+
+## The public give path closed by a real phone wallet (26 Oct 2026)
+
+| What | Value |
+|---|---|
+| Path | https://choronzon.vercel.app/#give on a phone: secret written in the page, the visitor's own reply address added, QR scanned with Zingo! (testnet); the page sent nothing itself |
+| Offering | [`efc5ef44…`](https://testnet.zecblock.com/tx/efc5ef447b0b72a885bb3060e1c6d7bc21b6a73526d4490dd17f38df7d0b645a) at 4,543,330, codec 10 (text, voiced by the pinned ghost voice), `has_reply: true` |
+| Seen by | the public-key wallet V (`renderer once --wallet wallets/test/V --sync --as-of tip`): accepted, render at 4,543,331 = `54a8744d…` |
+| Closes | audit 26 Oct S1 and the M3 "real Zingo scan" gap: the ZIP-321 request built in the browser (`web/offering.js`) is accepted by a real phone wallet and decoded by the renderer |
+

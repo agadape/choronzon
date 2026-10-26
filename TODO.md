@@ -74,3 +74,4 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 
 ## Post-hackathon (not now)
 - [ ] Grant proposal (ZCG / zkSNARKs holder season) · Zcon installation email · Piper TTS
+- [x] Real phone offering from the public page: Zingo! scanned the `#give` QR, offering `efc5ef44…` accepted at 4,543,330 (26 Oct, `docs/evidence-index.md`)
