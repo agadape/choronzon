@@ -306,6 +306,7 @@ python3 scripts/gen_readme.py --check  # fail if any generated file is stale or 
 - [Codec2](https://github.com/drowe67/codec2) by David Rowe
 - [espeak-ng](https://github.com/espeak-ng/espeak-ng)
 - [Zingo!](https://zingolabs.org/) for phone testing on testnet
+- Written with AI coding assistance; the work itself runs no cloud AI (voice, mixing and rendering are all local)
 
 ## License
 

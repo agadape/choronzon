@@ -117,9 +117,7 @@ Expected render_hash at block 4525294: 8540a0a57d6f80d409d4ed5948789f64e524fc082
 ## Team and roles — 230 chars
 
 ```
-Role A, Zcash (wallets, protocol, on-chain proofs): [NAME, TODO (user)]
-Role B, audio and visual (Codec2, composer, the creature): [NAME, TODO (user)]
-Role C, product and demo (kiosk, copy, demo script, video): [NAME, TODO (user)]
+Solo entry: agadape (submitter). Zcash wallets, protocol and on-chain proofs; audio and visual (Codec2, composer, the god); product and demo (kiosk, copy, demo script, video).
 ```
 
 ## Links — 365 chars

@@ -13,7 +13,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 
 ## Open decisions (decide before Day 2 coding)
 - [x] Final name, tagline, one-liner, kiosk CTA → `config/brand.json` (20 Oct; the only place they appear). Lore layer → `docs/lore.md`
-- [ ] Assign A / B / C to real people (how: put the names on the owner codes here and in "team members and roles" of `docs/submission-form.md`)
+- [x] Assign A / B / C to real people: solo entry, agadape submits and holds all three roles (26 Oct, `docs/submission-form.md`)
 - [x] Testnet (patched devtool, proven) vs mainnet (stock devtool, untested G5) for the demo → **testnet** (21 Oct)
 - [x] 21 Oct: protocol v1 on chain is canonical; two versioned hashes (`score_hash` chain-only, `render_hash` = score + pinned-decoder PCM + composer version); Codec2 pinned to tag 1.2.0 built from source; 0.00001 TAZ; UFVK published deliberately but never in code/tests/logs/commits; reply addresses never persisted outside the wallet DB; `GC1R:<contrib_id decimal>:<text>`; work in WSL `~/zecathon`; repo private until 28 Oct
 - [x] UFVK publication: README on submission day + Séance reveal on stage (22 Oct) (steps: "the publication act" in `docs/submission-checklist.md`; until then the key stays out of code, tests, logs and commits)
