@@ -52,7 +52,7 @@ window.Leaf = (() => {
     const vw = document.documentElement.clientWidth || innerWidth, narrow = vw <= 900;   // the layout viewport, never the overflow
     W = narrow ? Math.min(vw - 32, 440) : 430;
     H = narrow ? Math.round(W * 1.62) : Math.round(Math.min(innerHeight * 0.82, 720));
-    CUT = H - (narrow ? 104 : 116);
+    CUT = H - (narrow ? 132 : 116);   // phones: the true name wraps to two lines, the stub needs the room
     el.leaf.style.setProperty("--W", W + "px"); el.leaf.style.setProperty("--H", H + "px"); el.leaf.style.setProperty("--cut", CUT + "px");
     const c = cuts(RB.map((b) => b.toString(16).padStart(2, "0")).join(""), SB.map((b) => b.toString(16).padStart(2, "0")).join(""), W, H, CUT);
     deckle = c;

@@ -23,18 +23,21 @@ CHOIR = json.loads((ROOT / "config" / "choir.json").read_text())
 
 # valid-checksum test addresses (made here; not anyone's wallet)
 UA_TEST = bech32m_encode("utest", [(i * 7) % 32 for i in range(120)])
+TU_TEST = bech32m_encode("tutest", [(i * 3) % 32 for i in range(120)])
 ZU_TEST = bech32m_encode("zutest", [(i * 11) % 32 for i in range(90)])
+ZU_TEST2 = bech32m_encode("zutest", [(i * 13) % 32 for i in range(110)])
 UA_MAIN = bech32m_encode("u", [(i * 5) % 32 for i in range(120)])
+ZU_MAIN = bech32m_encode("zu", [(i * 5) % 32 for i in range(90)])
 
 VECTORS = [
     ("i never told her", None, 0),
     ("I lied about the fire.", None, 0xFFFFFFFF),
     ("a secret with ünïcödé, emoji 🜏 and 漢字", None, 2339178536),
-    ("tell me you heard this", UA_TEST, 123456789),
+    ("tell me you heard this", ZU_TEST2, 123456789),
     ("short", ZU_TEST, 42),
     ("x" * 340, None, 7),            # exactly near the one-memo edge
     ("long secret " * 60, None, 99),  # several memos
-    ("long secret with a reply " * 20, UA_TEST, 31337),
+    ("long secret with a reply " * 20, ZU_TEST2, 31337),
 ]
 
 
@@ -65,10 +68,14 @@ def test_reply_address_checks_match_the_kiosk():
     r = js("const O = require(process.argv[1]); const out = {};"
            "for (const [k, a] of Object.entries(JSON.parse(process.argv[2]))) { try { O.checkReplyTo(a, 'test'); out[k] = 'ok'; } catch (e) { out[k] = e.message; } }"
            "console.log(JSON.stringify(out))",
-           json.dumps({"ua": UA_TEST, "zu": ZU_TEST, "main": UA_MAIN, "typo": UA_TEST[:-1] + ("q" if UA_TEST[-1] != "q" else "p"),
-                       "junk": "hello", "empty": ""}))
-    assert r["ua"] == "ok" and r["zu"] == "ok"
-    assert "not a testnet address" in r["main"]
+           json.dumps({"ua": UA_TEST, "tu": TU_TEST, "zu": ZU_TEST, "zu2": ZU_TEST2, "main": UA_MAIN, "zumain": ZU_MAIN,
+                       "typo": ZU_TEST[:-1] + ("q" if ZU_TEST[-1] != "q" else "p"), "junk": "hello", "empty": ""}))
+    assert r["zu"] == "ok" and r["zu2"] == "ok"
+    # u/utest and tu/tutest can carry a transparent receiver every key holder would see: refused, with the reason
+    transparent = ("this address may contain a transparent receiver that every key holder would see; "
+                   "use a shielded-only address (zutest1…) or leave it empty")
+    assert r["ua"] == transparent and r["tu"] == transparent
+    assert "not a testnet address" in r["main"] and "not a testnet address" in r["zumain"]
     assert "does not parse" in r["typo"] and "does not parse" in r["junk"] and "does not parse" in r["empty"]
 
 

@@ -17,6 +17,10 @@ let forgedSeen = null;
 let god = null;                  // the three.js god (web/god.js), or null on the Canvas 2D fallback
 const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const Q = new URLSearchParams(location.search);
+// keyboard hints ("· G", "· F", "· T", "· E", "· R") mean nothing on a touch screen: drop them there
+const TOUCH = matchMedia("(hover: none), (pointer: coarse)").matches;
+const hint = (s) => (TOUCH ? s.replace(/\s·\s[A-Z]$/, "") : s);
+for (const id of ["open_leaf", "close_leaf", "flip", "tear", "open_eye2"]) { const b = document.getElementById(id); if (b) b.textContent = hint(b.textContent); }
 // séance mode (?seance): the great eye's lids are shut and the hashes sealed until the operator opens the Eye
 const SEANCE = Q.has("seance");
 let eyeOpenedAt = null;          // performance.now() when the lids started to part; null = not started
@@ -137,11 +141,12 @@ async function loadAnchor(doc) {
   }
   try { st = JSON.parse(new TextDecoder().decode(raw)); } catch (e) { el.textContent = "The anchor statement on this server could not be read."; return; }
   const same = st.render_hash === doc.render_hash && st.score_hash === doc.score_hash;
-  let proof = "no proof file yet";
+  let proof = "no proof file yet", proofState = { bitcoin: [], pending: false, served: false };
   try {
     const r = await fetch(`${base}anchor.json.ots`, { cache: "no-store" });
     if (r.ok) {
       const s = otsStatus(new Uint8Array(await r.arrayBuffer()));
+      proofState = { bitcoin: s.bitcoin, pending: s.pending && !s.bitcoin.length, served: true };
       // the served proof is the one made at deploy time: say what it held then, not what the anchor is now
       proof = s.bitcoin.length ? `proof as served: in Bitcoin, block ${s.bitcoin.map(fmt).join(", ")}`
             : s.pending ? "proof as served: pending at deploy" : "proof as served: no attestation read";
@@ -165,7 +170,7 @@ async function loadAnchor(doc) {
   } catch (e) { /* no WebCrypto (plain http on another host): the branch link alone */ }
   note.append(".");
   el.append(note);
-  return st;
+  return { ...st, proof: proofState };
 }
 
 // recompute render_hash here from the audio you hear (web/verify.js) and compare it with every published copy
@@ -180,10 +185,16 @@ async function verifyHere(doc, wavBytes, anchorP) {
   if (currentHash !== doc.render_hash) return;                    // a newer render arrived meanwhile
   const short = `${res.computed.slice(0, 8)}…${res.computed.slice(-8)}`, names = res.checks.map((c) => c.name).join(", ");
   if (res.ok) {
+    // what this proves, exactly: the audio here hashes to the render hash every copy publishes; it does not re-derive
+    // the score hash from the chain (a Watcher with the key does that)
+    const anchored = res.checks.some((c) => c.name === "anchor.json"), p = anchored && anchor.proof;
     el.className = "quiet";
-    el.textContent = `Verified in this browser: SHA-256(score hash ‖ the audio you hear ‖ ${doc.render.composer}) = ${short}, ` +
-      `the render hash in ${names}.` + (res.checks.some((c) => c.name === "anchor.json")
-        ? " The audio you hear is the audio of the statement anchored in Bitcoin (OpenTimestamps)." : "");
+    el.textContent = `Recomputed in this browser: SHA-256(score hash ‖ the audio you hear ‖ ${doc.render.composer}) = ${short}. ` +
+      `The audio you hear matches this snapshot's hashes (${names})` + (anchored ? " and the anchored statement" : "") + ". " +
+      (!anchored ? "" : p.bitcoin.length ? `The proof served with it is in Bitcoin, block ${p.bitcoin.map(fmt).join(", ")}. `
+        : p.pending ? "The Bitcoin proof served with this snapshot is still pending: the calendars have it, Bitcoin does not yet. "
+        : "No Bitcoin proof is served with this snapshot. ") +
+      "The score hash is taken from the snapshot; a Watcher with the key re-derives it from the chain.";
   } else {
     const bad = res.checks.filter((c) => !c.render || !c.score).map((c) => c.name).join(", ");
     el.className = "bad";
@@ -366,7 +377,7 @@ if (Q.has("leaf")) setLeaf(true);
 // the leaf: turn (F), tear the stub (T / drag), reprint (R)
 Leaf.init({ leaf: $("leaf"), top: $("top"), stub: $("stub"), verso: $("versopart") }, {
   onTorn(torn) {
-    $("tear").textContent = torn ? "reprint the stub · R" : "tear the stub · T";
+    $("tear").textContent = hint(torn ? "reprint the stub · R" : "tear the stub · T");
     $("note").textContent = torn ? "Torn along the render hash: every jag of this edge is one of its bytes. A stub from any other evocation of this god fits this edge exactly; a stub from a different god does not." : "";
   },
 });
@@ -493,8 +504,13 @@ function findOffering(q, autoplay = true) {
     note.textContent = `On chain at height ${fmt(skipped.height)}, but not voiced: ${why}.`;
     return;
   }
-  note.textContent = `Not in this snapshot yet (height ${height}). The site re-renders about every 30 minutes; ` +
-    "a new offering appears after it is mined and the next render.";
+  if (/^\d{1,10}$/.test(q)) {   // a number we cannot vouch for: never imply it will appear
+    note.textContent = `No offering with this number in this snapshot (height ${height}). Numbers are the random ids shown ` +
+      "when you gave it; or use the transaction id. A new offering appears after it is mined and the next render, usually within an hour.";
+    return;
+  }
+  note.textContent = `Not in this snapshot (height ${height}). If you sent it recently: the page is a snapshot rebuilt about ` +
+    "every 30 minutes, sometimes later, and a new offering appears after it is mined and the next render.";
 }
 function findFromHash() {
   const m = location.hash.match(/^#(?:tx|offering)=([0-9a-fA-F]{64}|\d{1,10})$/);
@@ -507,6 +523,15 @@ $("find").addEventListener("submit", (e) => { e.preventDefault(); findOffering($
 $("find_play").addEventListener("click", () => { if (found) { if (god) god.setFocus(found.tx); play(found.start, found.samples); } });
 addEventListener("hashchange", findFromHash);
 if (window.Give) Give.init();
-loadBrand().then(loadStatic).then(loadScore);
-setInterval(loadScore, 5000);   // on a snapshot the hash never changes, so this is a no-op there
+// Polling: the installation's local server re-renders every block, so it is asked every 5 s. The public snapshot is
+// fetched once, then at most every 10 minutes and only while the tab is visible: a steady request heartbeat in the
+// host's logs would help anyone correlate visits with offerings by timing.
+loadBrand().then(loadStatic).then(loadScore).then(() => {
+  const isStatic = STATIC && STATIC.static, every = isStatic ? 600000 : 5000;
+  let last = Date.now();
+  setInterval(() => {
+    if (document.hidden || Date.now() - last < every) return;
+    last = Date.now(); loadScore();
+  }, isStatic ? 30000 : 5000);
+});
 requestAnimationFrame(frame);

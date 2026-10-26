@@ -38,12 +38,20 @@
     return { hrp, data: data.slice(0, -6) };
   }
   function isUnifiedAddress(s) { const d = s ? bech32mDecode(s) : null; return !!d && UA_HRPS.has(d.hrp) && d.data.length > 0; }
-  // the visitor's own reply address: a unified address of the choir's network (kiosk/session.py check_reply_to)
+  // the visitor's own reply address. It goes into a memo that every key holder reads, so it must be shielded-only:
+  // a Revision-2 "zu" address (zutest1… on testnet, zu1… on mainnet). u/utest and tu/tutest can carry a transparent
+  // receiver, which every key holder would see (and which a faucet may have tied to the visitor's IP). The Python side
+  // (kiosk check_reply_to) applies the same rule with the same message.
   function checkReplyTo(address, network) {
     address = (address || "").trim();
     if (!isUnifiedAddress(address)) throw new Error("that address does not parse as a unified address (check it was copied whole)");
-    if (bech32mDecode(address).hrp.endsWith("test") !== (network === "test"))
+    const hrp = bech32mDecode(address).hrp;
+    if (hrp.endsWith("test") !== (network === "test"))
       throw new Error(`that address is not a ${network === "test" ? "testnet" : "mainnet"} address`);
+    if (hrp !== "zu" && hrp !== "zutest") {
+      const example = network === "test" ? "zutest1…" : "zu1…";
+      throw new Error(`this address may contain a transparent receiver that every key holder would see; use a shielded-only address (${example}) or leave it empty`);
+    }
     return address;
   }
 

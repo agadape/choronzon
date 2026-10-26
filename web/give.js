@@ -77,6 +77,7 @@ window.Give = (() => {
     for (const b of document.querySelectorAll(".give_open")) b.addEventListener("click", open);
     $("give_close").addEventListener("click", close);
     $("give_find").addEventListener("click", close);   // the finder then takes over the fragment
+    addEventListener("hashchange", () => { if (location.hash === "#give") open(); });   // #give on an open page
     for (const id of ["give_text", "give_reply"]) $(id).addEventListener("input", () => { $("give_result").hidden = true; update(); });
     $("give_read").addEventListener("change", update);
     $("give_make").addEventListener("click", make);

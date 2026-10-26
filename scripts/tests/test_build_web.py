@@ -159,6 +159,17 @@ def test_check_rejects_a_weakened_policy(out, tmp_path):
     assert r.returncode != 0 and "unsafe-eval" in r.stderr
 
 
+def test_static_title_and_link_preview_come_from_brand_json(out, tmp_path):
+    brand = json.loads((ROOT / "config" / "brand.json").read_text())
+    dist = tmp_path / "dist"
+    run("--out", str(out), "--dist", str(dist))
+    page = (dist / "index.html").read_text()
+    assert f"<title>{brand['name']}</title>" in page
+    assert f'<meta property="og:image" content="https://{brand["slug"]}.vercel.app/og.png">' in page
+    assert 'property="og:title" content=""' not in page and 'name="description" content=""' not in page
+    assert brand["name"] not in (ROOT / "web" / "index.html").read_text()     # the source keeps placeholders
+
+
 def test_dist_and_vercel_are_ignored():
     ignore = (ROOT / ".gitignore").read_text().splitlines()
     assert "dist/" in ignore and ".vercel/" in ignore

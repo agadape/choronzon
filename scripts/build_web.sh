@@ -110,6 +110,27 @@ if [ "$CHECK" = 1 ]; then verify && echo "dist/ verified: allow-list only"; exit
 [ -f "$OUT/score.json" ] || { echo "!! $OUT/score.json missing: run python3 -m renderer once --wallet wallets/test/V --sync --out $OUT first" >&2; exit 1; }
 rm -rf "$DIST"; mkdir -p "$DIST/config" "$DIST/out"
 cp web/index.html web/apparition.html "$DIST/"
+# static <title> and link-preview tags, from config/brand.json (crawlers do not run the page's JavaScript; the name
+# stays out of the source, which only carries placeholders)
+python3 - "$DIST" <<'EOF'
+import html, json, re, sys
+from pathlib import Path
+dist, b = Path(sys.argv[1]), json.load(open("config/brand.json"))
+site, esc = f"https://{b['slug']}.vercel.app", lambda s: html.escape(s, quote=True)
+def meta(text, attr, key, value):
+    pat = re.compile(rf'(<meta {attr}="{re.escape(key)}" content=")[^"]*(">)')
+    if not pat.search(text): raise SystemExit(f"!! {key} placeholder missing")
+    return pat.sub(lambda m: m.group(1) + esc(value) + m.group(2), text, count=1)
+p = dist / "index.html"; t = p.read_text()
+t = t.replace("<title>listener</title>", f"<title>{esc(b['name'])}</title>", 1)
+t = meta(t, "name", "description", b["one_liner"])
+t = meta(t, "property", "og:title", f"{b['name']}: {b['tagline']}")
+t = meta(t, "property", "og:description", b["one_liner"])
+t = meta(t, "property", "og:image", f"{site}/og.png")
+t = t.replace('<meta property="og:type" content="website">', f'<meta property="og:type" content="website">\n<meta property="og:url" content="{site}/">', 1)
+p.write_text(t)
+a = dist / "apparition.html"; a.write_text(a.read_text().replace("<title>two evocations</title>", f"<title>{esc(b['name'])}: two evocations</title>", 1))
+EOF
 for f in web/*.js; do [ "$(basename "$f")" = kiosk.js ] || cp "$f" "$DIST/"; done
 for f in web/*.css; do [ -e "$f" ] && cp "$f" "$DIST/"; done
 cp config/brand.json "$DIST/config/brand.json"

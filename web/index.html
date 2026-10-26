@@ -25,6 +25,7 @@
   .masthead h1 { font: 400 42px/1 var(--serif); letter-spacing: .06em; margin: 0; }
   .masthead h1::first-letter { color: var(--rubric); }
   .masthead .tagline { font-style: italic; color: var(--sepia); font-size: 18px; margin-top: 2px; }
+  .masthead .plain { margin: 8px auto 0; max-width: 46ch; padding: 0 16px; font-size: 16px; line-height: 1.4; color: var(--ink); }
   .masthead .hint { display: none; }
   #chrome { display: flex; position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); gap: 12px; z-index: 6; transition: opacity .6s; }
   #chrome button { background: rgba(5, 3, 2, .6); }
@@ -164,6 +165,7 @@
     .masthead { position: absolute; top: 18px; text-shadow: 0 0 12px #000, 0 0 24px #000; }
     body:not(.closed) .masthead { opacity: 1; }
     .masthead h1 { font-size: 40px; }
+    .masthead .plain { font-size: 14.5px; margin-top: 6px; }
     #chrome, body:not(.closed) #chrome { position: absolute; left: 16px; right: 16px; bottom: auto; transform: none; opacity: 1; pointer-events: auto;
               top: calc(100vh - 196px); top: calc(100svh - 196px); justify-content: center; flex-wrap: wrap; gap: 8px; }
     #chrome button { font-size: 14px; padding: 8px 14px; }
@@ -186,7 +188,9 @@
 <body class="closed">
 <canvas id="creature"></canvas>
 <div id="not_the_god">NOT THE GOD</div>
-<div class="masthead"><h1 id="m_name"></h1><div class="tagline" id="m_tag"></div><div class="hint">descend</div></div>
+<div class="masthead"><h1 id="m_name"></h1><div class="tagline" id="m_tag"></div>
+  <p class="plain">Send it a secret with a Zcash shielded payment. Everyone can hear it; the payment does not show who sent it.</p>
+  <div class="hint">descend</div></div>
 <div id="chrome"><button id="play" class="listen">Listen</button><button class="give_open" hidden>give it a secret</button><button id="open_leaf">open the grimoire · G</button><button id="open_eye2">open the eye · E</button></div>
 <span id="status">loading</span>
 
@@ -264,25 +268,33 @@
       <summary>No testnet wallet yet?</summary>
       <p class="small">This runs on the Zcash <b>testnet</b>: its coins (TAZ) are free and worth nothing. About five minutes:</p>
       <ol class="small">
-        <li>Install <a href="https://zingolabs.org" target="_blank" rel="noopener noreferrer">Zingo!</a> and choose testnet when you create a wallet.</li>
+        <li>Install <a href="https://zingolabs.org" target="_blank" rel="noopener noreferrer">Zingo!</a> and choose testnet when you
+            create a wallet. Its server should be <code>testnet.zec.rocks</code>: another testnet fork exists, and explorers on it
+            disagree with ours.</li>
         <li>Copy your testnet receiving address. The faucet wants the form that starts with <code>utest1</code> (not <code>zu…</code> or <code>tu…</code>).</li>
-        <li>Get free TAZ at <a href="https://faucet.testnet.valargroup.dev" target="_blank" rel="noopener noreferrer">faucet.testnet.valargroup.dev</a>: 0.125 TAZ a day is enough for many offerings (each costs 0.00001 TAZ plus the network fee).</li>
-        <li>Come back, write your secret, and scan the QR with Zingo!.</li>
+        <li>Get free TAZ at <a href="https://faucet.testnet.valargroup.dev" target="_blank" rel="noopener noreferrer">faucet.testnet.valargroup.dev</a>:
+            0.125 TAZ a day is enough for many offerings (each costs 0.00001 TAZ plus the network fee). If the coins arrive
+            transparent, shield them in the wallet first.</li>
+        <li>Come back, write your secret, and scan the QR with Zingo!. For a whisper back, use a fresh shielded-only address
+            (<code>zutest1…</code>), not the one you gave the faucet.</li>
       </ol>
     </details>
-    <textarea id="give_text" rows="4" maxlength="1500" placeholder="what you have never said"></textarea>
+    <textarea id="give_text" rows="4" maxlength="1500" placeholder="what you have never said" spellcheck="false" autocorrect="off" autocapitalize="off" autocomplete="off"></textarea>
     <div id="give_count" class="quiet small"></div>
     <label class="small">your wallet address for a whisper back (optional)
-      <input id="give_reply" autocomplete="off" spellcheck="false" placeholder="a fresh utest1… / zutest1… from your wallet"></label>
+      <input id="give_reply" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="a fresh shielded-only zutest1… address, or nothing"></label>
     <div id="give_reply_note" class="quiet small"></div>
     <div class="statement">
       <p><b>Before you give it anything, read this.</b></p>
       <p><span class="k">private</span> the link between you and your secret. We, the operator, cannot learn who contributed.</p>
       <p><span class="k">public</span> the content of your secret, to everyone who holds the key, forever. The key cannot be revoked.</p>
       <p><span class="k">not guaranteed</span> that nobody recognises your words. Content can identify you; names and places identify you.</p>
-      <p>Your own wallet stores what you sent. Its server sees your IP address and when you sent: our Tor does not
-         cover your phone, and Tor does not hide timing. If you add a reply address, anyone holding the key can see it
-         and write to it. Order inside a block is miner order, not send order.</p>
+      <p>Your own wallet stores what you sent. Your wallet's server sees your IP address when you send, and because this
+         god's key is public, it can also read that offering: it can link your IP to your secret. Use a wallet that
+         connects over Tor if that matters to you; our Tor does not cover your phone, and Tor does not hide timing.</p>
+      <p>Our web host logs which IP addresses open this page and when; timing can link a visit to an offering on a quiet
+         chain. If you add a reply address, anyone holding the key can see it and write to it. Order inside a block is
+         miner order, not send order.</p>
     </div>
     <label class="small check"><input type="checkbox" id="give_read"> I have read this</label>
     <div class="row"><button id="give_make" class="listen" disabled>make the payment request</button><button id="give_close">close</button></div>
@@ -292,7 +304,9 @@
       <div id="give_qr_note" class="quiet small"></div>
       <div class="row"><a id="give_link"></a><button id="give_copy" type="button">copy the request</button></div>
       <p class="small">Your offering's number is <b id="give_cid"></b> (<span id="give_memos"></span>). It appears in the
-         god a few minutes after your wallet sends it, once the site re-renders. Keep <a id="give_find">this link</a> to find it.</p>
+         god after your wallet sends it, usually within an hour: the page is a snapshot rebuilt about every 30 minutes,
+         sometimes later. Keep <a id="give_find">this link</a> to find it.</p>
+      <p class="quiet small">The clipboard and your browser's history may sync to your other devices.</p>
     </div>
   </div>
 </section>
