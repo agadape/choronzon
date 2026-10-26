@@ -1,6 +1,8 @@
 """Whisper Back: reply address read on demand from the wallet DB, reply request as ZIP-321, nothing persisted."""
 import base64
 
+import pytest
+
 import protocol
 from protocol import address
 from renderer import whisper
@@ -21,6 +23,25 @@ def test_find_target_reads_the_address_from_the_db(tmp_path):
     assert whisper.find_target(db, txid(2)) is None       # no reply address
     assert whisper.find_target(db, txid(3)) is None       # choir's own spend
     assert whisper.find_target(db, txid(9)) is None       # unknown
+
+
+MAINNET_REPLY = address.bech32m_encode("u", [i % 32 for i in range(170)])
+
+
+def test_a_reply_address_of_another_network_is_no_target(tmp_path):
+    """Audit 26 Oct: a mainnet u1… inside a testnet offering decodes (score_hash unchanged) but must never become a
+    Whisper Back QR: a listener's mainnet wallet would pay real ZEC."""
+    w = make_wallet(tmp_path, [(txid(1), 10, 1, 0, offering(b"mainnet reply", cid=5, reply=MAINNET_REPLY), 0),
+                               (txid(2), 10, 2, 0, offering(b"testnet reply", cid=6, reply=REPLY), 0)])
+    db = WalletDB(w)
+    assert protocol.decode_contribution([offering(b"mainnet reply", cid=5, reply=MAINNET_REPLY)]).reply_addr         == MAINNET_REPLY                                    # the decoder (score_hash) is untouched
+    assert whisper.configured_network() == "test"
+    assert whisper.find_target(db, txid(1)) is None
+    assert whisper.find_target(db, txid(2)).address == REPLY
+    assert whisper.find_target(db, txid(1), network="main").address == MAINNET_REPLY
+    assert whisper.find_target(db, txid(2), network="main") is None
+    with pytest.raises(ValueError):
+        whisper.reply_uri(whisper.ReplyTarget(txid(1), 5, MAINNET_REPLY), "x")
 
 
 def test_reply_uri_binary_and_phone():

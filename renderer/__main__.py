@@ -124,7 +124,7 @@ def cmd_whisper(args) -> None:
     db = _open_wallet(args)
     target = whisper.find_target(db, args.txid)
     if target is None:
-        sys.exit("that offering carries no (valid) reply address")
+        sys.exit("that offering carries no (valid) reply address of this network")
     uri = whisper.reply_uri(target, _whisper_text(args), phone=args.phone)
     if args.send_from:
         from kiosk.devtool import Devtool, DevtoolError

@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import threading
 import time
@@ -37,9 +38,18 @@ INBOUND_CONFIRMATIONS = 10      # funds from another wallet are spendable after 
 OWN_CONFIRMATIONS = 3           # the wallet's own change / self-send outputs after 3
 NOTE_ZAT = 200_000              # 0.002 TAZ per pool note: one offering (<= 3 outputs + fee) with room to spare
 FEE_RESERVE_ZAT = 100_000
+MAX_SESSION_HOURS = 24          # `session status` warns past this: a session is meant to close the same day
 # one devtool process on the session wallet at a time: a double-submitted web form would otherwise run two `pay`
 # on one sqlite wallet (locked database, or one note locked for ~40 blocks)
 _LOCK = threading.RLock()
+
+
+class SendStatusUnknown(DevtoolError):
+    """`pay` failed, but it may already have broadcast: check the chain before sending again."""
+
+    def __init__(self, detail: str):
+        super().__init__(f"status unknown: the send failed or its reply was lost ({detail}); it may still land. "
+                         f"Check before retrying: python3 -m kiosk session status / the session wallet's list-tx")
 
 
 @dataclass(frozen=True)
@@ -70,28 +80,65 @@ class Session:
 
     @classmethod
     def open(cls, pool: Devtool, notes: int, log=print) -> "Session":
+        """Fails in one of two clear states: nothing was sent (the half-made session is wiped; open again), or the
+        funding was sent or may have been (the session stays, marked `open_failed`; `session open --resume`
+        finishes it, `session close` wipes it together with the funds that reached it)."""
         if cls.current():
             raise RuntimeError("a session is already open; close it first")
         d = SESSIONS_DIR / "current"
         d.mkdir(parents=True)
         s = cls(d)
-        s._save(opened=int(time.time()), notes=notes, offerings=[])
-        log("creating the session wallet")
-        pool.sync()
-        seed_tor_cache(pool.wallet_dir, s.wallet.wallet_dir)
-        s.wallet.init("kiosk-session", birthday=pool.height())
         budget = notes * NOTE_ZAT + FEE_RESERVE_ZAT
-        if pool.spendable_zat() < budget:
-            raise DevtoolError(f"pool wallet has {pool.spendable_zat()} zat spendable, needs {budget}")
+        try:
+            s._save(opened=int(time.time()), notes=notes, offerings=[])
+            log("creating the session wallet")
+            pool.sync()
+            seed_tor_cache(pool.wallet_dir, s.wallet.wallet_dir)
+            s.wallet.init("kiosk-session", birthday=pool.height())
+            address = s.wallet.default_address()
+            if pool.spendable_zat() < budget:
+                raise DevtoolError(f"pool wallet has {pool.spendable_zat()} zat spendable, needs {budget}")
+        except BaseException as e:
+            wipe(d)       # nothing was sent: no funds in it, nothing to keep
+            if isinstance(e, DevtoolError):
+                raise DevtoolError(f"{e}. Nothing was sent; the half-made session was wiped: run "
+                                   f"`python3 -m kiosk session open` again") from None
+            raise
         log(f"funding it with {budget} zat from the pool wallet")
-        s._save(fund_txid=pool.send(s.wallet.default_address(), budget))
-        s._wait_spendable(budget, INBOUND_CONFIRMATIONS, log)
-        log(f"splitting into {notes} notes")
-        s._save(split_txid=s.wallet.pay(_split_uri(s.wallet.default_address(), notes)))
-        s._wait_spendable(notes * NOTE_ZAT, OWN_CONFIRMATIONS, log)
-        s._save(ready=int(time.time()))
+        s._save(funding="sending")
+        try:
+            fund_txid = pool.send(address, budget)
+        except DevtoolError as e:
+            s._save(funding="unknown", open_failed=str(e))
+            raise DevtoolError(f"{e}. Funding status unknown: the pool wallet may have broadcast it. The session is "
+                               f"kept (not ready): `python3 -m kiosk session open --resume` waits for the funds and "
+                               f"finishes it; `python3 -m kiosk session close` wipes it and whatever reached it "
+                               f"(check the pool wallet's list-tx first)") from None
+        s._save(funding="sent", fund_txid=fund_txid)
+        log(f"funding sent: txid {fund_txid}")
+        try:
+            s._wait_spendable(budget, INBOUND_CONFIRMATIONS, log)
+            log(f"splitting into {notes} notes")
+            s._save(split_txid=s.wallet.pay(_split_uri(address, notes)))
+            s._wait_spendable(notes * NOTE_ZAT, OWN_CONFIRMATIONS, log)
+        except DevtoolError as e:
+            s._save(open_failed=str(e))
+            raise DevtoolError(f"{e}. The session wallet holds the funding (txid {fund_txid}) but is not ready: "
+                               f"`python3 -m kiosk session open --resume` finishes it; `python3 -m kiosk session "
+                               f"close` wipes it together with those funds") from None
+        s._save(ready=int(time.time()), open_failed=None)
         log("session ready")
         return s
+
+    def resume(self, log=print, wait_minutes: int = 40) -> None:
+        """Finish a session whose `open` failed after funding: wait for the funds, split them, mark it ready."""
+        st = self.state()
+        if "ready" in st:
+            log("session already ready")
+            return
+        ensure_pool(self.wallet, st.get("notes", 8), log, wait_minutes=wait_minutes)
+        self._save(ready=int(time.time()), open_failed=None)
+        log("session ready")
 
     def _wait_spendable(self, zat: int, confirmations: int, log) -> None:
         log(f"waiting for ~{confirmations} confirmations (~{confirmations * 35 // 60 + 1} min)")
@@ -120,19 +167,39 @@ class Session:
             # sync first: a transaction built from a stale chain tip gets an expiry height that has already passed
             # and is rejected at broadcast ("must not be mined at a block Height greater than its expiry"; rehearsal #1)
             self.wallet.sync()
-            txid = self.wallet.pay(payment_uri(choir, offering.memos))
+            try:
+                txid = self.wallet.pay(payment_uri(choir, offering.memos))
+            except DevtoolError as e:
+                # the devtool stores the transaction and locks its notes before it broadcasts: a lost reply does not
+                # mean nothing was sent. Never present this as "not sent"; never retry it automatically. Keep its
+                # contrib_id so `kiosk inbox` still answers if it lands.
+                self._save(offerings=self.state().get("offerings", []) +
+                           [{"contrib_id": offering.contrib_id, "txid": "unknown"}])
+                raise SendStatusUnknown(f"{e}; contrib_id {offering.contrib_id}") from None
             self._save(offerings=self.state().get("offerings", []) +
                        [{"contrib_id": offering.contrib_id, "txid": txid}])
         return offering, txid
 
-    def status(self) -> dict:
+    def status(self, now: float | None = None) -> dict:
+        """ready, spendable balance, offerings sent, spendable pool notes (counted, not estimated), age."""
         st = self.state()
         try:
             spendable = self.wallet.spendable_zat()
-        except DevtoolError:
-            spendable = None
-        return {"ready": "ready" in st, "spendable_zat": spendable, "offerings": len(st.get("offerings", [])),
-                "notes_left": None if spendable is None else spendable // NOTE_ZAT}
+            notes_left = len(spendable_note_values(self.wallet.wallet_dir / "data.sqlite", self.wallet.height()))
+        except (DevtoolError, OSError, sqlite3.Error):
+            spendable = notes_left = None
+        out = {"ready": "ready" in st, "spendable_zat": spendable, "offerings": len(st.get("offerings", [])),
+               "notes_left": notes_left}
+        if st.get("open_failed"):
+            out["open_failed"] = st["open_failed"]
+        if "opened" in st:
+            age_h = ((time.time() if now is None else now) - st["opened"]) / 3600
+            out["opened_utc"] = time.strftime("%Y-%m-%d %H:%M", time.gmtime(st["opened"]))
+            out["age_hours"] = round(age_h, 1)
+            if age_h > MAX_SESSION_HOURS:
+                out["warning"] = (f"this session has been open {age_h:.0f} h; the statement promises deletion when it "
+                                  f"closes: python3 -m kiosk session close")
+        return out
 
     def inbox(self, contrib_id: int) -> list[dict]:
         """Replies received at this wallet (any form) for the one offering `contrib_id` of this session.
@@ -191,6 +258,31 @@ def spendable_note_values(db_path: Path, tip: int, min_zat: int = NOTE_ZAT // 2)
                                         or t2.expiry_height >= :tip))""",
             {"min": min_zat, "tip": tip, "own": OWN_CONFIRMATIONS, "inbound": INBOUND_CONFIRMATIONS}).fetchall()
         return [int(v) for (v,) in rows]
+    finally:
+        con.close()
+
+
+def last_tx_id(db_path: Path) -> int:
+    """A marker taken before a send: the newest row of the wallet's transactions table (0 when empty)."""
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        return int(con.execute("select coalesce(max(id_tx), 0) from transactions").fetchone()[0])
+    finally:
+        con.close()
+
+
+def built_since(db_path: Path, marker: int) -> list[tuple[str, int | None]]:
+    """(txid in display order, mined height or None) of every transaction this wallet BUILT after `marker`.
+
+    The devtool writes a transaction it builds (`created` + `raw`) and locks its notes before it broadcasts, so a
+    row here means a send got at least that far: it may be on the network even though the command failed (a lost
+    gRPC reply, a TLS reset). Received transactions have no `created`. Read locally: no sync is needed to see it.
+    """
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        rows = con.execute("select txid, mined_height from transactions where id_tx > ? and created is not null "
+                           "and raw is not null order by id_tx", (marker,)).fetchall()
+        return [(bytes(t)[::-1].hex(), h) for t, h in rows]
     finally:
         con.close()
 

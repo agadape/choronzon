@@ -14,8 +14,15 @@ G6_ACCEPTED=7
 G6_HASH=c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4
 
 field(){ grep -oE "\"$1\": \"?[0-9a-f]+" | head -1 | grep -oE "[0-9a-f]+$"; }  # one field of g6_render's JSON header
-sync(){ bin/devtool-aegis wallet -w "wallets/test/$1" sync -s zecrocks >/dev/null 2>&1 \
-     && bin/devtool-aegis wallet -w "wallets/test/$1" enhance -s zecrocks >/dev/null 2>&1; }
+# over Tor unless the operator chose direct (LWD_CONNECTION=direct), like every other lightwalletd connection of the
+# product; read-only, so retried 3x over the SAME route (never falls back to direct), as scripts/demo.sh does
+LWD_CONNECTION="${LWD_CONNECTION:-tor}"
+sync(){ local i; for i in 1 2 3; do
+          bin/devtool-aegis wallet -w "wallets/test/$1" sync -s zecrocks --connection "$LWD_CONNECTION" >/dev/null 2>&1 \
+            && bin/devtool-aegis wallet -w "wallets/test/$1" enhance -s zecrocks --connection "$LWD_CONNECTION" >/dev/null 2>&1 \
+            && return 0
+          echo "  sync $1 attempt $i failed (over $LWD_CONNECTION)"; [ $i -lt 3 ] && sleep $((5 * i))
+        done; return 1; }
 height(){ bin/devtool-aegis wallet -w "wallets/test/$1" balance 2>&1 | grep -oE "Height: [0-9]+" | grep -oE "[0-9]+"; }
 render(){ python3 spikes/g6_render.py "wallets/test/$1" "$2"; }
 
@@ -25,13 +32,18 @@ echo "[codec2 / tts]"
 [ -x bin/c2enc ] && [ -x bin/c2dec ] && ok "codec2 pinned (bin/c2dec)" || bad "pinned codec2 missing (run scripts/setup.sh)"
 command -v espeak-ng >/dev/null && ok "espeak-ng" || bad "espeak-ng"
 echo "[devtool]"; [ -x bin/devtool-aegis ] && ok "bin/devtool-aegis present" || { bad "bin/devtool-aegis missing (run scripts/setup.sh)"; exit 1; }
-echo "[lightwalletd testnet]"; timeout 60 node spikes/s1_lightd.mjs test 2>/dev/null | grep -q '"chainName": "test"' && ok "testnet.zec.rocks reachable" || bad "lightwalletd unreachable"
+echo "[lightwalletd testnet]"
+if [ "$LWD_CONNECTION" = direct ]; then   # the node probe connects directly: only when the operator chose direct
+  timeout 60 node spikes/s1_lightd.mjs test 2>/dev/null | grep -q '"chainName": "test"' && ok "testnet.zec.rocks reachable" || bad "lightwalletd unreachable"
+else
+  ok "reachability is checked by the sync over $LWD_CONNECTION below (the direct node probe is skipped)"
+fi
 
 if [ ! -d wallets/test/V ]; then
   echo "[wallets] not present — skipping chain render"; exit $FAIL
 fi
 
-echo "[sync]"
+echo "[sync over $LWD_CONNECTION]"
 sync V && ok "V (view-only) synced" || bad "V sync failed"
 if [ -d wallets/test/B ]; then sync B && ok "B (choir) synced" || bad "B sync failed"; fi
 

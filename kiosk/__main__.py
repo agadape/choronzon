@@ -7,8 +7,9 @@
   python3 -m kiosk speak --from wallets/test/B           the god's own voice (choir wallet self-send, kind=3)
   python3 -m kiosk speak --from wallets/test/A --forge   demo forgery: renderers show NOT THE GOD
   python3 -m kiosk reveal --from wallets/test/B [--to key.txt]   the Eye opens: publish the full viewing key (M5)
-  python3 -m kiosk session open [--notes 8] [--pool wallets/test/A]
+  python3 -m kiosk session open [--notes 8] [--pool wallets/test/A] [--resume]
   python3 -m kiosk session status | close
+  python3 -m kiosk sent-since <wallet> [--after N] [--sync]   before a retry: did the failed send build a transaction?
   python3 -m kiosk inbox [contrib_id]                    the whisper that returned to one offering of this session
 
 The text is typed at a prompt or piped on stdin (`printf '...' | python3 -m kiosk offer -`), never given as an
@@ -261,7 +262,20 @@ def cmd_reveal(a) -> None:
 
 
 def cmd_session(a) -> None:
-    if a.action == "open":
+    if a.action == "open" and a.resume:
+        s = Session.current()
+        if not s:
+            sys.exit("no session to resume: python3 -m kiosk session open")
+        try:
+            s.resume()
+        except DevtoolError as e:
+            sys.exit(f"{e}. The session is still not ready: --resume again later, or `session close` to wipe it")
+    elif a.action == "open":
+        s = Session.current()
+        if s and "ready" not in s.state():
+            sys.exit("a half-open session exists (its open failed after funding was sent or may have been): "
+                     "`python3 -m kiosk session open --resume` finishes it; `python3 -m kiosk session close` wipes it "
+                     "together with whatever funds reached it")
         pool_dir = Path(a.pool)
         pool = Devtool(pool_dir, pool_dir.with_suffix(".age"))
         try:
@@ -270,13 +284,40 @@ def cmd_session(a) -> None:
             sys.exit(str(e))
     elif a.action == "status":
         s = Session.current()
-        print(json.dumps(s.status() if s else {"open": False}, indent=1))
+        st = s.status() if s else {"open": False}
+        print(json.dumps(st, indent=1))
+        if st.get("warning"):
+            print(f"WARNING: {st['warning']}", file=sys.stderr)
     elif a.action == "close":
         s = Session.current()
         if not s:
             sys.exit("no session")
         s.close()
         print("session wallet overwritten and deleted (best-effort on SSDs and VM disks)")
+
+
+def cmd_sent_since(a) -> None:
+    """For a retry loop: without --after print a marker; with --after N list the transactions the wallet BUILT since
+    that marker (exit 0) or say none (exit 3). A built transaction may have been broadcast even when the command that
+    built it failed, so a caller must not send again when this finds one. --sync only refreshes the mined heights."""
+    from .session import built_since, last_tx_id
+    db = Path(a.wallet) / "data.sqlite"
+    if not db.exists():
+        sys.exit(f"no wallet database in {a.wallet}")
+    if a.after is None:
+        print(last_tx_id(db))
+        return
+    if a.sync:
+        try:
+            Devtool(Path(a.wallet)).sync()
+        except DevtoolError as e:      # the built row is local; only the mined height may be stale
+            print(f"(sync failed, mined heights may be stale: {e})", file=sys.stderr)
+    built = built_since(db, a.after)
+    for txid, height in built:
+        print(f"built txid {txid} {'mined at ' + str(height) if height else 'not mined yet'}")
+    if not built:
+        print("nothing built since the marker: the failed attempt sent nothing")
+        sys.exit(3)
 
 
 def cmd_inbox(a) -> None:
@@ -337,13 +378,18 @@ def main(argv=None) -> None:
     s = sub.add_parser("session")
     s.add_argument("action", choices=["open", "status", "close"])
     s.add_argument("--notes", type=int, default=8)
+    s.add_argument("--resume", action="store_true", help="open: finish a session whose open failed after funding")
     s.add_argument("--pool", default=str(REPO / "wallets" / "test" / "A"))
     s = sub.add_parser("inbox", help="the whisper that returned to one offering of this session")
     s.add_argument("contrib_id", nargs="?", help="the number your offering printed (omit: asked at a prompt)")
     s = sub.add_parser("pool", help="make sure a spending wallet holds at least N spendable notes")
     s.add_argument("wallet", help="wallet dir (its .age identity next to it)")
     s.add_argument("--notes", type=int, default=3)
-    for name in ("offer", "speak", "session", "inbox", "pool"):     # the subcommands that talk to lightwalletd
+    s = sub.add_parser("sent-since", help="did a failed send build a transaction? (retry loops ask before resending)")
+    s.add_argument("wallet", help="wallet dir")
+    s.add_argument("--after", type=int, help="the marker printed before the attempt (omit: print the marker now)")
+    s.add_argument("--sync", action="store_true", help="sync first so mined heights are current")
+    for name in ("offer", "speak", "session", "inbox", "pool", "sent-since"):     # the subcommands that talk to lightwalletd
         network.add_argument(sub.choices[name])
     a = p.parse_args(argv)
     if getattr(a, "text", None) not in (None, "-"):      # before anything else runs: no secret on the command line
@@ -355,7 +401,7 @@ def main(argv=None) -> None:
         p.error(str(e))
     try:
         {"preview": cmd_preview, "offer": cmd_offer, "qr": cmd_qr, "speak": cmd_speak, "reveal": cmd_reveal,
-         "session": cmd_session, "inbox": cmd_inbox, "pool": cmd_pool}[a.command](a)
+         "session": cmd_session, "inbox": cmd_inbox, "pool": cmd_pool, "sent-since": cmd_sent_since}[a.command](a)
     except DevtoolError as e:
         sys.exit(str(e))
 

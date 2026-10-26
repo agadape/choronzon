@@ -20,6 +20,8 @@ _STATEMENT = """Before you give it anything, read this.
                   We, the operator, cannot learn who contributed.
   Public:         the content of your secret, spoken by a ghost voice,
                   to everyone who holds the key, forever. The key is irrevocable.
+                  The god's own lines, and everything its wallet spends,
+                  are public to every key holder (full viewing key).
   Not guaranteed: that nobody recognises your words or your style.
                   Content and voice can identify you; names and places identify you.
 

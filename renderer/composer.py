@@ -30,6 +30,7 @@ OFFERING_PITCH_LAYERS = 3           # offerings only use layers 0..2
 OVERLAP_NUM, OVERLAP_DEN = 5, 8     # next voice starts at 5/8 of the previous one
 MIN_GAP = SAMPLE_RATE // 2          # but never sooner than 0.5 s after the previous start
 MAX_VOICE = 20 * SAMPLE_RATE        # 20 s per offering, hard cap
+_CHUNK = 1 << 16                    # frames clipped per step (bounds the temporary Python list)
 
 
 @dataclass(frozen=True)
@@ -113,7 +114,12 @@ def voice_for(offering: Offering, decoder: Decoder, voice: Voice | None) -> arra
 
 
 def compose(offerings: list[Offering] | tuple[Offering, ...], decoder: Decoder, voice: Voice | None) -> Mix:
-    placed, failures, voices = [], [], []
+    """Each voice is mixed in as soon as it is placed (placement needs only the previous voice), into two int32
+    arrays: ~8 bytes per output frame instead of two Python int lists (~80 bytes per frame; GBs at 10k offerings).
+    int32 cannot overflow: a voice is at most 20 s * 4/3 (pitch layer 3/4) and starts >= MIN_GAP after the previous
+    one, so at most 54 voices overlap; 54 * 32768 * PAN_STEPS < 2**31 (and array raises rather than wrapping)."""
+    placed, failures = [], []
+    left, right = array.array("i"), array.array("i")
     start = 0
     for n, o in enumerate(offerings):
         if o.conductor:
@@ -131,18 +137,23 @@ def compose(offerings: list[Offering] | tuple[Offering, ...], decoder: Decoder, 
             start = prev.start + max(prev.samples * OVERLAP_NUM // OVERLAP_DEN, MIN_GAP)
         energy, zc = features(mono)
         placed.append(Placed(o.txid, o.contrib_id, start, len(mono), pan, layer, energy, zc, silent, o.conductor))
-        voices.append(mono)
-    total = max((p.start + p.samples for p in placed), default=0)
-    left, right = [0] * total, [0] * total
-    for p, mono in zip(placed, voices):
-        gl, gr = PAN_STEPS - p.pan, p.pan
-        for i, s in enumerate(mono):
-            left[p.start + i] += s * gl
-            right[p.start + i] += s * gr
+        end = start + len(mono)
+        if end > len(left):                     # total = max(start + samples), as before
+            grow = bytes(4 * (end - len(left)))
+            left.frombytes(grow)
+            right.frombytes(grow)
+        gl, gr = PAN_STEPS - pan, pan
+        left[start:end] = array.array("i", [a + s * gl for a, s in zip(left[start:end], mono)])
+        right[start:end] = array.array("i", [a + s * gr for a, s in zip(right[start:end], mono)])
+    total = len(left)
     out = array.array("h", bytes(4 * total))
-    for i in range(total):
-        out[2 * i] = max(-32768, min(32767, left[i] // PAN_STEPS))
-        out[2 * i + 1] = max(-32768, min(32767, right[i] // PAN_STEPS))
+    lo, hi = -32768 * PAN_STEPS, 32768 * PAN_STEPS      # v // PAN_STEPS clamped to int16, chunk by chunk
+    for a in range(0, total, _CHUNK):
+        b = min(total, a + _CHUNK)
+        out[2 * a:2 * b:2] = array.array("h", [-32768 if v < lo else 32767 if v >= hi else v // PAN_STEPS
+                                               for v in left[a:b]])
+        out[2 * a + 1:2 * b:2] = array.array("h", [-32768 if v < lo else 32767 if v >= hi else v // PAN_STEPS
+                                                   for v in right[a:b]])
     if sys.byteorder != "little":
         out.byteswap()
     return Mix(out.tobytes(), tuple(placed), tuple(failures))

@@ -142,6 +142,9 @@ def test_privacy_statement_uses_the_section_6_wording():
         text = copy.privacy(route)
         for phrase in must:
             assert phrase in text.replace("\n  ", " "), (route, phrase)
+        # section 6 MUST: the choir's own spends are public (audit 26 Oct: missing until then)
+        assert ("The god's own lines, and everything its wallet spends, are public to every key holder"
+                in " ".join(text.split())), route
         for banned in ("anonymous", "untraceable", "nobody can ever", "no one will ever know", "wiped",
                        "never through us", "lightwalletd sees the kiosk's ip address."):
             assert banned not in text.lower(), (route, banned)

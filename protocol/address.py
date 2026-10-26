@@ -54,3 +54,13 @@ def bech32m_encode(hrp: str, data: list[int]) -> str:
 def is_unified_address(s: str | None) -> bool:
     decoded = bech32m_decode(s) if s else None
     return decoded is not None and decoded[0] in UA_HRPS and len(decoded[1]) > 0
+
+
+def address_network(s: str | None) -> str | None:
+    """'test' or 'main' for a valid unified address (by its HRP), None for anything else.
+
+    Not used by the decoder (a mainnet address inside a testnet memo still decodes the same way, score_hash is
+    unchanged); the Whisper Back paths use it to refuse a reply address of another network."""
+    if not is_unified_address(s):
+        return None
+    return "test" if bech32m_decode(s)[0].endswith("test") else "main"

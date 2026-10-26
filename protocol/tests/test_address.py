@@ -55,3 +55,13 @@ def test_single_character_corruption_is_detected():
 def test_none_and_empty_payload():
     assert not address.is_unified_address(None)
     assert not address.is_unified_address(address.bech32m_encode("zutest", []))
+
+
+def test_address_network_by_hrp():
+    from protocol import address_network
+    data = [i % 32 for i in range(170)]
+    for hrp, net in (("utest", "test"), ("zutest", "test"), ("tutest", "test"), ("u", "main"), ("zu", "main"),
+                     ("tu", "main")):
+        assert address_network(address.bech32m_encode(hrp, data)) == net, hrp
+    assert address_network(address.bech32m_encode("ztestsapling", data)) is None     # not a unified address
+    assert address_network("utest1notachecksum") is None and address_network(None) is None

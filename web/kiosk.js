@@ -79,7 +79,10 @@ $("give").addEventListener("click", async () => {
     $("result").classList.add("on");
     setBusy(false, "given.");
   } catch (e) {
-    setBusy(false, `not sent: ${e.message}`); $("status").className = "err";
+    // only a refusal before the send is "not sent"; a failed pay or a lost answer may still land on chain
+    setBusy(false, /^status unknown/.test(e.message) ? e.message : e instanceof TypeError ?
+      "status unknown: the kiosk did not answer. The operator checks before you try again." : `not sent: ${e.message}`);
+    $("status").className = "err";
   }
 });
 

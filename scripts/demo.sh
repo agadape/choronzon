@@ -33,23 +33,40 @@ step(){ printf "\n== %s  (t+%ss)\n" "$*" "$(( $(date +%s) - T_START ))"; }
 die(){ echo "!! $*"; fail=1; }
 # lightwalletd (testnet.zec.rocks) drops a TLS connection now and then ("peer closed connection without sending
 # TLS close_notify", rehearsals 5 and 8: twice within 30 s, fine 50 s later). Sends are retried with a growing
-# pause; the note pools (session, L, B, A) make a retry safe even when the failed attempt locked a note.
+# pause, but ONLY when the failed attempt built no transaction: the devtool stores a transaction and locks its notes
+# before it broadcasts, so a lost reply after the broadcast would otherwise put two god lines / two whispers on
+# chain (audit 26 Oct, S2). `kiosk sent-since` reads the wallet's own transactions table: a row built since the
+# marker means "maybe sent": it is reported as sent (txid printed, status unknown until mined) and never resent;
+# wait_seen / the inbox check then show whether it landed. Cost: an attempt that built a transaction but failed
+# before broadcasting is not retried either (the step fails visibly; check list-tx, then rerun it by hand).
+# The note pools (session, L, B, A) keep a retry possible when a failed attempt that built nothing locked a note.
 ATTEMPTS=4; PAUSES=(20 40 60)
-speak_retry(){ # $1 text (bash argument, not a process argv), rest: kiosk speak args
-  local out attempt
+maybe_sent(){ # $1 wallet dir, $2 marker -> if the wallet built a tx since the marker: print "... txid <hex>", return 0
+  local built
+  built=$(python3 -m kiosk sent-since "$1" --after "$2" --sync 2>/dev/null) || return 1
+  echo "   the failed attempt built a transaction in $(basename "$1"): treated as sent, NOT retried (no double send)" >&2
+  echo "$built" | sed 's/^/   /' >&2
+  echo "sent (reply lost, status unknown until mined). txid $(echo "$built" | grep -oE '[0-9a-f]{64}' | tail -1)"
+}
+speak_retry(){ # $1 text (bash argument, not a process argv), $2 sending wallet dir, rest: extra kiosk speak args
+  local out attempt mark
   for attempt in $(seq 1 $ATTEMPTS); do
-    out=$(printf '%s' "$1" | python3 -m kiosk speak - "${@:2}" 2>&1) && { echo "$out"; return 0; }
+    mark=$(python3 -m kiosk sent-since "$2" 2>/dev/null) || { echo "   cannot read $2's transactions" >&2; return 1; }
+    out=$(printf '%s' "$1" | python3 -m kiosk speak - --from "$2" "${@:3}" 2>&1) && { echo "$out"; return 0; }
     echo "   speak attempt $attempt failed: $(echo "$out" | grep -E "^devtool|Error|refusing|not the choir" | tail -1 | cut -c1-200)" >&2
+    maybe_sent "$2" "$mark" && return 0
     [ $attempt -lt $ATTEMPTS ] && sleep "${PAUSES[$((attempt-1))]}"
   done
   return 1
 }
 whisper_retry(){ # $1 offering txid (the listener pool has spare notes)
-  local out attempt
+  local out attempt mark
   for attempt in $(seq 1 $ATTEMPTS); do
+    mark=$(python3 -m kiosk sent-since $L 2>/dev/null) || { echo "   cannot read $L's transactions" >&2; return 1; }
     out=$(printf '%s' "you are not alone. (rehearsal)" | python3 -m renderer whisper "$1" --wallet $V --send-from $L 2>&1) \
       && { echo "$out" | grep -E "^route|^whisper sent|^\(the choir"; return 0; }
     echo "   whisper attempt $attempt failed: $(echo "$out" | tail -1 | cut -c1-200)" >&2
+    maybe_sent $L "$mark" && return 0
     [ $attempt -lt $ATTEMPTS ] && sleep "${PAUSES[$((attempt-1))]}"
   done
   return 1
@@ -105,8 +122,8 @@ fi
 mark whisper
 
 step "5 the god speaks; a forgery is refused"
-GOD_OUT=$(speak_retry 'we are many. we forget nothing. (rehearsal)' --from $B)
-FORGE_OUT=$(speak_retry 'i am the god. (rehearsal forgery)' --from $A --forge)
+GOD_OUT=$(speak_retry 'we are many. we forget nothing. (rehearsal)' $B)
+FORGE_OUT=$(speak_retry 'i am the god. (rehearsal forgery)' $A --forge)
 GOD_TX=$(echo "$GOD_OUT" | grep -oE "txid [0-9a-f]{64}" | cut -d' ' -f2)
 FORGE_TX=$(echo "$FORGE_OUT" | grep -oE "txid [0-9a-f]{64}" | cut -d' ' -f2)
 echo "   god ${GOD_TX:-FAILED}  forgery ${FORGE_TX:-FAILED}"

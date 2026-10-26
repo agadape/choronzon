@@ -123,9 +123,10 @@ def test_eye_needs_key_file_and_an_explicit_open(served):
 def test_whisper_rejects_bad_txids(served):
     start, _ = served
     req = start()
-    assert req("GET", "/whisper/not-a-txid")[0] == 404
-    assert req("GET", "/whisper/" + "g" * 64)[0] == 404
+    assert req("POST", "/whisper/not-a-txid", {"text": "x"})[0] == 404
+    assert req("POST", "/whisper/" + "g" * 64, {"text": "x"})[0] == 404
     assert req("POST", "/whisper/" + "0" * 64)[0] == 404
+    assert req("GET", "/whisper/" + "0" * 64)[0] == 405          # GET is gone (POST only)
 
 
 GUARDED = [("GET", "/eye", None), ("POST", "/eye/open", {}), ("GET", "/whisper/" + "0" * 64, None),
@@ -207,15 +208,58 @@ def test_whisper_post_body_and_loopback_only(served, whisper_target, tmp_path, m
     assert status == 200 and _memo_of(json.loads(body)["uri"]).startswith(b"GC1R:4242:phone form")
     assert req("POST", path, {"text": "x"}, {"Origin": "http://evil.example"})[0] == 403
     assert req("POST", path, raw_body=b"text=x", headers={"Content-Type": "text/plain"})[0] == 400
-    # GET with ?text= keeps working until the page switches to POST
-    status, _, body = req("GET", path + "?text=still%20works")
-    assert status == 200 and b"still works" in _memo_of(json.loads(body)["uri"])
-    assert req("GET", "/whisper/" + "cd" * 32)[0] == 404                  # no reply address
+    # POST only: a GET with ?text= would keep the whisper in the browser history (audit 26 Oct)
+    status, _, body = req("GET", path + "?text=would%20land%20in%20history")
+    assert status == 405 and whisper_target.address.encode() not in body and b"history" not in body
+    assert req("POST", "/whisper/" + "cd" * 32, {"text": "x"})[0] == 404   # no reply address
     # a client that is not this machine never gets a reply address, by GET or POST
     monkeypatch.setattr(srvmod, "LOOPBACK", ())
-    for method, b in (("GET", None), ("POST", {"text": "x"})):
-        status, _, payload = req(method, path, b)
-        assert status == 404 and whisper_target.address.encode() not in payload, method
+    status, _, payload = req("POST", path, {"text": "x"})
+    assert status == 404 and whisper_target.address.encode() not in payload
+
+
+def test_whisper_refuses_a_reply_address_of_another_network(served, tmp_path, monkeypatch):
+    """A mainnet u1… in a testnet offering: no QR, no URI (a mainnet wallet would pay real ZEC)."""
+    from protocol import address
+    from renderer import wallet, whisper
+    ua = address.bech32m_encode("u", [i % 32 for i in range(170)])
+    target = whisper.ReplyTarget("ef" * 32, 1, ua)
+    monkeypatch.setattr(wallet, "WalletDB", lambda path: object())
+    monkeypatch.setattr(whisper, "find_target", lambda db, txid: target)     # even if the lookup let it through
+    start, _ = served
+    status, _, payload = start(wallet_dir=tmp_path)("POST", "/whisper/" + "ef" * 32, {"text": "x"})
+    assert status == 404 and ua.encode() not in payload and b"zcash:" not in payload
+
+
+def test_kiosk_offer_whose_pay_failed_says_status_unknown(served, monkeypatch):
+    """A failed pay may have broadcast: the kiosk page must not be told "not sent"."""
+    import kiosk.session as ks
+    import renderer.decoder
+    import renderer.tts
+
+    class V:
+        def __init__(self, *a, **k):
+            pass
+
+        def available(self):
+            return True
+
+    class S:
+        def status(self):
+            return {"ready": True}
+
+        def offer(self, *a):
+            raise ks.SendStatusUnknown("devtool pay exit 1: peer closed connection")
+    monkeypatch.setattr(renderer.decoder, "Decoder", lambda *a: None)
+    monkeypatch.setattr(renderer.tts, "Voice", V)
+    monkeypatch.setattr(ks.Session, "current", classmethod(lambda cls: S()))
+    start, _ = served
+    status, _, body = start(kiosk=True)("POST", "/kiosk/offer", {"text": "x"})
+    doc = json.loads(body)
+    assert status == 502 and doc["status"] == "unknown" and doc["error"].startswith("status unknown")
+    assert "not sent" not in doc["error"]
+    js = (REPO / "web" / "kiosk.js").read_text(encoding="utf-8")
+    assert "/^status unknown/.test(e.message) ? e.message" in js
 
 
 def test_kiosk_copy_states_the_route_in_use(served, monkeypatch):

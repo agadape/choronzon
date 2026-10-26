@@ -1,9 +1,10 @@
 """Serve the listener page: python3 -m web [--port 8080] [--bind 127.0.0.1] [--out out]
 
 A plain static server (stdlib only) exposing web/, config/brand.json and the renderer's out/ directory, plus
-POST /whisper/<txid> {"text": ..., "phone": bool} (GET /whisper/<txid>[?text=...&phone] still works until the page
-switches to POST) which builds a Whisper Back payment request from the view-only wallet, for the operator's own
-machine only (loopback; a reply address is never served to the LAN), and
+POST /whisper/<txid> {"text": ..., "phone": bool} (POST only: a GET with ?text= would keep the whisper in the
+browser history; GET answers 405) which builds a Whisper Back payment request from the view-only wallet, for the
+operator's own machine only (loopback; a reply address is never served to the LAN; an address of another network
+than config/choir.json is refused), and
 GET /eye which serves the published full viewing key once the server has --key-file AND the operator opened the
 Eye (POST /eye/open from the operator's own machine; the séance page does this when the button is pressed).
 Pages: / (listener), /?seance (hashes and key sealed until the Eye opens), /apparition.html (two evocations),
@@ -137,9 +138,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         try:
             if self.guarded(rel) and not self.host_allowed():
                 return self.send_error(403, "unknown Host")
-            if rel.startswith("whisper/"):
-                query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
-                return self.whisper(rel[8:], query.get("text", [""])[0], "phone" in query)
+            if rel.startswith("whisper/"):     # POST only: a GET ?text= would land in the browser history
+                return self.send_error(405, "use POST /whisper/<txid> with a JSON body")
             if rel == "eye":
                 return self.eye()
             if rel in ("kiosk.html", "kiosk.js", "kiosk/copy"):
@@ -207,6 +207,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         target = whisper.find_target(WalletDB(self.wallet_dir), txid)
         if target is None:
             return self.send_error(404, "no reply address")
+        from protocol import address_network
+        if address_network(target.address) != whisper.configured_network():
+            return self.send_error(404, "no reply address on this network")    # e.g. a mainnet u1… on testnet
         text = (text or "").strip()[:400] or "you are not alone."
         try:
             uri = whisper.reply_uri(target, text, phone=phone)
@@ -259,6 +262,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.send_json({"error": "either a kiosk reply address or your own, not both"}, 400)
         from kiosk.devtool import DevtoolError
         from kiosk.offering import Choir, make_offering
+        from kiosk.session import SendStatusUnknown
         from protocol import ProtocolError
         from renderer.decoder import Decoder
         from renderer.tts import TTSError, Voice
@@ -285,6 +289,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                    "reply_to_own_wallet": bool(reply_to)})
         except ProtocolError as e:                 # e.g. too-long: the ghost voice does not fit in three memos
             return self.send_json({"error": f"too long for the god: shorten it ({e.code})"}, 400)
+        except SendStatusUnknown as e:             # pay failed, but it may have broadcast: never say "not sent"
+            return self.send_json({"error": "status unknown: the send failed or its reply was lost, and it may "
+                                            "still land. The operator checks the session wallet before you try "
+                                            "again.", "status": "unknown", "detail": str(e)}, 502)
         except (DevtoolError, TTSError) as e:      # DevtoolError messages are already stripped of addresses
             return self.send_json({"error": str(e)}, 502)
 
