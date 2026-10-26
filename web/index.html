@@ -227,6 +227,7 @@
             <button type="submit">find</button><button type="button" id="find_play" hidden>hear it</button>
           </form>
           <div id="find_note" class="quiet find_note"></div>
+          <button type="button" id="pending_forget" class="small" hidden>forget my pending eye</button>
           <div id="actions" class="row"><button id="play2" class="listen">Listen</button><button class="give_open" hidden>give it a secret</button><button id="open_eye">open the eye</button></div>
         </div><div class="holes"></div></div>
         <div class="part stub" id="stub">
@@ -326,14 +327,17 @@
       <div class="row"><a id="give_link"></a><button id="give_copy" type="button">copy the request</button></div>
       <div id="give_as_offering">
       <p class="small"><b>This eye is yours. It opens when the chain carries it.</b> A dim eye now waits for it in the
-         god, in this browser only (it keeps the number, never your words).</p>
+         god, in this browser only. It keeps the number, never your words, but anyone using this browser can see which
+         offering is yours. If it never opens, it may not have been sent, or it was refused or silenced.
+         <button id="give_forget" type="button" hidden>forget it</button><span id="give_forgotten" class="quiet" hidden>forgotten</span></p>
       <p class="small">Your offering's number is <b id="give_cid"></b> (<span id="give_memos"></span>). It appears in the
          god after your wallet sends it, usually within an hour: the page is a snapshot rebuilt about every 30 minutes,
          sometimes later. Keep <a id="give_find">this link</a> to find it.</p>
       </div>
       <div id="give_as_god" hidden>
       <p class="small"><b>You speak as the god. It will refuse you.</b> Anyone with the key sees that this payment did not
-         come from the god's own wallet, so your line never sounds: it becomes a blind red eye outside the halos.</p>
+         come from the god's own wallet, so your line never sounds: it becomes a blind red eye outside the halos. It is
+         still public to every key holder, forever.</p>
       <p class="small">After your wallet sends it and the next snapshot (usually within an hour), find it with the
          transaction id your wallet shows: add <code>#tx=</code> and that id to this page's address.</p>
       </div>

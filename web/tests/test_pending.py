@@ -57,4 +57,18 @@ def test_the_page_never_stores_the_secret_or_an_address():
     assert not re.search(r"\blocalStorage\s*[.\[]", pending)                     # storage is passed in, never reached for
     assert "give_text" not in pending and "give_reply" not in pending
     # give.js hands Pending.add the number only: the call takes (store, contribId, now)
-    assert give.count("Pending.add(") == len(re.findall(r"Pending\.add\(store,\s*offering\.contribId,\s*Date\.now\(\)\)", give)) >= 1
+    assert give.count("Pending.add(") == len(re.findall(r"Pending\.add\(store,\s*offering\.contribId,\s*Date\.now\(\),\s*pkey\)", give)) >= 1
+
+
+def test_each_god_keeps_its_own_pending_eyes():
+    driver = r"""
+const P = require(process.argv[1]);
+const m = {}, s = { getItem: (k) => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: (k) => { delete m[k]; } };
+const a = P.keyFor("zutest1aaa"), b = P.keyFor("zutest1bbb"), t = 1_800_000_000_000;
+P.add(s, 1, t, a); P.add(s, 2, t, b);
+console.log(JSON.stringify({ a: P.load(s, t, a).map((e) => e.cid), b: P.load(s, t, b).map((e) => e.cid), keys: Object.keys(m).sort(),
+  none: P.keyFor(""), removed: P.remove(s, 1, t, a).map((e) => e.cid), bAfter: P.load(s, t, b).map((e) => e.cid) }));
+"""
+    r = json.loads(subprocess.run([NODE, "-e", driver, str(JS)], capture_output=True, text=True, check=True).stdout)
+    assert r["a"] == [1] and r["b"] == [2] and r["keys"] == ["pending-offerings:zutest1aaa", "pending-offerings:zutest1bbb"]
+    assert r["none"] == "pending-offerings" and r["removed"] == [] and r["bAfter"] == [2]

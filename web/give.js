@@ -7,7 +7,7 @@
 
 window.Give = (() => {
   const $ = (id) => document.getElementById(id);
-  let choir = null, offering = null;
+  let choir = null, offering = null, lastPending = null;
 
   function enable(c) {
     if (!c || !Offering.isUnifiedAddress(c.address) || !(c.amount_zat > 0)) return;
@@ -48,8 +48,14 @@ window.Give = (() => {
     $("give_cid").textContent = String(offering.contribId);
     // the pending eye: only the number and the time are kept, in this browser (web/pending.js); never the text
     let store = null; try { store = window.localStorage; } catch (e) { store = null; }
-    // a forgery never gets an eye of its own (the renderer refuses it), so it leaves no pending eye either
-    if (store && window.Pending && !offering.asGod) { Pending.add(store, offering.contribId, Date.now()); dispatchEvent(new Event("pending-changed")); }
+    // one visitor, one pending eye: a remade request replaces the one this panel made before. A forgery never gets an
+    // eye of its own (the renderer refuses it), so it leaves no pending eye either.
+    const pkey = window.Pending ? Pending.keyFor(choir.address) : "";
+    if (store && window.Pending && lastPending !== null) Pending.remove(store, lastPending, Date.now(), pkey);
+    lastPending = null;
+    if (store && window.Pending && !offering.asGod) { Pending.add(store, offering.contribId, Date.now(), pkey); lastPending = offering.contribId; }
+    if (store && window.Pending) dispatchEvent(new Event("pending-changed"));
+    $("give_forget").hidden = lastPending === null; $("give_forgotten").hidden = true;
     $("give_as_offering").hidden = offering.asGod; $("give_as_god").hidden = !offering.asGod;
     $("give_find").href = `#offering=${offering.contribId}`;   // a fragment: the number never reaches a server
     $("give_memos").textContent = offering.chunks === 1 ? "one memo" : `${offering.chunks} memos (one payment request)`;
@@ -95,6 +101,12 @@ window.Give = (() => {
     });
     $("give_make").addEventListener("click", make);
     $("give_copy").addEventListener("click", () => copyLink($("give_copy")));
+    $("give_forget").addEventListener("click", () => {   // anyone using this browser could see which offering is yours
+      let store = null; try { store = window.localStorage; } catch (e) { store = null; }
+      if (store && window.Pending && lastPending !== null) Pending.remove(store, lastPending, Date.now(), Pending.keyFor(choir.address));
+      lastPending = null; $("give_forget").hidden = true; $("give_forgotten").hidden = false;
+      dispatchEvent(new Event("pending-changed"));
+    });
     addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   }
   return { init, enable, open, close };

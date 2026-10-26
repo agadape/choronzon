@@ -217,12 +217,14 @@ let godRetried = false, godWaited = false;
 // ---- the visitor's own pending offerings (web/pending.js): an overlay in this browser only, never in a hash
 let pendingStore = null; try { pendingStore = window.localStorage; } catch (e) { pendingStore = null; }
 let pendingCids = [];
+// one key per god (its choir address), so two gods on one origin keep their own pending eyes
+const pendingKey = () => Pending.keyFor(STATIC && STATIC.choir ? STATIC.choir.address : "");
 function refreshPending(doc) {
   if (!pendingStore || !window.Pending) return;
-  let list = Pending.load(pendingStore, Date.now());
+  let list = Pending.load(pendingStore, Date.now(), pendingKey());
   if (doc) {
     const rec = Pending.reconcile(list, doc.render.timeline);
-    for (const o of rec.opened) Pending.remove(pendingStore, o.cid, Date.now());
+    for (const o of rec.opened) Pending.remove(pendingStore, o.cid, Date.now(), pendingKey());
     if (rec.opened.length) {                               // a snapshot carries it now: the real eye opens and burns
       forgedFound = null;
       const o = rec.opened[rec.opened.length - 1];
@@ -233,10 +235,11 @@ function refreshPending(doc) {
       note.textContent = `Your offering #${o.cid} has opened. Its eye burns; the others turn to it.`;
       note.hidden = false; setTimeout(() => { note.hidden = true; }, 15000);
     }
-    list = Pending.load(pendingStore, Date.now());
+    list = Pending.load(pendingStore, Date.now(), pendingKey());
   }
   pendingCids = list.map((e) => e.cid);
   if (god) god.setPending(pendingCids);
+  $("pending_forget").hidden = !pendingCids.length;
   const box = $("pending_labels"); box.textContent = "";
   for (const cid of pendingCids) {
     const d = document.createElement("div"); d.className = "pending_label"; d.style.display = "none";
@@ -244,6 +247,12 @@ function refreshPending(doc) {
   }
 }
 addEventListener("pending-changed", () => refreshPending(currentDoc));
+// anyone using this browser can see which offering is yours: forget it here
+$("pending_forget").addEventListener("click", () => {
+  if (!pendingStore) return;
+  for (const cid of pendingCids) Pending.remove(pendingStore, cid, Date.now(), pendingKey());
+  refreshPending(null);
+});
 function placePendingLabels() {
   const labels = $("pending_labels").children;
   if (!labels.length) return;
