@@ -39,14 +39,18 @@ window.Give = (() => {
   function make() {
     $("give_error").textContent = "";
     try {
-      offering = Offering.makeOffering(choir, $("give_text").value, $("give_reply").value.trim() || null, Offering.newContribId(window.crypto));
+      const asGod = $("give_asgod").checked;              // the false prophet: kind 3, never a reply address
+      offering = Offering.makeOffering(choir, $("give_text").value, asGod ? null : ($("give_reply").value.trim() || null),
+                                       Offering.newContribId(window.crypto), { asGod });
     } catch (e) { $("give_error").textContent = e.message; return; }
     const link = $("give_link");
     link.href = offering.uri; link.textContent = "open in a wallet on this device";
     $("give_cid").textContent = String(offering.contribId);
     // the pending eye: only the number and the time are kept, in this browser (web/pending.js); never the text
     let store = null; try { store = window.localStorage; } catch (e) { store = null; }
-    if (store && window.Pending) { Pending.add(store, offering.contribId, Date.now()); dispatchEvent(new Event("pending-changed")); }
+    // a forgery never gets an eye of its own (the renderer refuses it), so it leaves no pending eye either
+    if (store && window.Pending && !offering.asGod) { Pending.add(store, offering.contribId, Date.now()); dispatchEvent(new Event("pending-changed")); }
+    $("give_as_offering").hidden = offering.asGod; $("give_as_god").hidden = !offering.asGod;
     $("give_find").href = `#offering=${offering.contribId}`;   // a fragment: the number never reaches a server
     $("give_memos").textContent = offering.chunks === 1 ? "one memo" : `${offering.chunks} memos (one payment request)`;
     drawQR(offering.chunks === 1 ? offering.uri : null);
@@ -83,6 +87,12 @@ window.Give = (() => {
     addEventListener("hashchange", () => { if (location.hash === "#give") open(); });   // #give on an open page
     for (const id of ["give_text", "give_reply"]) $(id).addEventListener("input", () => { $("give_result").hidden = true; update(); });
     $("give_read").addEventListener("change", update);
+    $("give_asgod").addEventListener("change", () => {   // speaking as the god: no reply address, and the button says so
+      const g = $("give_asgod").checked;
+      $("give_reply").disabled = g; if (g) $("give_reply").value = "";
+      $("give_make").textContent = g ? "make the false prophet's request" : "make the payment request";
+      $("give_result").hidden = true; update();
+    });
     $("give_make").addEventListener("click", make);
     $("give_copy").addEventListener("click", () => copyLink($("give_copy")));
     addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });

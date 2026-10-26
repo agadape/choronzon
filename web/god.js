@@ -192,7 +192,7 @@ function mount(canvas, doc, opts = {}) {
       bright: clamp01((p.zero_crossings - 1500) / 1700), secs: clamp01((p.samples / 8000 - 2) / 6), pan: (p.pan - 8) / 8, layer: p.pitch_layer };
     (godTx.has(p.tx) ? gods : offers).push(it);
   });
-  const forged = S.skipped.filter((s) => s.reason === "forged-conductor").map((s, i) => genes(parseInt(s.tx.slice(0, 8), 16) >>> 0, i, 6));
+  const forged = S.skipped.filter((s) => s.reason === "forged-conductor").map((s, i) => ({ g: genes(parseInt(s.tx.slice(0, 8), 16) >>> 0, i, 6), tx: s.tx }));
   const wakeOf = (it, t) => (t < 0 ? 0 : clamp01((t - it.start) / 1200) * clamp01((it.end - t) / 2400));
 
   // ================================================================ the sky: a nebula that is not ours
@@ -268,7 +268,7 @@ function mount(canvas, doc, opts = {}) {
   });
   const great = { kind: "great", big: true, r: 1.85, iris: [0.36, 0.55, 0.7], stripes: 70, slit: 0, seed: 3.3, blind: 0, lid: true };
   eyeList.push(great);
-  forged.forEach((g) => eyeList.push({ kind: "blind", g, r: 0.09 + 0.04 * g[2], iris: [0.6, 0.1, 0.1], stripes: 1, slit: 0, seed: g[3] * 10, blind: 1, lid: false }));
+  forged.forEach(({ g, tx }) => eyeList.push({ kind: "blind", g, tx, r: 0.09 + 0.04 * g[2], iris: [0.6, 0.1, 0.1], stripes: 1, slit: 0, seed: g[3] * 10, blind: 1, lid: false }));
 
   // ================================================================ the Dweller: one living mass, one arm per block
   let shards;
@@ -745,20 +745,28 @@ function mount(canvas, doc, opts = {}) {
       }
       else if (e.kind === "great") { eyePos[i].set(0, 0, 0); e.w = gw; }
       else if (e.kind === "dweller") { eyePos[i].copy(e.pos); e.w = 0; }
-      else { const g = e.g, a = g[0] * TAU + time * (0.02 + 0.02 * g[1]), r = 6.5 + 2 * g[2]; eyePos[i].set(Math.cos(a) * r, (g[4] - 0.5) * 5, Math.sin(a) * r); e.w = 0; }
+      else {                                               // a refused forgery: blind, red, drifting outside the halos
+        const g = e.g, a = g[0] * TAU + time * (0.02 + 0.02 * g[1]), r = 6.5 + 2 * g[2]; eyePos[i].set(Math.cos(a) * r, (g[4] - 0.5) * 5, Math.sin(a) * r);
+        e.w = focusTx && e.tx === focusTx ? 0.9 : 0;         // found by its txid: it burns too, marked NOT THE GOD by the page
+        if (e.w > sw) { sw = e.w; singer = i; }
+      }
     });
     const sing = singer >= 0 && sw > 0.25;
     U.uSing.value = sing ? sw : 0; if (singer >= 0) U.uSingP.value.copy(eyePos[singer]);
     if (singer >= 0 && sw > 0.05) {                       // the halo sits on that one eye and breathes a little
       mark.visible = true; mark.position.copy(eyePos[singer]);
-      mark.scale.setScalar(eyeList[singer].r * (1 + 0.8 * sw) * 3.2 * (1 + 0.05 * Math.sin(time * 3)));
+      const blindSinger = eyeList[singer].kind === "blind";
+      mark.scale.setScalar(eyeList[singer].r * (blindSinger ? 3.2 : 1 + 0.8 * sw) * 3.2 * (1 + 0.05 * Math.sin(time * 3)));
+      mark.material.color.setRGB(...(blindSinger ? [1.6, 0.25, 0.15] : [0.9, 1.4, 1.1]));   // a forgery's halo is red
       mark.material.opacity = Math.min(1, sw * 1.2);
     } else mark.visible = false;
     if (once || now - gazeAt >= 50) { gazeAt = now; chooseGazes(now, time, sing, singer); }   // targets at 20 Hz
     eyeList.forEach((e, i) => {
       const P = eyePos[i]; let scale = e.r;
       if (e.kind === "ring") scale = e.it.silent ? e.r * 0.9 : e.r * (1 + 0.8 * e.w);   // the sounding / found eye grows
-      else if (e.kind === "blind" && ((time * (0.15 + 0.1 * e.g[5]) + e.g[3]) % 1) >= 0.55) scale = 0;
+      else if (e.kind === "blind") {                         // flickers in and out, unless it was found: then it holds, larger
+        if (e.w > 0) scale = e.r * 3.2; else if (((time * (0.15 + 0.1 * e.g[5]) + e.g[3]) % 1) >= 0.55) scale = 0;
+      }
       const want = gazeWant[i];
       if (!eyeLook[i]) eyeLook[i] = want.clone();
       else eyeLook[i].lerp(want, e.kind === "great" ? 0.35 : e.rate).normalize();
@@ -820,6 +828,12 @@ function mount(canvas, doc, opts = {}) {
     setPaused(v) { paused = !!v; resume(); },
     setFocus(tx) { focusTx = tx || null; },   // one offering's eye burns and the others turn to it (null: none)
     setPending,                               // [contrib_id, ...]: the visitor's own offerings not yet on chain (overlay)
+    // where the burning (sounding or found) eye is on screen, in CSS pixels, or null
+    markScreen() {
+      if (!mark.visible) return null;
+      const v = mark.position.clone().project(camera);
+      return v.z < 1 ? { x: (v.x + 1) / 2 * canvas.clientWidth, y: (1 - v.y) / 2 * canvas.clientHeight } : null;
+    },
     // where each pending eye is on screen, in CSS pixels of the canvas: [{ cid, x, y, front }]
     pendingScreen() {
       const out = [], v = new THREE.Vector3(), w = canvas.clientWidth, h = canvas.clientHeight;

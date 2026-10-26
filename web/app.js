@@ -270,7 +270,7 @@ function mountGod(doc) {
       document.body.classList.add("webgl");
       window.__god = god;
       god.setPaused(godOffscreen);
-      if (found) god.setFocus(found.tx);   // a #tx= link may be answered before the god has mounted
+      if (found || forgedFound) god.setFocus(found ? found.tx : forgedFound);   // a #tx= link may be answered before the god mounts
       god.setPending(pendingCids);
       leafOffset();
       return;
@@ -396,6 +396,11 @@ function frame(now) {
   }
   Leaf.frame(now);
   placePendingLabels();
+  if (god) {                                                // NOT THE GOD under a found forgery's burning red eye
+    const p = forgedFound ? god.markScreen() : null, el = $("not_the_god");
+    el.style.display = p ? "block" : "none";
+    if (p) { el.style.left = `${Math.round(p.x)}px`; el.style.top = `${Math.round(p.y + 22)}px`; el.style.opacity = 1; }
+  }
   requestAnimationFrame(frame);
 }
 
@@ -524,10 +529,10 @@ for (const b of playButtons()) b.addEventListener("click", () => (playing ? stop
 // Find my offering: by its transaction id (64 hex, as wallets and explorers show it) or the number the give panel
 // showed (contrib_id). From the leaf, or a fragment: #tx=<txid> or #offering=<number>. Never a ?query: query strings
 // reach the host's logs, fragments never leave the browser.
-let found = null;
+let found = null, forgedFound = null;   // forgedFound: the txid of a found refused forgery (its eye is marked NOT THE GOD)
 function findOffering(q, autoplay = true) {
   const note = $("find_note");
-  found = null; $("find_play").hidden = true;
+  found = null; forgedFound = null; $("find_play").hidden = true;
   q = String(q || "").trim().toLowerCase();
   if (!currentDoc) { note.textContent = "the god has not been evoked here yet"; return; }
   const doc = currentDoc, height = fmt(doc.score.as_of_height);
@@ -546,10 +551,22 @@ function findOffering(q, autoplay = true) {
     return;
   }
   const skipped = /^[0-9a-f]{64}$/.test(q) && doc.score.skipped.find((s) => s.tx === q);
+  if (skipped && skipped.reason === "forged-conductor") {  // the false prophet: its blind red eye burns, marked NOT THE GOD
+    note.textContent = `Refused: not paid by the god's own wallet. On chain at height ${fmt(skipped.height)}, it claims the ` +
+      "god's voice; anyone with the key can see the payment did not come from the god, so it never sounds. Its blind red eye burns.";
+    forgedFound = skipped.tx;
+    if (god) god.setFocus(skipped.tx);
+    // its eye drifts outside the halos, where the leaf would cover it: show the god, and the verdict over it
+    if (innerWidth > 900) setLeaf(false); else scrollTo({ top: 0, behavior: CALM ? "auto" : "smooth" });
+    const toast = $("opened_note");
+    toast.textContent = "Refused: not paid by the god's own wallet. Its blind red eye burns, marked NOT THE GOD.";
+    toast.hidden = false; setTimeout(() => { toast.hidden = true; }, 15000);
+    return;
+  }
   if (skipped) {
-    const why = { "not-protocol": "its memo is not an offering", flagged: "it is silenced (on the open skip list)",
-                  "forged-conductor": "it claims the god's own voice without being the god" }[skipped.reason] || skipped.reason;
+    const why = { "not-protocol": "its memo is not an offering", flagged: "it is silenced (on the open skip list)" }[skipped.reason] || skipped.reason;
     note.textContent = `On chain at height ${fmt(skipped.height)}, but not voiced: ${why}.`;
+    if (god) god.setFocus(null);
     return;
   }
   if (/^\d{1,10}$/.test(q)) {   // a number we cannot vouch for: never imply it will appear

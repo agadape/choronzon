@@ -64,6 +64,32 @@ def test_uri_matches_kiosk_qr_byte_for_byte(text, reply, cid):
     assert decoded.contrib_id == cid and decoded.data.decode() == text.strip() and decoded.reply_addr == (reply or None)
 
 
+@pytest.mark.parametrize("text, cid", [("I am the god. Kneel.", 1), ("the false prophet speaks with ünïcödé", 0xFFFFFFFF),
+                                       ("a long false line " * 30, 777)])
+def test_false_prophet_matches_the_python_conductor_encoder(text, cid):
+    # the reference: protocol.encode_conductor's bytes (kind 3, no reply), in the phone envelope, paid to the choir
+    from protocol import envelope as env
+    from protocol import memo as wire
+    _, binary = wire.encode_contribution(text.strip().encode(), wire.CODEC_TEXT, None, cid,
+                                         body_cap=env.ASCII_BINARY_CAP - wire.HEADER_SIZE, kind=wire.KIND_CONDUCTOR)
+    want = payment_uri(Choir.load(), [env.to_ascii_memo(m) for m in binary])
+    got = js("const O = require(process.argv[1]); const c = JSON.parse(process.argv[2]);"
+             "console.log(JSON.stringify(O.makeOffering(c, process.argv[3], null, Number(process.argv[4]), { asGod: true })))",
+             json.dumps(CHOIR), text, str(cid))
+    assert got["uri"] == want and got["asGod"] is True and got["hasReply"] is False
+    decoded = protocol.decode_contribution([protocol.normalize_memo(m.encode()) for m in got["memos"]])
+    assert decoded.kind == wire.KIND_CONDUCTOR and decoded.contrib_id == cid and decoded.reply_addr is None
+    if len(binary) == 1:   # encode_conductor chunks at the full 500-byte cap, so only one-memo lines are byte-identical
+        assert binary == wire.encode_conductor(text.strip().encode(), wire.CODEC_TEXT, cid)[1]
+
+
+def test_false_prophet_carries_no_reply_address():
+    r = js("const O = require(process.argv[1]); const c = JSON.parse(process.argv[2]);"
+           "try { O.makeOffering(c, 'I am the god', process.argv[3], 5, { asGod: true }); console.log(JSON.stringify('accepted')); }"
+           "catch (e) { console.log(JSON.stringify(e.message)); }", json.dumps(CHOIR), ZU_TEST)
+    assert r == "a line in the god's voice carries no reply address"
+
+
 def test_reply_address_checks_match_the_kiosk():
     r = js("const O = require(process.argv[1]); const out = {};"
            "for (const [k, a] of Object.entries(JSON.parse(process.argv[2]))) { try { O.checkReplyTo(a, 'test'); out[k] = 'ok'; } catch (e) { out[k] = e.message; } }"

@@ -117,7 +117,8 @@
                  text-align: center; font: 16px/1.4 var(--serif); color: var(--ink); background: rgba(5, 3, 2, 0.78);
                  border: 1px solid var(--gilt); padding: 10px 16px; }
   #opened_note[hidden] { display: none; }
-  #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--rubric);
+  #not_the_god { position: fixed; display: none; transform: translate(-50%, 0); color: var(--rubric); z-index: 4;
+                 background: rgba(5, 3, 2, 0.72); padding: 2px 8px; border: 1px solid rgba(200, 67, 31, 0.6);
                  letter-spacing: 0.3em; font-size: 12px; pointer-events: none; font-family: var(--caps); }
   /* séance: the great eye's lids are shut and the hashes sealed until the Eye opens */
   #open_eye, #open_eye2 { display: none; }
@@ -151,6 +152,9 @@
   #give .bad { color: var(--rubric); }
   .give_open[hidden] { display: none !important; }
   #give .nowallet { border: 1px solid rgba(143, 121, 86, .45); padding: 6px 10px; }
+  #give .prophet { border-left: 2px solid var(--rubric); padding-left: 10px; display: grid; gap: 2px; }
+  #give #give_as_offering[hidden], #give #give_as_god[hidden] { display: none; }
+  #give input:disabled { opacity: 0.4; }
   #give .nowallet summary { cursor: pointer; font-family: var(--caps); letter-spacing: 0.1em; color: var(--gilt); font-size: 14px; }
   #give .nowallet ol { margin: 6px 0 2px; padding-left: 1.3em; display: grid; gap: 4px; }
   #give .nowallet code { font: 13px Georgia, serif; }
@@ -296,6 +300,11 @@
     <label class="small">your wallet address for a whisper back (optional)
       <input id="give_reply" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="a fresh shielded-only zutest1… address, or nothing"></label>
     <div id="give_reply_note" class="quiet small"></div>
+    <div class="prophet">
+      <label class="small check"><input type="checkbox" id="give_asgod"> or speak as the god (the false prophet)</label>
+      <p class="quiet small">Anyone can claim to be the god. Only its own wallet can be. Try: your line will be refused, and it
+         will appear as a blind red eye marked NOT THE GOD.</p>
+    </div>
     <div class="statement">
       <p><b>Before you give it anything, read this.</b></p>
       <p><span class="k">private</span> the link between you and your secret. We, the operator, cannot learn who contributed.</p>
@@ -315,11 +324,19 @@
       <canvas id="give_qr" hidden></canvas>
       <div id="give_qr_note" class="quiet small"></div>
       <div class="row"><a id="give_link"></a><button id="give_copy" type="button">copy the request</button></div>
+      <div id="give_as_offering">
       <p class="small"><b>This eye is yours. It opens when the chain carries it.</b> A dim eye now waits for it in the
          god, in this browser only (it keeps the number, never your words).</p>
       <p class="small">Your offering's number is <b id="give_cid"></b> (<span id="give_memos"></span>). It appears in the
          god after your wallet sends it, usually within an hour: the page is a snapshot rebuilt about every 30 minutes,
          sometimes later. Keep <a id="give_find">this link</a> to find it.</p>
+      </div>
+      <div id="give_as_god" hidden>
+      <p class="small"><b>You speak as the god. It will refuse you.</b> Anyone with the key sees that this payment did not
+         come from the god's own wallet, so your line never sounds: it becomes a blind red eye outside the halos.</p>
+      <p class="small">After your wallet sends it and the next snapshot (usually within an hour), find it with the
+         transaction id your wallet shows: add <code>#tx=</code> and that id to this page's address.</p>
+      </div>
       <p class="quiet small">The clipboard and your browser's history may sync to your other devices.</p>
     </div>
   </div>

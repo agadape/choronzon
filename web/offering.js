@@ -11,7 +11,7 @@
 (function (root) {
   "use strict";
   const MEMO_SIZE = 512, HEADER_SIZE = 12, ASCII_BINARY_CAP = ((MEMO_SIZE - 4) * 3) >> 2, MAX_CHUNKS = 3;
-  const CODEC_TEXT = 10, KIND_CONTRIBUTION = 1;
+  const CODEC_TEXT = 10, KIND_CONTRIBUTION = 1, KIND_CONDUCTOR = 3;
 
   // ---- crc32 (zlib) ---------------------------------------------------------------------------------------------
   const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -58,13 +58,17 @@
   // ---- encoding ------------------------------------------------------------------------------------------------
   const b64url = (bytes) => { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
   const utf8 = (s) => new TextEncoder().encode(s);
-  function header(cid, seq, total, len) {
+  function header(cid, seq, total, len, kind) {
     const h = new Uint8Array(HEADER_SIZE), v = new DataView(h.buffer);
-    h[0] = 0xff; h[1] = 0x47; h[2] = 1; v.setUint32(3, cid >>> 0); h[7] = KIND_CONTRIBUTION; h[8] = seq; h[9] = total; v.setUint16(10, len);
+    h[0] = 0xff; h[1] = 0x47; h[2] = 1; v.setUint32(3, cid >>> 0); h[7] = kind; h[8] = seq; h[9] = total; v.setUint16(10, len);
     return h;
   }
-  // text -> binary memos (each header + chunk, no padding), as protocol.encode_contribution with the envelope's cap
-  function encodeText(text, replyAddr, contribId) {
+  // text -> binary memos (each header + chunk, no padding), as protocol.encode_contribution with the envelope's cap.
+  // kind 3 is a line in the god's own voice (protocol.encode_conductor): valid only when the choir wallet itself pays
+  // it; from anyone else the renderer refuses it as a forgery (forged-conductor) and shows a blind red eye.
+  function encodeText(text, replyAddr, contribId, kind = KIND_CONTRIBUTION) {
+    if (kind !== KIND_CONTRIBUTION && kind !== KIND_CONDUCTOR) throw new Error("unknown kind");
+    if (kind === KIND_CONDUCTOR && replyAddr) throw new Error("a line in the god's voice carries no reply address");
     if (!(Number.isInteger(contribId) && contribId >= 0 && contribId <= 0xffffffff)) throw new Error("contrib_id must be a u32");
     const data = utf8(text), reply = new TextEncoder().encode(replyAddr || "");
     if (reply.length > 255) throw new Error("reply address too long for a 1-byte length");
@@ -76,7 +80,7 @@
     const cap = ASCII_BINARY_CAP - HEADER_SIZE, chunks = [];
     for (let i = 0; i < body.length; i += cap) chunks.push(body.slice(i, i + cap));
     if (chunks.length > MAX_CHUNKS) throw new Error(`too long: needs ${chunks.length} memos, at most ${MAX_CHUNKS}`);
-    return chunks.map((c, i) => { const m = new Uint8Array(HEADER_SIZE + c.length); m.set(header(contribId, i, chunks.length, c.length)); m.set(c, HEADER_SIZE); return m; });
+    return chunks.map((c, i) => { const m = new Uint8Array(HEADER_SIZE + c.length); m.set(header(contribId, i, chunks.length, c.length, kind)); m.set(c, HEADER_SIZE); return m; });
   }
   const envelope = (binaryMemo) => "GC1:" + b64url(binaryMemo);
   function zatToZec(zat) { const s = `${Math.floor(zat / 1e8)}.${String(zat % 1e8).padStart(8, "0")}`; return s.replace(/0+$/, "").replace(/\.$/, "") || "0"; }
@@ -84,13 +88,16 @@
     const amount = zatToZec(choir.amount_zat);
     return "zcash:?" + envelopes.map((e, i) => { const sfx = i ? `.${i}` : ""; return `address${sfx}=${choir.address}&amount${sfx}=${amount}&memo${sfx}=${b64url(utf8(e))}`; }).join("&");
   }
-  // the whole phone offering: { contribId, memos (envelopes), uri, bytes (text), chunks }
-  function makeOffering(choir, text, replyAddr, contribId) {
+  // the whole phone offering: { contribId, memos (envelopes), uri, bytes (text), chunks, asGod }
+  // opts.asGod: the false prophet, a line that claims the god's own voice (kind 3), never with a reply address
+  function makeOffering(choir, text, replyAddr, contribId, opts = {}) {
     text = (text || "").trim();
     if (!text) throw new Error("nothing to give");
+    const asGod = !!opts.asGod;
+    if (asGod && replyAddr) throw new Error("a line in the god's voice carries no reply address");
     const reply = replyAddr ? checkReplyTo(replyAddr, choir.network) : null;
-    const memos = encodeText(text, reply, contribId).map(envelope);
-    return { contribId, memos, uri: paymentUri(choir, memos), bytes: utf8(text).length, chunks: memos.length, hasReply: !!reply };
+    const memos = encodeText(text, reply, contribId, asGod ? KIND_CONDUCTOR : KIND_CONTRIBUTION).map(envelope);
+    return { contribId, memos, uri: paymentUri(choir, memos), bytes: utf8(text).length, chunks: memos.length, hasReply: !!reply, asGod };
   }
   // how many text bytes still fit into ONE memo (one memo = one scannable QR), given the reply address length
   function oneMemoRoom(replyLen) { return ASCII_BINARY_CAP - HEADER_SIZE - 1 - 1 - (replyLen || 0) - 4; }
