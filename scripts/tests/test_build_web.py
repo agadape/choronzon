@@ -55,7 +55,9 @@ def test_dist_holds_exactly_the_allow_list(out, tmp_path):
     assert static["static"] is True and static["as_of_height"] == 4522002 and static["render_hash"] == "a" * 64
     vercel = json.loads((dist / "vercel.json").read_text())
     assert vercel["cleanUrls"] is True
-    assert any(h["source"] == "/out/(.*)" for h in vercel["headers"])
+    cache = {r["source"]: h["value"] for r in vercel["headers"] for h in r["headers"] if h["key"] == "Cache-Control"}
+    assert cache["/out/score.json"] == "no-store" and cache["/static.json"] == "no-store"
+    assert "immutable" in cache["/out/mix.wav"]   # fetched as mix.wav?r=<render hash>, so it may be kept
 
 
 def test_refuses_without_a_render(tmp_path):

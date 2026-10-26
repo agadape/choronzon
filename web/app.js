@@ -285,7 +285,8 @@ async function loadScore() {
   $("status").textContent = `${n === 0 ? "nothing has been given yet" : "evoked"} at height ${fmt(height)}`;
   const anchorP = loadAnchor(doc);
   if (firstLoad) setTimeout(findFromHash, 0);              // #tx= / #offering= in the link
-  const r = await fetch("out/mix.wav", { cache: "no-store" });
+  // the mix is ~5 MB and only changes with the render: fetched by render hash, so the browser (and the CDN) may keep it
+  const r = await fetch(`out/mix.wav?r=${doc.render_hash.slice(0, 16)}`, { cache: "default" });
   const ab = await r.arrayBuffer();
   verifyHere(doc, new Uint8Array(ab.slice(0)), anchorP);          // a copy: decoding detaches the buffer
   if (audioCtx) buffer = await audioCtx.decodeAudioData(ab);

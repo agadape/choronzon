@@ -199,7 +199,10 @@ doc = {"cleanUrls": True, "headers": [
     {"source": "/(.*)", "headers": [{"key": "Content-Security-Policy", "value": csp},
                                     {"key": "Referrer-Policy", "value": "no-referrer"},
                                     {"key": "X-Content-Type-Options", "value": "nosniff"}]},
-    {"source": "/out/(.*)", "headers": nostore},
+    {"source": "/out/score.json", "headers": nostore},
+    {"source": "/out/render_hash", "headers": nostore},
+    # the mix only changes with the render, and the page asks for it as mix.wav?r=<render hash>: keep it
+    {"source": "/out/mix.wav", "headers": year},
     {"source": "/static.json", "headers": nostore},
     {"source": "/key.txt", "headers": [{"key": "Content-Type", "value": "text/plain; charset=utf-8"}]},
     {"source": "/vendor/(.*)", "headers": year},
