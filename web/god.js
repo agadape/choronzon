@@ -121,7 +121,7 @@ function scriptTexture(seed, W = 2048, H = 64, aniso = 4) {
   x.fillStyle = "#000"; x.fillRect(0, 0, W, H); x.setTransform(W / 2048, 0, 0, H / 64, 0, 0);
   x.strokeStyle = "#fff"; x.lineCap = "round";
   let i = 0;
-  for (let px = 6; px < 2040; px += 10) {   // a script too fine to read, cut from the hash
+  for (let px = 8; px < 2040; px += 16) {   // a script too fine to read, cut from the hash (sparser since 26 Oct)
     const g = genes(seed, i++, 8); x.lineWidth = 1.2 + g[7] * 1.2; x.beginPath();
     x.moveTo(px + g[0] * 6, 14 + g[1] * 36); x.lineTo(px + g[2] * 6, 14 + g[3] * 36); x.quadraticCurveTo(px + g[4] * 8, 10 + g[5] * 44, px + g[6] * 6, 14 + g[7] * 36); x.stroke();
     if (g[0] > 0.86) { x.beginPath(); x.arc(px + 3, 32, 4 + g[1] * 4, 0, TAU); x.stroke(); }
@@ -152,7 +152,7 @@ function mount(canvas, doc, opts = {}) {
   const limitsNow = () => DprAdapter.limits(devicePixelRatio, PHONE, DPR_Q, canvas.clientWidth || innerWidth, canvas.clientHeight || innerHeight, GPU_MAX);
   const DPR = DprAdapter.create(limitsNow());
   let dpr = DPR.dpr;
-  const ANISO = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  const ANISO = Math.min(2, renderer.capabilities.getMaxAnisotropy());
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
@@ -196,7 +196,7 @@ function mount(canvas, doc, opts = {}) {
   const wakeOf = (it, t) => (t < 0 ? 0 : clamp01((t - it.start) / 1200) * clamp01((it.end - t) / 2400));
 
   // ================================================================ the sky: a nebula that is not ours
-  scene.add(new THREE.Mesh(geo(new THREE.SphereGeometry(200, 32, 16)), mat(
+  scene.add(new THREE.Mesh(geo(new THREE.SphereGeometry(200, 24, 12)), mat(
     `varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
     `varying vec3 vD;
     void main(){
@@ -213,7 +213,7 @@ function mount(canvas, doc, opts = {}) {
     }`, { side: THREE.BackSide })));
 
   // ================================================================ the wheels
-  const scriptTex = keep(scriptTexture(seed0, 1024, 64, ANISO));   // halos and wing pages, mipmapped, every device
+  const scriptTex = keep(PHONE ? scriptTexture(seed0, 512, 32, ANISO) : scriptTexture(seed0, 1024, 64, ANISO));   // halos and wing pages, mipmapped
   const ringMat = mat(
     `varying vec3 vP, vN; varying vec2 vUv;
     void main(){ vec4 wp = modelMatrix * vec4(position, 1.); vP = wp.xyz; vN = normalize(mat3(modelMatrix) * normal); vUv = uv; gl_Position = projectionMatrix * viewMatrix * wp; }`,
@@ -240,7 +240,7 @@ function mount(canvas, doc, opts = {}) {
     const pts = [[R - T, -H / 2], [R - T * 0.4, -H / 2 - 0.035], [R + 0.05, -H / 2 - 0.02], [R + 0.105, -H / 2 + 0.035], [R + 0.075, -H / 2 + 0.105],
       [R - 0.02, -H / 2 + 0.155], [R - 0.02, H / 2 - 0.155], [R + 0.075, H / 2 - 0.105], [R + 0.105, H / 2 - 0.035], [R + 0.05, H / 2 + 0.02],
       [R - T * 0.4, H / 2 + 0.035], [R - T, H / 2], [R - T, -H / 2]].map(([x, y]) => new THREE.Vector2(x, y));
-    return geo(new THREE.LatheGeometry(pts, PHONE ? 64 : 112));
+    return geo(new THREE.LatheGeometry(pts, PHONE ? 48 : 72));
   }
   const cap = (k) => 10 + 4 * k;
   let K = 0; for (let left = offers.length; left > 0; K++) left -= cap(K);
@@ -279,12 +279,12 @@ function mount(canvas, doc, opts = {}) {
     const C0 = new THREE.Vector3(0, -14.8, -6), RM = 9;
     const surf = (dir) => { const p = dir.clone().multiplyScalar(RM); return RM + field(p.clone().multiplyScalar(0.35)) * 1.5 + field(p.clone().multiplyScalar(1.3)) * 0.32; };
     const zeros = (n) => new THREE.BufferAttribute(new Float32Array(n), 1);
-    const mg = geo(mergeVertices(new THREE.IcosahedronGeometry(RM, PHONE ? 10 : 16))), pa = mg.attributes.position, v = new THREE.Vector3();
+    const mg = geo(mergeVertices(new THREE.IcosahedronGeometry(RM, PHONE ? 7 : 10))), pa = mg.attributes.position, v = new THREE.Vector3();
     for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i); const d = v.clone().normalize(); v.copy(d.multiplyScalar(surf(d))); pa.setXYZ(i, v.x, v.y, v.z); }
     mg.computeVertexNormals(); for (const a of ["aRad", "aPhase", "aLen"]) mg.setAttribute(a, zeros(pa.count));
     const mass = new THREE.Mesh(mg, mat(FLESH_VS(false), FLESH_FS(false))); mass.position.copy(C0); scene.add(mass);
     { // blisters
-      const N = PHONE ? 40 : 110, bm = new THREE.InstancedMesh(geo(new THREE.SphereGeometry(1, 8, 6)), mat(
+      const N = PHONE ? 30 : 60, bm = new THREE.InstancedMesh(geo(new THREE.SphereGeometry(1, 6, 4)), mat(
         `varying vec3 vP, vN; void main(){ mat4 m = modelMatrix * instanceMatrix; vec4 wp = m * vec4(position, 1.); vP = wp.xyz; vN = normalize(mat3(m) * normal); gl_Position = projectionMatrix * viewMatrix * wp; }`,
         `varying vec3 vP, vN; void main(){ vec3 N = normalize(vN); float n = noise3(vP * 9.);
           vec3 c = shade(mix(vec3(.32, .26, .14), vec3(.5, .42, .24), n), N, vP, .1, .8, 1.) + vec3(.1, .07, .02) * pow(1. - abs(dot(N, normalize(cameraPosition - vP))), 2.);
@@ -299,7 +299,7 @@ function mount(canvas, doc, opts = {}) {
     const blocks = new Map(); for (const o of S.offerings) blocks.set(o.height, (blocks.get(o.height) || 0) + 1);
     const bl = [...blocks.entries()].sort((a, b) => a[0] - b[0]);
     // budget: ≤ 120k triangles desktop, ≤ 60k phone (spec §3); past 30 blocks the arms get coarser so the total holds
-    const nb = Math.max(1, bl.length), TS = Math.max(PHONE ? 24 : 32, Math.round((PHONE ? 40 : 60) * Math.min(1, 30 / nb))), RS = PHONE ? 6 : 8, arms = [];
+    const nb = Math.max(1, bl.length), TS = Math.max(PHONE ? 16 : 20, Math.round((PHONE ? 28 : 36) * Math.min(1, 30 / nb))), RS = PHONE ? 5 : 6, arms = [];
     const ranked = bl.map((_, i) => i).sort((a, b) => bl[b][1] - bl[a][1] || a - b), frontIdx = ranked.slice(0, 2);
     const rest = bl.map((_, i) => i).filter((i) => !frontIdx.includes(i)), place = {};
     frontIdx.forEach((i, k) => (place[i] = { sd: k ? -1 : 1, f: 0.1, front: true }));
@@ -340,17 +340,17 @@ function mount(canvas, doc, opts = {}) {
     });
     if (arms.length) { scene.add(new THREE.Mesh(geo(mergeGeometries(arms)), mat(FLESH_VS(true), FLESH_FS(true)))); for (const a of arms) a.dispose(); }
     // debris
-    shards = new THREE.InstancedMesh(geo(new THREE.OctahedronGeometry(1, 0)), keep(new THREE.MeshLambertMaterial({ color: 0x1c1a20, flatShading: true })), 80);
+    shards = new THREE.InstancedMesh(geo(new THREE.OctahedronGeometry(1, 0)), keep(new THREE.MeshLambertMaterial({ color: 0x1c1a20, flatShading: true })), 40);
     const mtx = new THREE.Matrix4(), qq = new THREE.Quaternion(), sc = new THREE.Vector3();
-    for (let i = 0; i < 80; i++) { const g = genes(seed0, 2000 + i, 7);
+    for (let i = 0; i < 40; i++) { const g = genes(seed0, 2000 + i, 7);
       qq.setFromEuler(new THREE.Euler(g[3] * TAU, g[4] * TAU, g[5] * TAU)); sc.set(0.06 + g[6] * 0.22, 0.1 + g[6] * 0.42, 0.06 + g[6] * 0.18);
       shards.setMatrixAt(i, mtx.compose(new THREE.Vector3((g[0] - 0.5) * 34, (g[1] - 0.45) * 20, (g[2] - 0.6) * 26), qq, sc)); }
     scene.add(shards);
   }
 
   // ================================================================ six wings of written pages: the god's own voice
-  const PAIRS = Math.min(3, Math.max(1, Math.ceil(gods.length / 2))), FP = 14 + Math.floor(gods.length / 2), FC = 12, FS = 10;
-  const featherGeo = geo(new THREE.PlaneGeometry(1, 1, PHONE ? 6 : 10, 2)); featherGeo.translate(0.5, 0, 0);
+  const PAIRS = Math.min(3, Math.max(1, Math.ceil(gods.length / 2))), FP = 10 + Math.floor(gods.length / 3), FC = 8, FS = 6;   // fewer, broader pages (26 Oct)
+  const featherGeo = geo(new THREE.PlaneGeometry(1, 1, PHONE ? 4 : 6, 1)); featherGeo.translate(0.5, 0, 0);
   { const pa = featherGeo.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i); pa.setZ(i, x * x * 0.18); } featherGeo.computeVertexNormals(); }
   const NF = PAIRS * 2 * (FP + FC + FS), iSeed = new Float32Array(NF);
   { let k = 0; for (let p = 0; p < PAIRS; p++) for (let s2 = 0; s2 < 2; s2++) for (let layer = 0; layer < 3; layer++) for (let f = 0; f < [FP, FC, FS][layer]; f++, k++)
@@ -368,11 +368,11 @@ function mount(canvas, doc, opts = {}) {
       float fray = (fbm3(vec3(x * 26., y * 3., vSeed * 9.)) - .5) * .5;
       if (abs(y) > half_ * (1. + fray) ) discard;
       float rachis = smoothstep(.03, .0, abs(y)) * (1. - x * .6);
-      float barbs = pow(.5 + .5 * sin(x * 70. - abs(y) * 40. + vSeed * 20.), 5.);
+      float barbs = pow(.5 + .5 * sin(x * 36. - abs(y) * 24. + vSeed * 20.), 3.);
       float layer = floor(vSeed), sd = fract(vSeed);
       float script = texture2D(uScript, vec2(x * 1.6 + sd * 7., y * 1.8 + .5)).r * smoothstep(.1, .3, x);
       vec3 c = mix(vec3(.36, .35, .32), vec3(.6, .58, .52), fbm3(vec3(x * 3., y * 4., 2.)));
-      c *= .9 + .1 * barbs;
+      c *= .95 + .05 * barbs;
       c = mix(c, vec3(.12, .1, .09), script * .55);
       c = mix(c, vec3(.2, .18, .16), rachis * .5);
       if (layer < .5) c *= 1. - .7 * smoothstep(.86, 1., x + fray * .15);
@@ -432,7 +432,7 @@ function mount(canvas, doc, opts = {}) {
         vec3 c = vec3(.004, .005, .006) + vec3(.02, .025, .025) * l * exp(-length(vP - cameraPosition) * .05) + vec3(.09, .012, .006) * near;
         gl_FragColor = vec4(fogged(c, vP), 1.); }`));
     ground.rotation.x = -Math.PI / 2; ground.position.y = -9; scene.add(ground);
-    const mg = geo(new THREE.CylinderGeometry(110, 110, 30, 256, 1, true)), pa = mg.attributes.position;
+    const mg = geo(new THREE.CylinderGeometry(110, 110, 30, PHONE ? 96 : 128, 1, true)), pa = mg.attributes.position;
     for (let i = 0; i < pa.count; i++) if (pa.getY(i) > 0) { const a = Math.atan2(pa.getZ(i), pa.getX(i));
       const hgt = Math.abs(Math.sin(a * 7 + 1.3)) * 4 + Math.abs(Math.sin(a * 23 + 0.4)) * 2.2 + Math.abs(Math.sin(a * 61)) * 0.9; pa.setY(i, -15 + hgt + 4); }
     const mountains = new THREE.Mesh(mg, mat(
@@ -489,8 +489,8 @@ function mount(canvas, doc, opts = {}) {
     for (const e of list) e.eyeMesh = m;
     return { mesh: m, wake, wakeAttr };
   }
-  const smallEyes = eyeMesh(eyeList.filter((e) => !e.big), PHONE ? 14 : 20, PHONE ? 10 : 13);
-  const bigEyes = eyeMesh(eyeList.filter((e) => e.big), PHONE ? 36 : 48, PHONE ? 24 : 32);
+  const smallEyes = eyeMesh(eyeList.filter((e) => !e.big), PHONE ? 10 : 12, PHONE ? 6 : 8);   // small on screen: few segments
+  const bigEyes = eyeMesh(eyeList.filter((e) => e.big), PHONE ? 24 : 32, PHONE ? 16 : 20);
   const eyeGroups = [smallEyes, bigEyes];
 
   // a cold light that is always behind the god, wherever you stand: the cage and the arms cut it into rays
@@ -535,8 +535,8 @@ function mount(canvas, doc, opts = {}) {
     for (const e of list) e.lidMesh = m;
     return { mesh: m, open, openAttr };
   }
-  const smallLids = lidMesh(eyeList.filter((e) => e.lid && !e.big), PHONE ? 12 : 18, PHONE ? 9 : 12);
-  const bigLids = lidMesh(eyeList.filter((e) => e.lid && e.big), PHONE ? 32 : 44, PHONE ? 22 : 30);
+  const smallLids = lidMesh(eyeList.filter((e) => e.lid && !e.big), PHONE ? 10 : 12, PHONE ? 6 : 8);
+  const bigLids = lidMesh(eyeList.filter((e) => e.lid && e.big), PHONE ? 22 : 28, PHONE ? 14 : 18);
   const lidGroups = [smallLids, bigLids];
 
   // ================================================================ particles: dust that hangs, embers that rise
@@ -553,8 +553,8 @@ function mount(canvas, doc, opts = {}) {
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
     scene.add(new THREE.Points(pg, m));
   }
-  motes(PHONE ? 500 : 1200, seed0, [0.5, 0.7, 0.65], 0.045, 0);
-  motes(PHONE ? 120 : 280, seed0 ^ 0xe1, [1.6, 0.35, 0.1], 0.07, 0.35);
+  motes(PHONE ? 250 : 600, seed0, [0.5, 0.7, 0.65], 0.045, 0);
+  motes(PHONE ? 60 : 140, seed0 ^ 0xe1, [1.6, 0.35, 0.1], 0.07, 0.35);
   { // the Watcher on a floating rock, for scale
     const rock = new THREE.Mesh(geo(new THREE.DodecahedronGeometry(1.3, 1)), keep(new THREE.MeshLambertMaterial({ color: 0x151419, flatShading: true })));
     rock.scale.set(0.5, 1.4, 0.5); rock.position.set(3.4, -8.6, 7.5); scene.add(rock);
@@ -565,15 +565,15 @@ function mount(canvas, doc, opts = {}) {
   // ================================================================ post: scene (HDR) -> god rays (half res) -> composite
   // the scene target is multisampled (WebGL2 MSAA x2) on every device at backbuffer resolution; the god rays are a
   // radial blur, so their target runs at half resolution (the blur hides it)
-  const rtOpts = { type: THREE.HalfFloatType, depthBuffer: true, samples: Math.min(2, renderer.capabilities.maxSamples || 2) };
+  const rtOpts = { type: THREE.HalfFloatType, depthBuffer: true, samples: 0 };   // no MSAA (26 Oct, lighter)
   const rtScene = keep(new THREE.WebGLRenderTarget(1, 1, rtOpts)), rtRays = keep(new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false }));
   const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), quadGeo = geo(new THREE.PlaneGeometry(2, 2));
   const QVS = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`;
   const raysMat = keep(new THREE.ShaderMaterial({ uniforms: { tScene: { value: rtScene.texture }, uSun: { value: new THREE.Vector2(0.4, 0.5) }, uGod: { value: 0 } }, vertexShader: QVS,
     fragmentShader: `uniform sampler2D tScene; uniform vec2 uSun; uniform float uGod; varying vec2 vUv;
-    void main(){ vec2 d = (vUv - uSun) / 30. * .92; float j = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); vec2 p = vUv + d * j; vec3 acc = vec3(0.); float w = 1.;
-      for (int i = 0; i < 30; i++){ p -= d; vec3 s = texture2D(tScene, p).rgb; float l = max(dot(s, vec3(.3, .59, .11)) - .28, 0.); acc += s * l * w; w *= .94; }
-      gl_FragColor = vec4(acc * (.2 + uGod * .12) * vec3(.7, 1., .9), 1.); }`, depthTest: false, depthWrite: false }));
+    void main(){ vec2 d = (vUv - uSun) / 16. * .92; float j = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); vec2 p = vUv + d * j; vec3 acc = vec3(0.); float w = 1.;
+      for (int i = 0; i < 16; i++){ p -= d; vec3 s = texture2D(tScene, p).rgb; float l = max(dot(s, vec3(.3, .59, .11)) - .28, 0.); acc += s * l * w; w *= .89; }
+      gl_FragColor = vec4(acc * (.366 + uGod * .22) * vec3(.7, 1., .9), 1.); }`, depthTest: false, depthWrite: false }));
   const compMat = keep(new THREE.ShaderMaterial({ uniforms: { tScene: { value: rtScene.texture }, tRays: { value: rtRays.texture }, uRes: { value: new THREE.Vector2(1, 1) },
       uTime: U.uTime, uGod: { value: 0 }, uDpr: { value: 1 } }, vertexShader: QVS,
     fragmentShader: `uniform sampler2D tScene, tRays; uniform vec2 uRes; uniform float uTime, uGod, uDpr; varying vec2 vUv;
@@ -582,8 +582,8 @@ function mount(canvas, doc, opts = {}) {
     void main(){
       vec2 uv = vUv, c = uv - .5; float ca = .004 * dot(c, c) * 4. * (1. + uGod * 2.);
       vec3 col = vec3(texture2D(tScene, uv + c * ca).r, texture2D(tScene, uv).g, texture2D(tScene, uv - c * ca).b) + texture2D(tRays, uv).rgb;
-      vec3 st = vec3(0.); for (int i = -7; i <= 7; i++){ float fi = float(i); st += texture2D(tRays, uv + vec2(fi * .018, 0.)).rgb * (1. - abs(fi) / 8.); }
-      col += st * .07 * vec3(.55, .85, 1.);
+      vec3 st = vec3(0.); for (int i = -3; i <= 3; i++){ float fi = float(i); st += texture2D(tRays, uv + vec2(fi * .036, 0.)).rgb * (1. - abs(fi) / 4.); }
+      col += st * .14 * vec3(.55, .85, 1.);
       col = aces(col * 1.1);
       col = mix(vec3(dot(col, vec3(.3, .59, .11))), col, .88);
       col *= mix(.25, 1., smoothstep(1.15, .25, length(c * vec2(1.25, 1.))));
@@ -598,7 +598,7 @@ function mount(canvas, doc, opts = {}) {
   function size() {
     const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight, narrow = w <= 900;
     renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
-    rtScene.setSize(Math.round(w * dpr), Math.round(h * dpr)); rtRays.setSize(Math.round(w * dpr / 2), Math.round(h * dpr / 2));
+    rtScene.setSize(Math.round(w * dpr), Math.round(h * dpr)); rtRays.setSize(Math.round(w * dpr / 4), Math.round(h * dpr / 4));   // the rays are a blur: quarter resolution
     compMat.uniforms.uRes.value.set(w * dpr, h * dpr); compMat.uniforms.uDpr.value = dpr;
     camera.aspect = w / h; camera.fov = narrow ? 58 : 42;
     NARROW = narrow; VW = w; VH = h; if (narrow) camera.setViewOffset(w, h, 0, h * 0.06, w, h); else camera.setViewOffset(w, h, offX, 0, w, h);

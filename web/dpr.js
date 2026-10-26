@@ -1,15 +1,15 @@
 // Resolution for the god (web/god.js): an HD target first, then adaptation both ways with hysteresis. Pure: it is
 // fed frame times and answers with the device-pixel ratio to render at. No DOM, no randomness; resolution only.
 //
-//   hd      the drawing buffer's short side is at least 900 px on desktop and 720 px on phones:
-//           hd = 900 (720) / the canvas's CSS short side, never above the screen's own devicePixelRatio (no
-//           supersampling) and never beyond what the GPU can allocate (its max render size)
-//   range   cap = max(hd, the device's ratio capped at 2 desktop / 1.5 phone); start at the cap. ?dpr=N pins it.
+//   hd      the drawing buffer's short side aims for 720 px on desktop and 540 px on phones (26 Oct, lighter):
+//           hd = 720 (540) / the canvas's CSS short side, never above the cap
+//   range   cap = the screen's own devicePixelRatio, at most 1.5 desktop / 1.25 phone (no supersampling) and never
+//           beyond what the GPU can allocate (its max render size); start at the cap. ?dpr=N pins it.
 //   settle  frames right after mount (2.5 s), a resize or tab switch (1 s) or a DPR change (0.6 s) are ignored:
 //           shader compiles, texture uploads and render-target reallocations are not "the GPU is too slow"
 //   down    -0.1 only when the median frame over the last 2 s is over 28 ms, never below the hd floor ...
 //   slow    ... unless it already sits on the hd floor and the median over 5 s says under 30 fps (over 33.3 ms):
-//           then it may go below hd, down to 0.75 desktop / 0.85 phone ("below hd: slow GPU")
+//           then it may go below hd, down to 0.75 desktop / 0.6 phone ("below hd: slow GPU")
 //   up      +0.1 when the median over ~2 s is under 18 ms and its 90th percentile under 22 ms (a 60 Hz screen never
 //           goes below 16.7 ms, so "fast" means "holding vsync"); climbing back to hd ends the slow mode
 //   memory  after a slowdown nothing climbs for 3 s, and the level that was slow is not retried for 15 s; when a
@@ -74,11 +74,10 @@
   // Without a CSS size there is no hd floor (old behaviour).
   function limits(devicePixelRatio, phone, query, cssW, cssH, maxSize) {
     const ratio = devicePixelRatio || 1;
-    const base = Math.min(ratio, phone ? 1.5 : 2), floor = Math.min(base, phone ? 0.85 : 0.75);
     const shortSide = Math.min(cssW || 0, cssH || 0), longSide = Math.max(cssW || 0, cssH || 0);
     const gpu = maxSize && longSide ? maxSize / longSide : Infinity;
-    const hd = shortSide ? Math.min(ratio, (phone ? 720 : 900) / shortSide, gpu) : 0;
-    const cap = Math.min(Math.max(base, hd), gpu);
+    const cap = Math.min(ratio, phone ? 1.25 : 1.5, gpu), floor = phone ? 0.6 : 0.75;
+    const hd = shortSide ? Math.min(cap, (phone ? 540 : 720) / shortSide) : 0;
     const v = Number(query);
     return { cap, floor: Math.min(floor, cap), hd: Math.min(hd, cap), forced: v > 0 ? Math.min(3, Math.max(0.25, v)) : 0 };
   }
