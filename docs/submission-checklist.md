@@ -1,7 +1,12 @@
 # Submission checklist (deadline 28 Oct 2026, one submission, one track: Wildcard)
 
-Rules recap (from `SPIKE_LOG.md`): all code written in the window, open source by 28 Oct, one submission, one
-track, prize paid in ZEC to a shielded address. The repo stays private until the day of submission.
+Rules (official page, read by the user on 26 Oct): one person registers and submits, and the prize goes to that
+account (build with anyone); all code written during the build window (libraries are fine, existing products are
+not); open source at submission, and a private repo made public on 28 Oct counts; one submission per account, in
+exactly one track; submissions stay sealed until judging and **can be edited until the deadline** (so submit early,
+then refine); prizes are paid in ZEC to a shielded address, and the organisers contact winners on Telegram after
+judging to get it, so **no address goes into the form**. Help: the organisers' e-mail on the rules page. Not on the
+rules page: the deadline's hour and time zone (check the schedule page) and any rule on AI tools (we disclose anyway).
 
 ## Before making the repository public
 
@@ -37,8 +42,8 @@ track, prize paid in ZEC to a shielded address. The repo stays private until the
 - [ ] a short "why Zcash" paragraph: the README's "Why it needs Zcash" table
 - [ ] evidence: `docs/evidence-index.md` (every claim → txid → block)
 - [ ] team members and roles (A/B/C still unassigned in `TODO.md`)
-- [ ] shielded payout address: a fresh address from a wallet the team controls, **not** a testnet address and not
-      any wallet in this repo; verify it parses (`protocol.is_unified_address`) and keep it out of the repository
+- [ ] ~~shielded payout address~~ not needed in the form: winners are contacted on Telegram after judging. Keep a
+      mainnet shielded wallet ready and make sure the submitting account's Telegram handle is reachable
 
 ## After submission
 
@@ -125,6 +130,6 @@ Only the user can do:
   re-run checks 3, 4 and 9 (27 Oct checks 5–7);
 - assign A / B / C and fill "team members and roles"; record the demo video and add its link;
 - the second-laptop run (`docs/fresh-clone.md`) and the 10-person test (`docs/user-test-kit.md`);
-- create the shielded payout address (mainnet, a team wallet, not in this repo; `protocol.is_unified_address` must accept it);
+- make sure the submitting account can be reached on Telegram (winners are asked for a shielded address there);
 - make the repository public on 28 Oct, submit the form on thezecathon.com with the submitted commit hash, then tag
   `zecathon-2026` and push the tag.

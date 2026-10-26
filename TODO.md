@@ -69,7 +69,7 @@ Rule: vertical slice (Day 2–5) before any milestone (M1–M5). If a day slips,
 
 ## Day 9 (28 Oct) — submit
 - [ ] **all** Re-run `spikes/` smoke tests against the final environment (how: `./scripts/smoke.sh` and `python3 -m pytest -q`; dry run green on 22 Oct, see the end of `docs/submission-checklist.md`)
-- [ ] **C** Repo public (or made public on the 28th), license, submission form on thezecathon.com, shielded payout address ready (how: `docs/submission-checklist.md`, whose "Dry run 22 Oct" section lists what only the user can do; paste-ready answers in `docs/submission-form.md`)
+- [ ] **C** Repo public (or made public on the 28th), license, submission form on thezecathon.com (submit early: it can be edited until the deadline; no payout address in the form, winners are contacted on Telegram) (how: `docs/submission-checklist.md`, whose "Dry run 22 Oct" section lists what only the user can do; paste-ready answers in `docs/submission-form.md`)
 - [x] **C** Test clone-and-run on a fresh machine with a fresh wallet (21 Oct, `docs/fresh-clone.md`: clean clone, `setup.sh` 9 m 34 s, pytest 121 passed / 2 skipped, `renderer summon` from the key alone in 50 s -> same render_hash as wallet V at 4525294; a second physical laptop is still worth doing before the show)
 
 ## Post-hackathon (not now)
