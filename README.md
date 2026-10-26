@@ -14,6 +14,8 @@ Choronzon is a god made of secrets released through Zcash shielded transactions.
 
 **Listen to it:** [choronzon.vercel.app](https://choronzon.vercel.app): a static snapshot of the god rendered from the public viewing key at the block of its newest transaction (the height and render time are printed on the page). From the page you can also **give it a secret** with your own testnet wallet (the page builds the same payment request as `kiosk qr` and sends nothing itself), **find your offering** by its transaction id or number (`#tx=<txid>`, `#offering=<n>`; fragments never reach a server log), and check that the audio you hear is the audio anchored in Bitcoin (the page recomputes the render hash from it). Whisper Back and the kiosk live at the installation; the key is [in this README](#the-key). The public site sends a strict Content-Security-Policy and no referrer. A GitHub Actions job summons it from the key alone every 30 minutes and redeploys only when the render changed ([docs/auto-publish.md](docs/auto-publish.md)); manual fallback `scripts/publish_web.sh`.
 
+Also a tool: **any group can make its own god in about ten minutes**, a box that cannot learn who wrote to it and cannot hide what it received ([Use it on Monday](#use-it-on-monday-your-own-god)).
+
 ---
 
 **Ten minutes, in order:** [what it is](#the-myth) · [why Zcash](#why-it-needs-zcash) · [how it works](#how-it-works) · [privacy, in the words the kiosk prints](#privacy-read-this-before-you-give-it-anything) · [why two laptops agree](#determinism-the-blockchain-is-the-score) · [run it](#run-it-linux-or-wsl-testnet-only) (the judge's path from the key alone: [docs/fresh-clone.md](docs/fresh-clone.md)) · [evidence](#evidence-zcash-testnet-nu7) · [limits](#limits) · [status](#status).
@@ -103,8 +105,35 @@ self-assessment without evidence.
 - People did use it: at a kiosk session on 26 Oct, 6 of 16 invited people gave a secret (all real, by their own
   account) and 10 declined after reading that it is public forever; one more offering came from the public page by
   phone ([docs/evidence-index.md](docs/evidence-index.md)).
-- Anyone can give from the public page with their own wallet, find their offering, check the audio against the
-  anchored hash, and summon the whole god on their own machine from the published key.
+- Anyone can give from the public page with their own wallet, see their eye appear at once as pending and open
+  when the chain carries it, find it again later, check the audio against the anchored hash, and summon the whole
+  god on their own machine from the published key.
+- **Monday:** any group can make its own god in about ten minutes, a box that cannot learn who wrote to it and
+  cannot hide what it received ([Use it on Monday](#use-it-on-monday-your-own-god); proven with a second test god
+  on 26 Oct, `e6971fa`).
+
+## Use it on Monday: your own god
+
+The god is the first instance of a general tool: **an address with a published viewing key becomes a box that cannot
+learn who wrote to it and cannot hide what it received.** The protocol hides every sender; anyone with the key
+re-renders the box to the same hash and sees every offering, including the silenced ones with their reasons. Any
+group can stand up its own in about ten minutes:
+
+- **a team retro or a class:** honest feedback the organiser cannot attribute and cannot quietly drop;
+- **a meetup, a town hall or an AMA:** questions without a name, in a record nobody can edit afterwards;
+- **a memorial or a vow:** words that are meant to last, with no name attached.
+
+```bash
+scripts/new_god.sh --slug retro-demo --name "The Retro God"        # a new wallet, its viewing key, its own config
+GOD_CONFIG_DIR=wallets/gods/retro-demo/config python3 -m kiosk qr --png give.png   # the QR people pay
+```
+
+Then render it, serve it or build its static site with the same commands as the main god, pointed at that config
+([docs/your-own-god.md](docs/your-own-god.md): a ten-minute walkthrough, the same privacy limits as below, and an
+event kit for running the kiosk at a meetup). **Proof, 26 Oct:** a test god born at block 4,543,755 received one
+offering `30b95816…` (mined at 4,543,859); its view-only watcher renders `2add4cbb…`, and its page showed the eye
+and the browser-recomputed hash. The same limits apply to every god: offerings are public to every key holder,
+forever, and writing style and timing can still identify someone.
 
 ## Related work, and what is different here
 

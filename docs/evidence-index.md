@@ -145,3 +145,13 @@ This is a machine that never saw ours, reproducing the work from one key. It is 
 | After | the session wallet (which held what they sent in `sent_notes`) was overwritten and deleted the same day (`kiosk session close`) |
 | Note | these were sent from our kiosk wallet, so `scripts/outside_offerings.py` counts them as ours; the evidence that they came from other people is this session record, not the chain |
 
+## Your own god (26 Oct 2026)
+
+| What | Value |
+|---|---|
+| Tool | `scripts/new_god.sh` + `GOD_CONFIG_DIR` (`e6971fa`): a new testnet wallet, its view-only watcher and its own config under `wallets/gods/<slug>/`; the main god unchanged (chain regression and smoke pass) |
+| Test god | `retro-demo` ("The Retro God"), born at 4,543,755, created over Tor in about a minute, no viewing key in the log |
+| Offering | [`30b95816…`](https://testnet.zecblock.com/tx/30b95816ae9c5fdd62550dc61ade99ce99922dcb9e779fd04e4521a35b10c0c0) from team wallet A, Codec2 voice in 2 memos, mined at 4,543,859 |
+| Render | its watcher (key only): `score_hash` `9214777e…`, `render_hash` `2add4cbb5bc14ad420ee72c8974958d6c187fa6f4cc47a644814e678c47d4d49`; its local page showed the name, the eye, 1 offering and the browser-recomputed hash |
+| Logs | `logs/new_god_retro-demo*.log` (local) |
+
