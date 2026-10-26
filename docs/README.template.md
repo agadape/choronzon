@@ -37,7 +37,7 @@ Messages hidden inside a summoning: that is what a shielded memo is.
 - You type a secret at a kiosk. It is turned into speech **on the device** (espeak-ng, no cloud), compressed with Codec2, and sent as a Zcash **shielded transaction** to the god's wallet. The kiosk asks one thing before you send: *{{kiosk_cta}}*
 - Every offering costs the same 0.00001 TAZ, so the amount tells nothing.
 - The god's wallet publishes its **full viewing key**. Anyone holding that one key can read every offering, rebuild the whole work from the chain, and print the **same hash** as everyone else. No server of ours is needed: the public site is a convenience snapshot, and the work can be rebuilt from the chain and the key alone.
-- We, the operator, cannot learn who contributed.
+- We, the operator, cannot learn who contributed from the transaction: the protocol does not tell us. Timing can (see Privacy).
 - An offering may carry a one-time reply address. A listener can **whisper back**: the reply is another shielded transaction that goes straight to the wallet holding that address, and the choir's key holders cannot see it. When the address belongs to the sender's own wallet (a phone offering, or `kiosk offer --reply-to`), the reply travels directly between two wallets, never through us. A kiosk offering that asks for a reply uses an address of the kiosk's session wallet instead: the operator holds that wallet until the session closes and can read the reply; the kiosk says so before every send.
 - The god has a voice of its own: lines its wallet pays to itself. Every key holder can tell those from forgeries, which every renderer refuses.
 
@@ -45,7 +45,7 @@ Messages hidden inside a summoning: that is what a shielded memo is.
 
 | Elsewhere | Here |
 |---|---|
-| On a public chain every confession is tied to an address forever. On a normal app the server knows your account. | A shielded transaction is a sealed envelope: sender, recipient, amount and memo are encrypted. We, the operator, cannot learn who contributed. |
+| On a public chain every confession is tied to an address forever. On a normal app the server knows your account. | A shielded transaction is a sealed envelope: sender, recipient, amount and memo are encrypted. The protocol does not tell us, the operator, who contributed. |
 | A curator has to be trusted not to edit, reorder or delete. | One public viewing key is the score: anyone can re-render the whole work from one key and get the same hash. |
 | Anyone can post in the god's name. | The god's own lines are spends of its own notes, which only the spend key can make. Anyone with the viewing key can tell them from forgeries (spike S13, live on 21 Oct). |
 | A database cannot give two strangers a private channel without holding both ends. | Whisper Back: the reply goes straight to the wallet holding the offering's reply address; with the sender's own wallet, it travels between two wallets, never through us. |
@@ -98,17 +98,19 @@ Three layers, stated plainly:
 
 What we say, and can show:
 
-- we, the operator, cannot learn who contributed
+- we, the operator, cannot learn who contributed from the transaction itself (timing is another matter: see below)
 - replies to the sender's own wallet address travel directly between two wallets, never through us (a kiosk reply address belongs to the kiosk's session wallet, which the operator can read)
 - anyone can re-render the whole work from one key and get the same hash
 
 What you must know:
 
 - secrets are public to every key holder, forever (key is irrevocable)
-- content and voice can identify you (hence text→TTS default)
+- content and voice can identify you: the text→TTS default hides your voice, not your writing style (our own stylometry test still attributed 76.7% of rewritten texts)
 - **your own wallet stores what you sent** (`sent_notes`) — kiosk uses an ephemeral wallet
 - replies to a per-contribution address can be spammed by anyone holding the public key
-- lightwalletd sees a Tor exit, not your IP, when you use our kiosk (Tor is the default; an operator can choose direct on purpose, and then it sees the IP); a phone wallet connects to its server with its own settings; Tor does not hide timing
+- lightwalletd sees a Tor exit, not your IP, when you use our kiosk (Tor is the default; an operator can choose direct on purpose, and then it sees the IP); a phone wallet connects to its server with its own settings, and that server sees your IP when you send and, because the god's key is public, can read that offering: it can link your IP to your secret (use a wallet that connects over Tor if that matters); Tor does not hide timing
+- timing can link you: at the kiosk the room sees who is typing and one offering lands a minute or two later; our web host logs which IP addresses open the public page and when, and on a quiet chain a visit can be matched to an offering
+- a reply address you embed is public to every key holder: only shielded-only addresses (`zutest1…`) are accepted, because an older-format address may carry a transparent receiver
 - the choir's own spends are public (full viewing key)
 - order inside a block is miner order, not send order: the canonical order `(mined_height, tx_index, action_index)` is deterministic, but the offering you sent third may sing first
 
@@ -268,7 +270,7 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 - Phone wallets send ZIP-321 memos as text, which is why the phone path uses an ASCII envelope.
 - One public testnet explorer follows a different testnet fork and shows none of our transactions; the links here go to ZecBlock, which is on our chain (see [Evidence](#evidence-zcash-testnet-nu7)). Either way the independent proof of a transaction is a wallet holding the public key, not a web page.
 
-Not built: Codec2 decoding in the browser (the page plays the offline mix), a random send delay, a real phone scan of the QR path (the envelope was proven with a laptop wallet standing in for the phone).
+Not built: Codec2 decoding in the browser (the page plays the offline mix), a random send delay. (The phone QR path is proven: a real Zingo! offering from the public page, `efc5ef44…`.)
 
 ## Status
 
@@ -290,8 +292,9 @@ Done:
 Open:
 
 - [ ] The gate on a second physical laptop (today the Watcher on a fresh clone stands in for it)
-- [ ] A real phone scan of the QR path (Zingo! on testnet); Codec2 in the browser (may be dropped)
-- [ ] Five clean run-throughs of the demo, labelled pre-sent offerings, demo video, submission on 28 Oct
+- [x] A real phone offering from the public page (Zingo! on testnet, `efc5ef44…`, 26 Oct)
+- [x] Demo rehearsals end to end over Tor (PASS 25 Oct), labelled pre-sent offerings, submission
+- [ ] Demo video
 
 ## Naming
 

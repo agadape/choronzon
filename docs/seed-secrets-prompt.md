@@ -1,6 +1,6 @@
 # Prompt for writing the seed secrets
 
-Paste this into any writing model (or hand it to a teammate). The output is the list we pre-send to the god
+A brief for whoever writes the seeds (the 14 seeds of 22 Oct were written by the team by hand). The output is the list we pre-send to the god
 before the show so it is never empty. Everything sent becomes public to every key holder, forever, so the
 constraints below are not style, they are safety.
 
