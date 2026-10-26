@@ -264,7 +264,9 @@ async function loadScore() {
   const silenced = doc.score.skipped.filter((s) => s.reason === "flagged").length;
   const godLines = doc.score.offerings.filter((o) => o.conductor).length;
   $("over").textContent = `evoked at height ${fmt(height)}`;
-  $("tally").textContent = `${n} offerings · ${godLines} the god's own · ${forged.length} refused · ${silenced} silenced`;
+  // "refused forgeries": lines that claim the god's own voice without coming from the choir wallet (score.json cannot
+  // say who sent them, so the label does not claim they were tests)
+  $("tally").textContent = `${n} offerings · ${godLines} the god's own · ${forged.length} refused ${forged.length === 1 ? "forgery" : "forgeries"} · ${silenced} silenced`;
   const name = trueName(doc.render_hash);                  // the god's true name: a pure function of the hash
   $("true_name").textContent = "";
   if (eyeOpen) { $("true_name").append("it is now called "); const g = document.createElement("span"); g.className = "gilt"; g.textContent = name; $("true_name").append(g); }
