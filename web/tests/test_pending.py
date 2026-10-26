@@ -51,6 +51,10 @@ def test_pending_storage():
 
 
 def test_the_page_never_stores_the_secret_or_an_address():
-    src = (ROOT / "web" / "pending.js").read_text() + (ROOT / "web" / "give.js").read_text()
-    assert "localStorage" not in (ROOT / "web" / "pending.js").read_text()      # storage is passed in
-    assert "Pending.add(" in src and "give_text" not in (ROOT / "web" / "pending.js").read_text()
+    import re
+    pending = (ROOT / "web" / "pending.js").read_text()
+    give = (ROOT / "web" / "give.js").read_text()
+    assert not re.search(r"\blocalStorage\s*[.\[]", pending)                     # storage is passed in, never reached for
+    assert "give_text" not in pending and "give_reply" not in pending
+    # give.js hands Pending.add the number only: the call takes (store, contribId, now)
+    assert give.count("Pending.add(") == len(re.findall(r"Pending\.add\(store,\s*offering\.contribId,\s*Date\.now\(\)\)", give)) >= 1
