@@ -1,0 +1,17 @@
+{
+ "as_of_height": 4546921,
+ "composer": "choir/2",
+ "decoder_fingerprint": "1e18d05b100938cacb64a3316a358c208c1b08110d6e8c2deb2306cd6b333979",
+ "g6_hash": "b1326fc84be1253648aba490c7683456b4429bdba8117dc98c38c9fbee2295e3",
+ "network": "zcash-testnet",
+ "offerings": 58,
+ "render_hash": "c9e02c0851ebf9d6bb68545fb000e2e32a12a3b5a89f570a71f5fcf6316d0a28",
+ "render_hash_version": "render/1",
+ "repo_commit": "298036e31490c59b4a745101ad6beeac5019404b",
+ "score_hash": "b7b813ba1e84f3378701a3592a6c8d9cbeacbea3a485e56012b8fa28e3ed5be0",
+ "score_hash_version": "score/1",
+ "skiplist_sha256": "22b85e48bae281734540935c08512d355b157bee63d8c01d677ec515783cb7dc",
+ "skipped": 21,
+ "statement": "anchor/1",
+ "voice_fingerprint": "1928881a27e5d956f6c75510c4fb2c1ea4670389b101212b41dc1d8c844d0cea"
+}
