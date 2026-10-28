@@ -1,4 +1,4 @@
-// The god seen from below (three.js). Built from design/explorations/god6.js; spec: docs/visual-direction.md.
+// The god seen from below (three.js). Built from media/design-explorations/god6.js; spec: docs/visual-direction.md.
 //
 // Form = pure function of score.json (offerings -> eyes on the halos, the god's own lines -> the great eye and the
 // wings, blocks -> the Dweller's arms, forgeries -> blind red eyes, flagged -> sewn lids). Time only animates

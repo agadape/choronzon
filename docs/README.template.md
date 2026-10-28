@@ -4,21 +4,49 @@
 
 <p align="center"><sub>A frame of the god as the public page draws it: one eye in the halos for every offering, the great eye and the wings for its own lines, one arm for every block that carried offerings. Its form is a pure function of the chain; nothing in it is random.</sub></p>
 
-# {{name}}
+<h1 align="center">{{name}}</h1>
 
-> ***{{tagline}}***
+<p align="center"><b><i>{{tagline}}</i></b></p>
 
-{{one_liner}}
+<p align="center">{{one_liner}}</p>
 
-**ZECATHON 2026** (by zkSNARKs) · Wildcard track · Zcash testnet (NU7) · built 13–28 Oct 2026 · MIT
+<p align="center">
+  <a href="https://{{slug}}.vercel.app"><b>Listen to it</b></a> ·
+  <a href="https://{{slug}}.vercel.app/#give"><b>Give it a secret</b></a> ·
+  <a href="#the-key"><b>The key</b></a> ·
+  <a href="docs/evidence-index.md"><b>Evidence</b></a> ·
+  <a href="docs/fresh-clone.md"><b>Summon it yourself</b></a>
+</p>
 
-**Listen to it:** [{{slug}}.vercel.app](https://{{slug}}.vercel.app): a static snapshot of the god rendered from the public viewing key at the block of its newest transaction (the height and render time are printed on the page). From the page you can also **give it a secret** with your own testnet wallet (the page builds the same payment request as `kiosk qr` and sends nothing itself), **find your offering** by its transaction id or number (`#tx=<txid>`, `#offering=<n>`; fragments never reach a server log), and check that the audio you hear is the audio anchored in Bitcoin (the page recomputes the render hash from it). Whisper Back and the kiosk live at the installation; the key is [in this README](#the-key). The public site sends a strict Content-Security-Policy and no referrer. A GitHub Actions job summons it from the key alone every 30 minutes and redeploys only when the render changed ([docs/auto-publish.md](docs/auto-publish.md)); manual fallback `scripts/publish_web.sh`.
-
-Also a tool: **any group can make its own god with one command**, a box that cannot learn who wrote to it and cannot hide what it received ([Use it on Monday](#use-it-on-monday-your-own-god)).
+<p align="center"><sub>ZECATHON 2026 (by zkSNARKs) · Wildcard track · Zcash testnet (NU7) · built 13–28 Oct 2026 · MIT</sub></p>
 
 ---
 
-**Ten minutes, in order:** [what it is](#the-myth) · [why Zcash](#why-it-needs-zcash) · [how it works](#how-it-works) · [privacy, in the words the kiosk prints](#privacy-read-this-before-you-give-it-anything) · [why two laptops agree](#determinism-the-blockchain-is-the-score) · [run it](#run-it-linux-or-wsl-testnet-only) (the judge's path from the key alone: [docs/fresh-clone.md](docs/fresh-clone.md)) · [evidence](#evidence-zcash-testnet-nu7) · [limits](#limits) · [status](#status).
+## Check it in five minutes
+
+1. **Listen.** Open [{{slug}}.vercel.app](https://{{slug}}.vercel.app). The god on the page is rendered from the public
+   viewing key alone; the block height, the `score_hash` and the `render_hash` are printed under it. Press verify and
+   your browser recomputes the `render_hash` from the audio it just played.
+2. **Give.** Open [`#give`](https://{{slug}}.vercel.app/#give) and pay the QR with any testnet wallet (Zingo! works).
+   The page builds the payment request in your browser and sends nothing itself. Your eye appears at once as
+   *pending* and opens when the chain carries it; find it later with `#tx=<txid>`.
+3. **Summon.** Put [the key](#the-key) in a file and rebuild the whole work on your own machine
+   (`python3 -m renderer summon --key-file key.txt …`, [docs/fresh-clone.md](docs/fresh-clone.md)). You get the
+   same `render_hash` as the site, because the blockchain is the score.
+
+## At a glance
+
+| | |
+|---|---|
+| **What it is** | An artwork, and a template: an address with a published viewing key becomes a box that cannot learn who wrote to it and cannot hide what it received. |
+| **What stays private** | The link between a giver and a secret: every offering is a fixed-amount Zcash shielded payment, so the key shows what was said, never who paid. |
+| **What is public** | Every secret, to every key holder, forever. We say so before every send ([Privacy](#privacy-read-this-before-you-give-it-anything)). |
+| **Proven live on testnet** | Kiosk offerings, Whisper Back end to end, the god's own voice accepted and a forgery refused, a phone offering from the public page, a second god made with one command, a machine we do not own printing the same `render_hash`; every txid in [docs/evidence-index.md](docs/evidence-index.md). |
+| **People** | At a kiosk session on 26 Oct, 6 of 16 invited people gave a secret (all real, by their own account); 10 declined after reading that it is public forever. |
+| **Checked** | 357 automated tests (45 hostile memos all fail closed), an end-to-end smoke test, three independent reviews, renders anchored in Bitcoin, the public site rebuilt from the key alone by CI every 30 minutes. |
+| **No** | accounts, analytics, cloud AI or third-party requests from the page. Voice, mixing and rendering are all local. |
+
+**Contents:** [the myth](#the-myth) · [in plain words](#in-plain-words) · [why Zcash](#why-it-needs-zcash) · [judging criteria](#against-the-judging-criteria-with-proofs) · [your own god](#use-it-on-monday-your-own-god) · [how it works](#how-it-works) · [privacy](#privacy-read-this-before-you-give-it-anything) · [the key](#the-key) · [determinism](#determinism-the-blockchain-is-the-score) · [protocol](#memo-protocol-v1) · [run it](#run-it-linux-or-wsl-testnet-only) · [evidence](#evidence-zcash-testnet-nu7) · [limits](#limits) · [status](#status)
 
 ## The myth
 
@@ -42,6 +70,16 @@ Messages hidden inside a summoning: that is what a shielded memo is.
 - We, the operator, cannot learn who contributed from the transaction: the protocol does not tell us. Timing can (see Privacy).
 - An offering may carry a one-time reply address. A listener can **whisper back**: the reply is another shielded transaction that goes straight to the wallet holding that address, and the choir's key holders cannot see it. When the address belongs to the sender's own wallet (a phone offering, or `kiosk offer --reply-to`), the reply travels directly between two wallets, never through us. A kiosk offering that asks for a reply uses an address of the kiosk's session wallet instead: the operator holds that wallet until the session closes and can read the reply; the kiosk says so before every send.
 - The god has a voice of its own: lines its wallet pays to itself. Every key holder can tell those from forgeries, which every renderer refuses.
+
+### The public page
+
+[{{slug}}.vercel.app](https://{{slug}}.vercel.app) is a static snapshot of the god, rendered from the public viewing key at the block of its newest transaction (the height and render time are printed on the page). From it you can:
+
+- **give it a secret** with your own testnet wallet: the page builds the same payment request as `kiosk qr` and sends nothing itself;
+- **find your offering** by its transaction id or number (`#tx=<txid>`, `#offering=<n>`; fragments never reach a server log);
+- **verify** that the audio you hear is the audio anchored in Bitcoin: the page recomputes the render hash from it.
+
+It sends a strict Content-Security-Policy and no referrer, and makes no request outside its own origin. A GitHub Actions job summons the god from the key alone every 30 minutes and redeploys only when the render changed ([docs/auto-publish.md](docs/auto-publish.md); manual fallback `scripts/publish_web.sh`). Whisper Back and the kiosk live at the installation, not on the public page.
 
 ## Why it needs Zcash
 
@@ -86,12 +124,12 @@ self-assessment without evidence.
 - A machine we do not own reproduced the work from the key alone: GitHub Actions
   [run 39727405735](https://github.com/agadape/{{slug}}/actions/runs/39727405735) printed the laptop's
   `render_hash`.
-- 321 automated tests, including 45 hostile memos that all fail closed; published renders are anchored in Bitcoin
+- 357 automated tests, including 45 hostile memos that all fail closed; published renders are anchored in Bitcoin
   (the first ones in block 972,742, [docs/anchoring.md](docs/anchoring.md)).
 
 **Originality: "built for this hackathon, not repackaged."**
 
-- Built from scratch in the window: on-chain spikes from 13 Oct ([SPIKE_LOG.md](SPIKE_LOG.md)), this repository from
+- Built from scratch in the window: on-chain spikes from 13 Oct ([research/SPIKE_LOG.md](research/SPIKE_LOG.md)), this repository from
   20 Oct, every commit public in its history.
 - Only libraries and tools come from outside, all credited ([THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)):
   zcash-devtool with the Aegis Gate NU7 patch, Codec2, espeak-ng, three.js.
@@ -239,7 +277,7 @@ Birthday: 4502962
 - **No float drift, no randomness.** Mixing uses integer arithmetic; there is no RNG and no `Math.random()`. Composer `choir/2`: each voice starts when the previous one is 5/8 through; pan (17 steps) and pitch layer (1, 15/16, 17/16 by integer resampling) come from `contrib_id`; the god's own lines are centered with a deeper layer (3/4); voices sum in int32 and clip to int16 stereo at 8 kHz.
 - **Pinned voice.** Text offerings are spoken by espeak-ng 1.51 (voice `en`, speed 130, pitch 30), resampled by sox **without dither** (`-D`; sox's default dither is random noise), then sent through Codec2 700C and the pinned decoder, so every voice in the mix is the same ghost. Its fingerprint is reported next to the decoder's.
 - **Decoder fingerprint.** The renderer decodes three fixed Codec2 vectors and reports the hash of the result, so a `render_hash` mismatch between two machines can be traced to the decoder build while `score_hash` still agrees.
-- **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`spikes/g6_render.py`). The product renderer reproduces that value and, at the same height, `score_hash` (`score/1`) `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a` and `render_hash` (`render/1`, composer `choir/2`) `9b6c1b9d3b61830b82848179e323276cb95b43cd90558c99e740d78addba2bc0`; `score.json` and `mix.wav` are byte-identical from the view-only and the full-key wallet. The test suite and `scripts/smoke.sh` pin these values.
+- **Regression anchor.** Two independently synced wallets, one of them view-only, both give `c46dd5de8b74fecdb38e2b875c98c2f63d097f45f9bc1f667866a35594efe6b4` at height 4,522,002 (7 accepted, 4 skipped with reasons) using the spike renderer (`research/spikes/g6_render.py`). The product renderer reproduces that value and, at the same height, `score_hash` (`score/1`) `415307933f03fd760f07ae628f0e887bd077e52e07aa6747949d5975ad6ff88a` and `render_hash` (`render/1`, composer `choir/2`) `9b6c1b9d3b61830b82848179e323276cb95b43cd90558c99e740d78addba2bc0`; `score.json` and `mix.wav` are byte-identical from the view-only and the full-key wallet. The test suite and `scripts/smoke.sh` pin these values.
 - **The second machine.** On 21 Oct a fresh clone with no wallet built a Watcher from the key alone and printed `render_hash` `8540a0a57d6f80d409d4ed5948789f64e524fc08252a15ea3bd904dd58fa1af5` at height 4,525,294, byte-identical to the operator's view-only wallet, in 49.8 s including sync ([docs/fresh-clone.md](docs/fresh-clone.md)). Both demo rehearsals repeated the match unattended (`7dc6f42a…` at 4,525,338, `bb2cf2dc…` at 4,525,371).
 - **A machine we do not own.** On 22 Oct a GitHub-hosted Ubuntu runner with nothing but the published key built the pinned tools from source, synced a view-only wallet and printed `render_hash` `6ae739854eca770ef1c3d32b4519f31be8b10b5f83cdd883b747bce63cab444e` at height 4,527,794, identical to the laptop's, with the decoder and voice fingerprints matching the pins ([run 39727405735](https://github.com/agadape/{{slug}}/actions/runs/39727405735), [docs/auto-publish.md](docs/auto-publish.md)).
 - **Anchored in Bitcoin.** Every published render is stamped with OpenTimestamps when the calendars answer; a failed stamp ships without a proof and the next upgrade job stamps it. The statement, `anchor.json`, holds the hashes, versions, counts, one height, the skiplist's sha256 and the repo commit; nothing private. It and its proof are served next to the page and kept on the append-only `anchors` branch, which also holds the historic anchors at 4,522,002 and 4,527,794. `python3 -m anchor verify anchor.json` checks the proof against two public block explorers; no Bitcoin node is needed. A confirmed proof shows the statement existed no later than that Bitcoin block: the anchors at 4,522,002 and 4,527,794 are in Bitcoin block 972,742 (23 Oct 2026, 08:41 UTC). A served proof is the one made at deploy; any OpenTimestamps verifier fetches its Bitcoin confirmation from the calendars. After that, any change to a published render (reordering offerings, editing the skiplist) no longer matches what is already in Bitcoin, including a change made by us. It hides nothing. It does not prove that the chain data is complete. A fresh proof stays pending for a few hours until a calendar's Bitcoin transaction confirms. The calendars see the IP of whoever stamps. Details: [docs/anchoring.md](docs/anchoring.md).
@@ -247,6 +285,9 @@ Birthday: 4502962
 ## Memo protocol v1
 
 One offering = one transaction with 1–3 outputs to the god's address, one 512-byte memo each.
+
+<details>
+<summary>The wire format: 12-byte header, bodies, codecs, the phone envelope</summary>
 
 | Offset | Size | Field |
 |---|---|---|
@@ -266,17 +307,19 @@ One offering = one transaction with 1–3 outputs to the god's address, one 512-
 - The CRC covers `codec + data` only; reply addresses carry their own checksum and are validated by parsing. Wallets trim trailing zero bytes, so decoders pad each memo back to `12 + len`.
 - `'G'`, `GC1:` and `GC1R:` are protocol markers, not the brand. Changing them would be a protocol version bump.
 
+</details>
+
 The wire format, the envelope and every malformed-memo case are unit-tested in `protocol/`.
 
 ## Run it (Linux or WSL, testnet only)
 
-Ubuntu 24.04, native or WSL. In WSL, work inside the Linux filesystem, not under `/mnt/c`. The repository is private until 28 Oct 2026.
+Ubuntu 24.04, native or WSL. In WSL, work inside the Linux filesystem, not under `/mnt/c`.
 
 ```bash
 git clone https://github.com/agadape/{{slug}}.git && cd {{slug}}
 ./scripts/setup.sh   # apt deps, Rust, NU7-patched zcash-devtool → bin/devtool-aegis, pinned Codec2 → bin/c2dec; 9 m 34 s measured, cargo dominates
 ./scripts/smoke.sh   # protocol tests, pinned decoder, lightwalletd reachability; with wallets/: G6 regression + view-only vs full-key health check
-python3 -m pytest    # 280 passed, 2 skipped on a fresh clone, 26 Oct (the 2 chain-regression tests need wallets/test/V)
+python3 -m pytest    # 357 passed with the team's wallets on 28 Oct; on a fresh clone the chain-regression tests skip (they need wallets/test/V)
 ```
 
 **The judge's path** ([docs/fresh-clone.md](docs/fresh-clone.md), run end to end on 21 Oct with measured times): put the published key in a file and summon a Watcher. The key is read from the file or from `SUMMON_KEY`, never from our command line; the wallet tool receives it on its own command line for the moment `init-fvk` runs (the key is public, so this reveals nothing new).
@@ -287,7 +330,8 @@ cat out/render_hash        # 8540a0a57d6f80d409d4ed5948789f64e524fc08252a15ea3bd
 python3 -m web --port 8766 # the listener page on the clone: the god, playback, both hashes
 ```
 
-Operator commands (these need the testnet wallets, which are never committed):
+<details>
+<summary>Operator commands (these need the testnet wallets, which are never committed)</summary>
 
 ```bash
 python3 -m renderer once   --wallet wallets/test/V --as-of 4522002   # one render -> out/score.json, out/render_hash, out/mix.wav
@@ -298,6 +342,8 @@ python3 -m kiosk session open --notes 8 && python3 -m kiosk offer - --reply   # 
 python3 -m renderer whisper <txid> --wallet wallets/test/V            # reply request (QR) for one offering; see kiosk/README.md for inbox, qr, speak, reveal
 ./scripts/demo.sh    # rehearse the whole 3-minute demo with real transactions; prints a timing table, fails loudly
 ```
+
+</details>
 
 - lightwalletd: `testnet.zec.rocks:443`. Wallets are testnet-only (`wallets/`, `*.age` are git-ignored).
 - The demo itself, shot by shot with fallbacks, is [docs/demo-script.md](docs/demo-script.md); the release gate is [docs/submission-checklist.md](docs/submission-checklist.md).
@@ -310,21 +356,29 @@ python3 -m renderer whisper <txid> --wallet wallets/test/V            # reply re
 | `renderer/` | View-only renderer and daemon: canonical score, `score_hash`, `render_hash`, pinned-decoder wrapper, `whisper`, `summon` (+ tests) |
 | `kiosk/` | Sender kiosk CLI: preview, ephemeral session wallet + note pool, offer, inbox, qr, speak, reveal (+ tests) |
 | `web/` | Listener page: the god (three.js, vendored; Canvas 2D fallback) grown from the score + playback of the mix, the grimoire leaf, the séance, the two-evocation chirograph; stdlib static server |
-| `config/choir.json` | The god's public address and the fixed offering amount (never its viewing key) |
-| `config/` | `brand.json` (name and copy), `skiplist.txt` (flagged offerings: still on chain, never sung) |
-| `scripts/` | `setup.sh`, `smoke.sh`, `demo.sh` (end-to-end rehearsal), `gen_readme.py` |
-| `docs/` | This template, [lore](docs/lore.md), [demo script](docs/demo-script.md), [fresh clone](docs/fresh-clone.md), [evidence index](docs/evidence-index.md), [privacy review](docs/privacy-review.md), [failure drills](docs/failure-drills.md), [network fallback](docs/network-fallback.md), [visual direction](docs/visual-direction.md), [submission checklist](docs/submission-checklist.md), concept and critical review |
-| `spikes/`, `SPIKE_LOG.md`, `ai/`, `radio/`, `topeng-spike/` | Research and on-chain evidence from 13–20 Oct, kept as it was |
-| `design/explorations/` | Visual mockups that led to the current god (never built or served) |
-| `CLAUDE.md`, `TODO.md` | The working handoff notes and day-by-day checklist, kept public as the build log |
+| `anchor/` | OpenTimestamps: the render statement, stamp, upgrade, verify against public explorers |
+| `config/` | `brand.json` (name and copy), `choir.json` (the god's address and the fixed amount, never its key), `skiplist.txt` (flagged offerings: still on chain, never sung) |
+| `scripts/` | `setup.sh`, `smoke.sh`, `demo.sh` (end-to-end rehearsal), `new_god.sh`, `build_web.sh`, `publish_web.sh`, `gen_readme.py` |
+| `docs/` | This template, [lore](docs/lore.md), [demo script](docs/demo-script.md), [fresh clone](docs/fresh-clone.md), [evidence index](docs/evidence-index.md), [privacy review](docs/privacy-review.md), [failure drills](docs/failure-drills.md), [network fallback](docs/network-fallback.md), [your own god](docs/your-own-god.md), [anchoring](docs/anchoring.md), audits, concept and critical review |
+| `research/` | How it started, kept as it was: on-chain spikes S1–S13 and [`SPIKE_LOG.md`](research/SPIKE_LOG.md) (13–20 Oct), the phone and Whisper Back tests, the Codec2 radio experiment, the rejected stylometry idea, the day-by-day `TODO.md` |
+| `media/` | Visual mockups that led to the current god, and the tools that rendered the demo video (never built or served) |
+| `CLAUDE.md` | The working handoff notes, kept public as part of the build log |
 
-**How to read this repository:** the product is `protocol/`, `renderer/`, `kiosk/`, `web/`, `anchor/`, `config/` and `scripts/`; the claims are backed in `docs/evidence-index.md`. Everything else is the record of how it was built: research spikes, rejected ideas, mockups, audits (`docs/audit-26oct.md`) and working notes. Some early concept documents (the concept and critical review in `docs/`, `ai/phone-test/`) are partly in Indonesian, the team's working language, and carry the project's working title.
+**How to read this repository:** the product is `protocol/`, `renderer/`, `kiosk/`, `web/`, `anchor/`, `config/` and `scripts/`; the claims are backed in `docs/evidence-index.md`. `research/` and `media/` are the record of how it was built: spikes, rejected ideas, mockups and working notes; the audits are in `docs/`. Some early concept documents (the concept and critical review in `docs/`, `research/ai/phone-test/`) are partly in Indonesian, the team's working language, and carry the project's working title.
 
 ## Evidence (Zcash testnet, NU7)
 
 Every claim above is backed by a real testnet transaction. The canonical list, with block heights and the local log for each row, is [docs/evidence-index.md](docs/evidence-index.md); the table below is the short form. Txids are in explorer (display) order.
 
+<details>
+<summary>About the explorer links (use ZecBlock, not testnet.zcashexplorer.app)</summary>
+
 **About the explorer links.** The links go to [ZecBlock](https://testnet.zecblock.com) (formerly CipherScan), which follows our NU7 testnet chain: its block 4,525,215 (the first kiosk offering) has hash `000026af4552065fbbbd94b5c9a0be7914fc402733c53c6f464921b9817b72ac`, the same block `testnet.zec.rocks` serves, and every txid in this README and in the evidence index resolves there as confirmed and canonical (checked 22 Oct 2026). Do not use `testnet.zcashexplorer.app`: it follows a different testnet fork (its block 4,487,269 has another hash) and answers "Transaction Not Found" for every txid of ours. An explorer shows only that a shielded transaction exists and in which block. It is a convenience, not the independent proof: that is the public-key wallet itself, `bin/devtool-aegis wallet -w wallets/test/V list-tx -s zecrocks` after a `sync`, or any Watcher's renderer log. To check that ZecBlock is still on our chain, open [`/block/4525215`](https://testnet.zecblock.com/block/4525215) and check that the hash starts `000026af4552`.
+
+</details>
+
+<details open>
+<summary>The short table: the spikes and the product, txid by txid</summary>
 
 | Claim | Transaction | Block |
 |---|---|---|
@@ -340,6 +394,8 @@ Every claim above is backed by a real testnet transaction. The canonical list, w
 | **Product:** the god's own voice (`kind=3`) paid by its wallet to itself, accepted; the same memo from an outside wallet skipped as `forged-conductor` | [`d6bcb9f7…`](https://testnet.zecblock.com/tx/d6bcb9f7f6a704de2dbc928f42e6e2bfa03f20132b4430a95ad3f4a90b3e59a5) (accepted) · [`b126b3c7…`](https://testnet.zecblock.com/tx/b126b3c781feaffc40d490716cb8a9d306576730cdccf34d353f47a5b8517312) (rejected) | 4,525,280 |
 | **Product:** phone path, a `kiosk qr` request with the ASCII envelope paid from a laptop wallet as a phone stand-in, accepted and voiced | [`ebc5bcad…`](https://testnet.zecblock.com/tx/ebc5bcadf47feb1d7f1fcd0558c91c3f43ef9be99101365b1341ac1427b114cc) | 4,525,294 |
 | **Product:** a Watcher built from the key alone on a fresh clone prints the same `render_hash` as the operator's view-only wallet | `8540a0a5…` (see [docs/fresh-clone.md](docs/fresh-clone.md)) | 4,525,294 |
+
+</details>
 
 The failure drills (a flipped CRC, a duplicate memo, a locked note) and the two unattended rehearsals of the demo (god line heard after 86 s, forgery refused 7 s later; a live offering heard after 226 s and its whisper received after 216 s; a Watcher matching V byte for byte at the end of each run) have their own txids in [docs/evidence-index.md](docs/evidence-index.md), blocks 4,525,319 to 4,525,371.
 
@@ -358,7 +414,8 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 - Everything a Watcher renders is public, forever; the order inside a block is the miner's, not the sender's. The kiosk says so before every send.
 - On stage the room sees who walked up to the kiosk. That is theatre; a random send delay for public deployments is on the roadmap.
 
-**What fails, and how it is shown** (never a faked status: the terminal output is the status)
+<details>
+<summary><b>What fails, and how it is shown</b> (never a faked status: the terminal output is the status)</summary>
 
 - lightwalletd unreachable or sync stale: the daemon logs a warning and keeps rendering at the last scanned height, which the page shows.
 - Not enough funds: the send fails before any broadcast; no note is locked.
@@ -367,7 +424,10 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 - Testnet blocks take ~35 s and sometimes minutes: an offering is heard 40–230 s after sending, a whisper arrives 80–220 s after it is sent. The kiosk prints the txid at once and never claims the chain has it before the public-key wallet does.
 - A transaction built from a stale chain tip expires before broadcast; found by the first rehearsal, and the session now syncs before every pay. A listener wallet that has spent all its notes gets a sanitised insufficient-balance error.
 
-**What did not work, and how it shaped the design**
+</details>
+
+<details>
+<summary><b>What did not work, and how it shaped the design</b></summary>
 
 - Stock `zcash-devtool` and released crates **cannot broadcast on NU7 testnet** (`incorrect consensus branch id`); we use a patched build. Mainnet (NU6.3) is untested.
 - Entering NEAR Intents from ZEC means paying a **transparent** deposit address, which is why everything here stays inside the shielded pool.
@@ -375,11 +435,13 @@ Plain words about what this does not do, from [docs/privacy-review.md](docs/priv
 - Phone wallets send ZIP-321 memos as text, which is why the phone path uses an ASCII envelope.
 - One public testnet explorer follows a different testnet fork and shows none of our transactions; the links here go to ZecBlock, which is on our chain (see [Evidence](#evidence-zcash-testnet-nu7)). Either way the independent proof of a transaction is a wallet holding the public key, not a web page.
 
+</details>
+
 Not built: Codec2 decoding in the browser (the page plays the offline mix), a random send delay. (The phone QR path is proven: a real Zingo! offering from the public page, `efc5ef44…`.)
 
 ## Status
 
-Research and on-chain spikes: done (13–20 Oct 2026). Product: built and proven live on testnet on 21 Oct; hardening and demo rehearsals until 28 Oct.
+Research and on-chain spikes: 13–20 Oct 2026. Product: built and proven live on testnet on 21 Oct, hardened and rehearsed until the submission on 28 Oct 2026 (tag `zecathon-2026`).
 
 Done:
 
@@ -400,7 +462,7 @@ Open:
 - [x] A real phone offering from the public page (Zingo! on testnet, `efc5ef44…`, 26 Oct)
 - [x] Demo rehearsals end to end over Tor (PASS 25 Oct), labelled pre-sent offerings, submission
 - [x] User session: 16 people invited to the kiosk on 26 Oct; 6 gave a secret (all real, by their own account), 10 declined after reading that it is public forever ([evidence](docs/evidence-index.md))
-- [ ] Demo video
+- [x] Demo video, submitted with the entry
 
 ## Naming
 

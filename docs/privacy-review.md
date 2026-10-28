@@ -129,8 +129,8 @@ No disqualifying leak; seven claims that were not exactly true, or holes in the 
 ## What the repository itself exposes (by design)
 
 - `config/choir.json`: the god's public address. Everyone needs it to send an offering.
-- Historical evidence keeps full testnet addresses of the throwaway spike wallets: `ai/phone-test/*.uri.txt`
-  (reply addresses of wallet A at diversifier indices 5 and 10, and the choir address) and `radio/payment_uri.txt`.
+- Historical evidence keeps full testnet addresses of the throwaway spike wallets: `research/ai/phone-test/*.uri.txt`
+  (reply addresses of wallet A at diversifier indices 5 and 10, and the choir address) and `research/radio/payment_uri.txt`.
   They are testnet, throwaway, and already public in the spike reports; they are kept as evidence and never reused.
 - No viewing key, seed or `.age` identity is tracked; `git log --all` is scanned for key prefixes before every push
   (last scan: 29 commits, clean).

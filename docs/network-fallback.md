@@ -1,6 +1,6 @@
 # Network fallback — what if testnet.zec.rocks is down?
 
-Probed 21 Oct 2026 (~12:40 UTC, from WSL). Method: `GetLightdInfo` via a copy of `spikes/s1_lightd.mjs` and
+Probed 21 Oct 2026 (~12:40 UTC, from WSL). Method: `GetLightdInfo` via a copy of `research/spikes/s1_lightd.mjs` and
 `bin/devtool-aegis wallet -w wallets/test/V get-info -s <server>` (read-only). Our chain = `test`, consensus branch `77190ad9` (NU7).
 
 ## Servers tested
@@ -107,7 +107,7 @@ theirs. Nothing about Tor is written to our logs (devtool output is never echoed
 ## Switching server (if a good one ever appears)
 
 `-s <alias|host:port|https://host:port>` on every devtool command; for node spikes `LWD_TESTNET=host:port` (see `.env.example`).
-Before trusting any new server: `node spikes/s1_lightd.mjs test` must show branch `77190ad9` and a height within a few blocks of zec.rocks.
+Before trusting any new server: `node research/spikes/s1_lightd.mjs test` must show branch `77190ad9` and a height within a few blocks of zec.rocks.
 
 ## Operator procedure at the show
 

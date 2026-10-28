@@ -1,7 +1,7 @@
 # GHOST CHOIR: a god made of secrets
 ### Refined concept v3 — ZECATHON WILDCARD
 
-v2 disusun 19 Okt 2026 dari dokumen konsep v1 + hasil spike di `SPIKE_LOG.md`.
+v2 disusun 19 Okt 2026 dari dokumen konsep v1 + hasil spike di `research/SPIKE_LOG.md`.
 v3 (20 Okt) memasukkan review eksternal + tiga koreksi tambahan.
 Deadline 28 Okt 2026. Tim 2–3 orang, ±12 jam fokus per hari.
 
@@ -97,13 +97,13 @@ Deadline 28 Okt 2026. Tim 2–3 orang, ±12 jam fokus per hari.
 | G4 | **Kolam note**: 10+ kontribusi beruntun tanpa menunggu konfirmasi | Demo live nggak boleh macet | Pre-split dana ke 20 note sebelum demo |
 | G5 | Mainnet dengan devtool stok (S6) | Opsi demo di mainnet kalau testnet bermasalah | Tetap testnet + devtool patch |
 
-**Status 20 Okt (hari 1): G1 ✅ (Zingo, dengan amplop ASCII), G3 ✅ (espeak-ng), G4 ✅ (5 kontribusi/32 detik), G6 ✅ (hash identik V vs B, termasuk audio), G7 ✅. Whisper Back: GO (lihat `ai/whisper-back-spike.md`). Sisa: G2 (Codec2 di browser, opsional) dan G5 (mainnet, opsional). Lihat `SPIKE_LOG.md` → "Day-1 gates".**
+**Status 20 Okt (hari 1): G1 ✅ (Zingo, dengan amplop ASCII), G3 ✅ (espeak-ng), G4 ✅ (5 kontribusi/32 detik), G6 ✅ (hash identik V vs B, termasuk audio), G7 ✅. Whisper Back: GO (lihat `research/ai/whisper-back-spike.md`). Sisa: G2 (Codec2 di browser, opsional) dan G5 (mainnet, opsional). Lihat `research/SPIKE_LOG.md` → "Day-1 gates".**
 
 ---
 
 ## 5. Protokol payload v1 (biner)
 
-**Kanonik = v1 yang sudah ada di chain** (`spikes/wb_protocol.py`, `CLAUDE.md` §5): `kind` ada di header, `codec` ada di body. Draf "v2" sebelumnya (codec di header, tanpa `kind`) tidak pernah dipakai dan sudah dihapus dari dokumen ini.
+**Kanonik = v1 yang sudah ada di chain** (`research/spikes/wb_protocol.py`, `CLAUDE.md` §5): `kind` ada di header, `codec` ada di body. Draf "v2" sebelumnya (codec di header, tanpa `kind`) tidak pernah dipakai dan sudah dihapus dari dokumen ini.
 
 Satu kontribusi = satu transaksi, 1–3 output ke alamat paduan suara. Satu memo per output.
 
@@ -237,7 +237,7 @@ Audio engine (WebAudio)  +  Makhluk 2D (Canvas), digerakkan energi & pitch audio
 5. Laptop kedua merekonstruksi karya identik dari viewing key publik, dengan hash render yang sama.
 6. README: model privasi 3 lapis, batasan, cara menjalankan.
 
-**Milestone terpisah (masing-masing boleh gagal tanpa membunuh demo; penomoran mengikuti `TODO.md`)**
+**Milestone terpisah (masing-masing boleh gagal tanpa membunuh demo; penomoran mengikuti `research/TODO.md`)**
 - M1: Suara konduktor vs palsu (S13 sudah terbukti; tinggal integrasi).
 - M2: Whisper Back: tombol "whisper back" → URI/QR ZIP-321 ke alamat balasan; inbox balasan untuk wallet demo.
 - M3: Kontribusi dari HP lewat QR dengan amplop ASCII (G1).
@@ -250,11 +250,11 @@ Audio engine (WebAudio)  +  Makhluk 2D (Canvas), digerakkan energi & pitch audio
 
 ## 10. Rencana 9 hari (±100 jam tim)
 
-**`TODO.md` yang berlaku** (checklist per hari, pemilik, gate). Tabel ini hanya ringkasannya.
+**`research/TODO.md` yang berlaku** (checklist per hari, pemilik, gate). Tabel ini hanya ringkasannya.
 
 | Hari | Fokus | Output |
 |---|---|---|
-| 1 (20 Okt) | Spike G1–G7 + Whisper Back | Gate hari 1 lulus (lihat `SPIKE_LOG.md`) |
+| 1 (20 Okt) | Spike G1–G7 + Whisper Back | Gate hari 1 lulus (lihat `research/SPIKE_LOG.md`) |
 | 2 (21 Okt) | Layout repo, `protocol/` + tes §5a, renderer daemon view-only, README skeleton | `score.json` + hash dari wallet V; G6 tetap ter-reproduksi |
 | 3 (22 Okt) | Komposer offline: codec2 di-pin, mixing integer, teks → TTS lokal | Satu WAV deterministik + `render_hash` |
 | 4 (23 Okt) | Kiosk pengirim: teks → TTS → Codec2 → `pay` dari wallet ephemeral; kolam note | Kontribusi terkirim dari kiosk |

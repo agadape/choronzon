@@ -148,7 +148,7 @@ sha256sum`. A different hash for an anchored height means the history was change
 ## Historic anchors
 
 Stamped on 23 Oct 2026 from the laptop (wallet V, `renderer once --as-of <h>`), so they prove existence *no later
-than* their Bitcoin block, not at the time the hashes were first computed (that is in `SPIKE_LOG.md` and git
+than* their Bitcoin block, not at the time the hashes were first computed (that is in `research/SPIKE_LOG.md` and git
 history). Statements built by commit `7fcdc3c`; files on the `anchors` branch:
 
 | Height | What | score_hash | render_hash | g6_hash | File |

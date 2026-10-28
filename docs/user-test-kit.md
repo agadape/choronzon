@@ -1,6 +1,6 @@
 # User test kit: the 10-person test (22 Oct 2026; updated 25 Oct for the public give panel, Tor and the v2 listener)
 
-Owner **C** (`TODO.md` Day 4). Source: `docs/ghost-choir-critical-review.md` §9. Ten people who are **not on the team**,
+Owner **C** (`research/TODO.md` Day 4). Source: `docs/ghost-choir-critical-review.md` §9. Ten people who are **not on the team**,
 one at a time, about 12 minutes each. It checks four assumptions: people type a real secret (not a joke); the ghost
 voice feels like a release, not a mockery; permanence does not make them back out; they want strangers to be able to
 reply. It also gives the first real-phone readings of the v2 page (`docs/visual-direction.md` §7, open item 1).
@@ -186,4 +186,4 @@ python3 -m kiosk session close    # the same day: overwrites and deletes the ses
   with the reason `withdrawn by its sender`: our renderer skips it and its eye's lid is sewn shut, but it stays on
   chain and public to every key holder. For path A only the tester's own wallet knows the txid.
 - Phone results go to the web owner (`docs/visual-direction.md` §7 item 1), as classes and counts only.
-- Commit the filled table and the summary line (nothing else), then tick `TODO.md` Day 4.
+- Commit the filled table and the summary line (nothing else), then tick `research/TODO.md` Day 4.

@@ -1,27 +1,27 @@
 # CLAUDE.md — ZECATHON 2026 WILDCARD entry (name, tagline, one-liner: `config/brand.json`)
 
-Handoff from the research/spike session (13–20 Oct 2026). Read this first, then **`TODO.md`** (day-by-day checklist, owners, gates), then `docs/ghost-choir-refined.md` (concept v3),
-`ai/whisper-back-spike.md` (Whisper Back GO report), `SPIKE_LOG.md` (every on-chain proof), `docs/ghost-choir-critical-review.md`.
+Handoff from the research/spike session (13–20 Oct 2026). Read this first, then **`research/TODO.md`** (day-by-day checklist, owners, gates), then `docs/ghost-choir-refined.md` (concept v3),
+`research/ai/whisper-back-spike.md` (Whisper Back GO report), `research/SPIKE_LOG.md` (every on-chain proof), `docs/ghost-choir-critical-review.md`.
 
 ## 1. What we are building (decided)
 
 - **Hackathon:** ZECATHON by zkSNARKs (thezecathon.com). Track: **WILDCARD** ($15K; grand prize $20K on top). Prompt: *"Art, games, social, hardware. Anything that makes a shielded transaction worth making."* Judging priority (from our notes): **Privacy (leak = DQ) > Usefulness > Execution > Originality.** Rules: all code written in the window, open source, **deadline 28 Oct 2026**, one submission, one track, prize paid in ZEC to a shielded address.
 - **Team:** 2–3 people, ~12 focused hours/day. Roles A (Zcash) / B (audio+visual) / C (product+demo) — assignment still open.
 - **One-liner:** A collective god whose voice and body are made of secrets people release through Zcash shielded transactions. Anyone holding the choir's public viewing key can hear everything; nothing links a secret to its sender. Strangers can **whisper back** privately (Whisper Back).
-- **Name / tagline / one-liner / kiosk CTA:** final since 20 Oct, and they live **only** in `config/brand.json`. README, web, kiosk, `package.json` and the demo script read or are generated from it; never hardcode the name in code, tests, file names, or these docs. "Ghost Choir: A God Made of Secrets" was the working title and survives only in historical evidence (`docs/`, `SPIKE_LOG.md`, `ai/`, `logs/`, `spikes/`). The old tagline "A place to release a secret without attaching your name to it." is retired. Internal identifiers stay neutral (offering/contribution, reply, renderer, composer, creature, conductor).
+- **Name / tagline / one-liner / kiosk CTA:** final since 20 Oct, and they live **only** in `config/brand.json`. README, web, kiosk, `package.json` and the demo script read or are generated from it; never hardcode the name in code, tests, file names, or these docs. "Ghost Choir: A God Made of Secrets" was the working title and survives only in historical evidence (`docs/`, `research/SPIKE_LOG.md`, `research/ai/`, `logs/`, `research/spikes/`). The old tagline "A place to release a secret without attaching your name to it." is retired. Internal identifiers stay neutral (offering/contribution, reply, renderer, composer, creature, conductor).
 - **Narrative words:** a contribution is an **offering** (persembahan); a reply is a **whisper that returns**; the conductor's authenticated lines are **the god's own voice**. Cosmic-horror tone. God stays center stage; Whisper Back is a mechanic, not the product. Full lore layer for copy and the demo script: `docs/lore.md`.
 - **Decisions locked:** Choir + God merged into one work; choir wallet's **full viewing key (UFVK) is public**; text→local TTS is the primary input mode (voice+mask secondary); contributions are fixed-amount (0.00001 TAZ) so amounts carry no information; renderer is deterministic & open source and prints two versioned hashes, **`score_hash`** (chain data only, decoder-independent = "the blockchain is the score") and **`render_hash`** (`score_hash` + PCM from the pinned decoder + composer version = what two laptops compare in the demo); demo on **testnet (NU7)**; no cloud AI anywhere; no leaderboard, no accounts, no NFT per secret.
 
 ## 2. What is PROVEN on-chain (do not re-spike)
 
-All on Zcash testnet, NU7 active (branch `77190ad9`), Ironwood pool. Full table in `SPIKE_LOG.md`.
+All on Zcash testnet, NU7 active (branch `77190ad9`), Ironwood pool. Full table in `research/SPIKE_LOG.md`.
 - Shielded send + encrypted memo; view-only wallet reads amount+memo without spend key.
 - Binary audio in memos (Codec2), reconstructed byte-identical from a **view-only** wallet (S12).
 - Authentic-vs-spoof: a viewing-key holder can tell the choir's own spends (conductor voice) from inbound memos (S13).
-- **Whisper Back (GO):** contribution carrying a diversified reply address → read by public-UFVK holder → direct shielded reply → received & matched by `contrib_id`; the public-key holder sees 0 of the reply. (`ai/whisper-back-spike.md`)
+- **Whisper Back (GO):** contribution carrying a diversified reply address → read by public-UFVK holder → direct shielded reply → received & matched by `contrib_id`; the public-key holder sees 0 of the reply. (`research/ai/whisper-back-spike.md`)
 - **Phone (Zingo! testnet):** sends to Revision-2 `zutest1…` and Revision-0 `utest1…` (chooses shielded receiver); memos from ZIP-321 QR are treated as text → binary gets UTF-8-mangled → use the ASCII envelope (`GC1:`+base64url).
 - **Note pool:** one self-send split into 12 notes; then **5 contributions in 32 s** back-to-back, all mined in one block (G4).
-- **Determinism:** two independently synced wallets → same render hash incl. decoded audio (`spikes/g6_render.py`, G6).
+- **Determinism:** two independently synced wallets → same render hash incl. decoded audio (`research/spikes/g6_render.py`, G6).
 
 Known explorer: https://testnet.zcashexplorer.app/transactions/{txid} (txids in display order; wallet DBs store them byte-reversed). **Caveat (21 Oct):** that explorer currently follows a different testnet chain (its block 4,487,269 has another hash than the one `testnet.zec.rocks` serves; our txids return "Transaction Not Found"), so explorer links are not proof. Proof of a shielded tx on our chain = `bin/devtool-aegis wallet -w wallets/test/V list-tx` after `sync`, or lightwalletd `GetTransaction`. Check `/blocks/4525215` on the explorer before relying on it on stage. **Use ZecBlock instead (checked 22 Oct):** `https://testnet.zecblock.com/tx/{txid}` and `/block/{height}` (formerly CipherScan; `testnet.cipherscan.app` redirects there; JSON at `https://api.testnet.cipherscan.app/api/tx/{txid}`) is on our chain: block 4,525,215 = `000026af4552…`, and `91621cb4…`, `d6bcb9f7…`, `143f91ee…`, `22b168c9…` and the seed txs resolve as confirmed + canonical.
 
@@ -37,7 +37,7 @@ sudo apt install -y build-essential pkg-config libssl-dev protobuf-compiler git 
 pip install --break-system-packages "qrcode[pil]" scikit-learn   # qrcode for QR tests; sklearn only for the old TOPENG spike
 # rust + node
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source ~/.cargo/env
-npm install            # @grpc/grpc-js + proto-loader for spikes/s1_lightd.mjs
+npm install            # @grpc/grpc-js + proto-loader for research/spikes/s1_lightd.mjs
 
 # wallet tool: zcash-devtool @ 5a26ee8 + Aegis Gate NU7 patch (stock devtool CANNOT broadcast on NU7 testnet)
 git clone https://github.com/zcash/zcash-devtool vendor/devtool-aegis && (cd vendor/devtool-aegis && git checkout 5a26ee8)
@@ -47,7 +47,7 @@ mkdir -p bin && cp vendor/devtool-aegis/target/release/zcash-devtool bin/devtool
 ```
 
 - lightwalletd: `testnet.zec.rocks:443` (`-s zecrocks` with a testnet wallet). On a normal machine use the default `--connection direct`.
-  `tools/socks2connect.mjs` + `--connection socks5://127.0.0.1:1080` were ONLY for the sandbox's HTTP proxy; ignore elsewhere.
+  `research/tools/socks2connect.mjs` + `--connection socks5://127.0.0.1:1080` were ONLY for the sandbox's HTTP proxy; ignore elsewhere.
 - Faucet: `POST https://faucet.testnet.valargroup.dev/api/claim {"address": "<utest1…>"}` (0.125 TAZ/day; rejects `zu…`/`tu…` R2 addresses; use an R0 `utest1…` form).
 - Wallet commands (all `bin/devtool-aegis wallet -w <dir> … -s zecrocks`): `init --name X -i X.age -n test`, `sync`, `enhance` (**required** to fetch memos), `balance`, `list-accounts` (shows UFVK), `list-addresses`, `generate-address` (new diversified UA), `list-tx`, `init-fvk --name V --fvk <ufvk> --birthday H` (view-only), `send <acct> -i X.age --address … --value <zat> --memo …`, `pay <acct> -i X.age --payment-uri "zcash:?address=…&amount=…&memo=<base64url>&address.1=…"` (multi-output; pipe `y` to confirm), `upgrade` (after switching binaries).
 - Raw memos: SQLite `wallets/test/<W>/data.sqlite` → `ironwood_received_notes.memo` joined to `transactions` (`mined_height`, `tx_index`; `txid` internal order). Sender keeps `sent_notes.memo` + `transactions.raw`.
@@ -64,7 +64,7 @@ mkdir -p bin && cp vendor/devtool-aegis/target/release/zcash-devtool bin/devtool
 
 `.age` files decrypt the mnemonics: never commit, never share. `.gitignore` already excludes `wallets/`, `*.age`, `bin/`, `vendor/`, `logs/` (keep logs locally; they hold evidence).
 
-## 5. Protocol (v1, implemented + unit-tested in `spikes/wb_protocol.py`)
+## 5. Protocol (v1, implemented + unit-tested in `research/spikes/wb_protocol.py`)
 
 Memo 512 B. Header 12 B: `FF 'G' ver=1 | contrib_id u32 | kind(1=contribution,2=reply) | seq | total(≤3) | len u16`.
 Contribution body: `[codec][data…]` + last chunk `[reply_len][reply_addr][crc32]` (`reply_len=0` = no reply). Reply: `[codec][data…][crc32]` sent **directly** to the reply address.
@@ -103,16 +103,16 @@ Handling rules (decided 21 Oct, key timing changed 24 Oct): the choir UFVK is pu
 - ZIP-302: binary memos start with `0xFF` (we used `0xF5` once; it is legacy/ambiguous).
 - Wallet DB txids are byte-reversed vs explorers/Zingo.
 - Old regexes broke on new address encodings; match `(zu|tu|u)test1…`.
-- `scripts/smoke.sh` has two chain checks: **regression** (`spikes/g6_render.py` at the fixed height 4522002 must give `c46dd5de…`, 7 accepted) and **health** (current height; V and B must agree). `as_of` is inside every hash, so a render at the current height never equals the G6 value.
+- `scripts/smoke.sh` has two chain checks: **regression** (`research/spikes/g6_render.py` at the fixed height 4522002 must give `c46dd5de…`, 7 accepted) and **health** (current height; V and B must agree). `as_of` is inside every hash, so a render at the current height never equals the G6 value.
 - Public web (22 Oct): `https://<slug>.vercel.app` = a static snapshot (listener, séance hashes, apparition, `#give` QR panel, find-my-offering, in-browser verify, `key.txt` from the CI secret since 26 Oct; no kiosk, no Whisper Back). Refresh with `./scripts/publish_web.sh` (render from V at tip → `scripts/build_web.sh` allow-list into `dist/` → Windows Vercel CLI via `cmd.exe` run *from* `%LOCALAPPDATA%\<slug>-web`; never pass `--cwd "<path>"` through cmd.exe). Production domain is public; per-deployment URLs stay behind Vercel Authentication.
 - `pkill -f <pattern>` inside `wsl.exe … bash -lc '…'` kills that shell too when its own command line contains the pattern; kill by `pgrep -f "^python3 -m …"` PIDs instead.
 - Web v2 (24 Oct): the listener is three.js (`web/god.js`, vendored `web/vendor/three/`, fonts in `web/fonts/`); `web/creature.js` is only the no-WebGL fallback. Every mount gets a fresh `<canvas>`: a canvas that once held a 2D context never gives WebGL (the slow-network bug fixed in `725b44a`; repro `?slowgod=9000`). `?stats` shows draw calls/triangles/FPS; `build_web.sh --check` fails on any external script/style/font/import.
 - Editing files from Windows over `\\wsl.localhost\…` resets the exec bit; `chmod +x` scripts afterwards (`git diff --summary` shows mode changes).
 - OpenTimestamps (23 Oct, `anchor/`, `docs/anchoring.md`): a fresh proof is pending for hours. `python3 -m anchor verify`: 0 VERIFIED (2+ explorers agree), 1 MISMATCH (proof or header does not match), 3 PENDING, 4 UNCHECKED (explorers unreachable/blocked from this network, nothing found wrong). On the team laptop's ISP blockstream.info and mempool.space are blocked; verify falls back to the other four explorers. `ots verify`/`upgrade` exit 1 while pending. CI stamps each deploy and pushes statement + proof to the append-only `anchors` branch; `anchor-upgrade.yml` upgrades every 3 h. A failed stamp is a warning, never a failed deploy.
 
-## 9. Next (day 3 →) — full checklist in `TODO.md`
+## 9. Next (day 3 →) — full checklist in `research/TODO.md`
 
-1. ~~Repo layout, `protocol/`, renderer daemon, README~~ — done on Day 2 (see TODO.md). Use them:
+1. ~~Repo layout, `protocol/`, renderer daemon, README~~ — done on Day 2 (see research/TODO.md). Use them:
    `python3 -m pytest` (95 tests; chain regression needs `wallets/`), `python3 -m renderer once --wallet wallets/test/V --as-of 4522002` (→ `out/score.json` + `out/render_hash`; anchors: g6 `c46dd5de…`, score/1 `41530793…`), `python3 -m renderer daemon --wallet wallets/test/V`.
 2. ~~Offline composer~~ — done Day 3 (`renderer/composer.py` `choir/1`, `renderer/tts.py`): `out/mix.wav` stereo 8 kHz; render/1 anchor at 4522002 = `4b724009…`. Any change to the composer, the voice params or the pins bumps `COMPOSER_VERSION` and `RENDER_HASH` in `renderer/tests/test_chain_regression.py`. **sox must run with `-D`** (default dither is random → non-deterministic). Per-offering integer features for the creature are in `score.json` → `render.timeline` (`energy`, `zero_crossings`, `samples`, `start`, `pan`, `pitch_layer`).
 3. ~~Kiosk~~ — done Day 4 as a CLI (`kiosk/`, see its README): `preview`, `session open|status|close` (ephemeral wallet under `wallets/kiosk/current/`, funded from `wallets/test/A`, split into 0.002 notes), `offer [--reply]`, `inbox`, `offer --from <wallet>` for seeding. Choir address in `config/choir.json`. First live kiosk tx `91621cb4…` @4525215. Kiosk web UI is still open (Day 5/6).
@@ -124,4 +124,4 @@ Handling rules (decided 21 Oct, key timing changed 24 Oct): the choir UFVK is pu
 ## 10. Repo map (also: `docs/evidence-index.md` = claim → txid → log; `scripts/setup.sh` builds everything; `scripts/smoke.sh` verifies it)
 
 Product: `protocol/` (wire format v1, envelope, `GC1R`, address checksum + tests), `renderer/` (wallet reader, score, hashes, pinned decoder, G6 legacy, CLI/daemon + tests), `kiosk/` + `web/` (Day 4–5), `anchor/` (OpenTimestamps statement/stamp/upgrade/verify/persist, 23 Oct), `config/` (`brand.json`, `skiplist.txt`), `scripts/` (`setup.sh`, `smoke.sh`, `gen_readme.py`, `tests/`), `docs/README.template.md`, `docs/lore.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`. GitHub: private `agadape/<slug from brand.json>` = `origin` of this repo; `git push` works from WSL (repo-local credential helper = Windows `gh.exe`).
-Evidence: `spikes/` S1–S13 scripts (+`wb_protocol.py`, `wb_harness.sh`, `g6_render.py`, `s7_near_intents.mjs`, `s1_lightd.mjs`), `radio/` Codec2 voice experiment (S12), `topeng-spike/` (rejected idea, stylometry test), `ai/` reports + `phone-test/` QR + Zingo screenshot, `docs/` concept v3 + critical review, `logs/` raw evidence, `tools/socks2connect.mjs` (sandbox only), `scripts/` (setup, smoke, NU7 patch), `SPIKE_LOG.md` the source of truth for "what works".
+Evidence: `research/spikes/` S1–S13 scripts (+`wb_protocol.py`, `wb_harness.sh`, `g6_render.py`, `s7_near_intents.mjs`, `s1_lightd.mjs`), `research/radio/` Codec2 voice experiment (S12), `research/topeng-spike/` (rejected idea, stylometry test), `research/ai/` reports + `phone-test/` QR + Zingo screenshot, `docs/` concept v3 + critical review, `logs/` raw evidence, `research/tools/socks2connect.mjs` (sandbox only), `scripts/` (setup, smoke, NU7 patch), `research/SPIKE_LOG.md` the source of truth for "what works".

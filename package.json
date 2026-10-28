@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "s1": "node spikes/s1_lightd.mjs",
-    "s7": "node spikes/s7_near_intents.mjs",
-    "s8": "node spikes/s8_thorchain.mjs"
+    "s1": "node research/spikes/s1_lightd.mjs",
+    "s7": "node research/spikes/s7_near_intents.mjs",
+    "s8": "node research/spikes/s8_thorchain.mjs"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.0",

@@ -7,7 +7,7 @@ exactly one track; submissions stay sealed until judging and **can be edited unt
 then refine); prizes are paid in ZEC to a shielded address, and the organisers contact winners on Telegram after
 judging to get it, so **no address goes into the form**. Help: the organisers' e-mail on the rules page. Schedule page: submissions open 28 Sep, **due 28 Oct 2026 23:59 UTC (29 Oct 06:59 WIB)**, judges revealed
 29 Oct, judging 29 Oct to 22 Nov, winners 23 Nov. The build window is the thirty days from 28 Sep; all of our work
-started 13 Oct (see `SPIKE_LOG.md`), inside it. No rule on AI tools on the page (we disclose anyway).
+started 13 Oct (see `research/SPIKE_LOG.md`), inside it. No rule on AI tools on the page (we disclose anyway).
 
 ## Before making the repository public
 
@@ -42,7 +42,7 @@ started 13 Oct (see `SPIKE_LOG.md`), inside it. No rule on AI tools on the page 
       (the Séance), which is public since 24 Oct, so showing it publishes nothing new
 - [ ] a short "why Zcash" paragraph: the README's "Why it needs Zcash" table
 - [ ] evidence: `docs/evidence-index.md` (every claim → txid → block)
-- [ ] team members and roles (A/B/C still unassigned in `TODO.md`)
+- [ ] team members and roles (A/B/C still unassigned in `research/TODO.md`)
 - [ ] ~~shielded payout address~~ not needed in the form: winners are contacted on Telegram after judging. Keep a
       mainnet shielded wallet ready and make sure the submitting account's Telegram handle is reachable
 
@@ -50,7 +50,7 @@ started 13 Oct (see `SPIKE_LOG.md`), inside it. No rule on AI tools on the page 
 
 - [ ] tag the submitted commit (`git tag -a zecathon-2026 -m "submitted"`), push the tag
 - [ ] keep `wallets/`, `logs/` and the submitted `out/` locally (evidence), do not delete the testnet wallets
-- [ ] post-hackathon items stay in `TODO.md` (grant proposal, Zcon email, Piper, a random send delay; Tor is done)
+- [ ] post-hackathon items stay in `research/TODO.md` (grant proposal, Zcon email, Piper, a random send delay; Tor is done)
 
 ## 27 Oct 2026: freeze, then re-run the dry run
 
@@ -72,7 +72,7 @@ this table. Ask the web session to stop tuning first (it owns `web/`).
 | 5 | Keys in tracked files | `git grep -nE '(uvf\|uvi\|uivk\|uview\|zxview\|secret-extended-key)[a-z0-9]{30,}'` | the published choir key in `README.md` and `docs/README.template.md` (since `2e72117`) and the test dummies listed in row 4 of the 22 Oct table; anything else stops the release |
 | 6 | Keys in history (all branches, `anchors` included) | `git log --all -p \| grep -oE '(uvf\|uvi\|uivk\|uview\|zxview\|secret-extended-key)[a-z0-9]{30,}' \| cut -c1-24 \| sort \| uniq -c` | the published key's prefix and the same dummies only (prints 24-char prefixes, never a full key) |
 | 7 | The real key, without printing it | `K=$(bin/devtool-aegis wallet -w wallets/test/V list-accounts 2>/dev/null \| grep -oE 'uvftest1[0-9a-z]{100,}' \| head -1); [ -n "$K" ] && git log --all -S"${K:8:40}" --format='%h %s' --name-only; unset K` (lists the commits and files where the key appears or disappears; never the key) | only `2e72117` with `README.md` and `docs/README.template.md`; any other commit or file stops the release |
-| 8 | Full addresses | `git grep -nE '(zu\|tu\|u)test1[0-9a-z]{60,}'`; `git log --all -p \| grep -oE '(zu\|tu\|u)test1[0-9a-z]{60,}' \| cut -c1-20 \| sort \| uniq -c`; `grep -rcE '(zu\|tu\|u)test1' out/score.json dist/` | the choir's own address (public by design: `config/choir.json`, `radio/payment_uri.txt`, `ai/phone-test/T3_…`); `0` in `out/score.json` and `dist/`. **Known on 24 Oct:** `ai/phone-test/T1_testnet_R2.uri.txt` and `T2_testnet_R0.uri.txt` (spike evidence, 20 Oct) each hold the full address of a team test wallet that is not the choir (the phone-test destinations). The user decides before going public whether that evidence stays; any other full address stops the release until you know whose it is |
+| 8 | Full addresses | `git grep -nE '(zu\|tu\|u)test1[0-9a-z]{60,}'`; `git log --all -p \| grep -oE '(zu\|tu\|u)test1[0-9a-z]{60,}' \| cut -c1-20 \| sort \| uniq -c`; `grep -rcE '(zu\|tu\|u)test1' out/score.json dist/` | the choir's own address (public by design: `config/choir.json`, `research/radio/payment_uri.txt`, `research/ai/phone-test/T3_…`); `0` in `out/score.json` and `dist/`. **Known on 24 Oct:** `research/ai/phone-test/T1_testnet_R2.uri.txt` and `T2_testnet_R0.uri.txt` (spike evidence, 20 Oct) each hold the full address of a team test wallet that is not the choir (the phone-test destinations). The user decides before going public whether that evidence stays; any other full address stops the release until you know whose it is |
 | 9 | Age identities, mnemonics | `git log --all -p \| grep -c AGE-SECRET-KEY`; then the BIP39 run check below | `0` and `0` |
 | 10 | Forbidden paths | `git log --all --name-only --format= \| sort -u \| grep -E '^(wallets\|logs\|bin\|vendor)/\|\.(age\|sqlite\|db\|zip\|key)$'` | no output |
 | 11 | Forbidden wording | `git grep -niE "anonymous\|untraceable\|no one will ever know\|nobody can ever" -- README.md docs/README.template.md kiosk web docs/submission-form.md docs/demo-script.md docs/lore.md docs/user-test-kit.md` | only the expected lines of 22 Oct row 9 |

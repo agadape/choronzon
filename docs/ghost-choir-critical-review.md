@@ -223,4 +223,4 @@ Kalau Whisper Back gagal di spike hari 1, proyek tetap layak dikirim sebagai A+C
 - zkSNARKs treasury 1.000 NFT untuk hibah/artis: https://airdropalert.com/blogs/zksnarks-nft-zcash-blind-auction/
 - Zcon7, 27–29 Okt 2026, Cancún: https://zechub.substack.com/p/zcash-shielded-news-vol4-0a5
 - ZIP-302 (memo `0xFF`): https://zips.z.cash/zip-0302
-- Bukti spike S4/S5/S12/S13: `SPIKE_LOG.md`
+- Bukti spike S4/S5/S12/S13: `research/SPIKE_LOG.md`

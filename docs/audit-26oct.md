@@ -206,4 +206,4 @@ checks before you try again".
 - Kiosk: 10-confirmation rule by `recipient_key_scope`, unexpired pending spends excluded; multi-memo offering is one
   `pay` (no partial send); `DevtoolError` redacts addresses and memos; "sent. txid …" never claims mined.
 - Git history (135 commits, all refs): no `wallets/`, `*.age`, `*.sqlite`, mnemonic or age secret ever tracked; full
-  testnet addresses only in `config/choir.json`, `ai/phone-test/*.uri.txt`, `radio/payment_uri.txt`.
+  testnet addresses only in `config/choir.json`, `research/ai/phone-test/*.uri.txt`, `research/radio/payment_uri.txt`.

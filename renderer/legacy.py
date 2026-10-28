@@ -1,4 +1,4 @@
-"""The G6 spike hash, kept only as a regression check (spikes/g6_render.py; c46dd5de... at height 4522002).
+"""The G6 spike hash, kept only as a regression check (research/spikes/g6_render.py; c46dd5de... at height 4522002).
 
 Same inputs and formula as the spike: SHA-256(score JSON || decoded PCM and text bytes, concatenated || as_of).
 It differs from the product hashes on purpose and must not change: if it does, decoding or ordering regressed.

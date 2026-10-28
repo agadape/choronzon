@@ -1,16 +1,36 @@
-node_modules/
+# Secrets and testnet wallets: never committed (CLAUDE.md section 4)
 wallets/
 *.age
 .env
+key.txt
+
+# Built tools and third-party checkouts (scripts/setup.sh rebuilds them)
 bin/
 /vendor/
+node_modules/
+
+# Local evidence logs and archives (kept on the team laptop)
 logs/
 *.zip
-__pycache__/
-*.pyc
-.pytest_cache/
-.venv/
+
+# Render output and the static site build (the renderer and scripts/build_web.sh recreate them)
 out/
 dist/
 .vercel/
-key.txt
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+.venv/
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

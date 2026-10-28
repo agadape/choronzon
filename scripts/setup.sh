@@ -53,7 +53,7 @@ fi
 echo "== 5/6 wallets =="
 if [ ! -d wallets/test/B ]; then
   echo "!! wallets/ missing. Unzip zecathon-wallets-TESTNET.zip into this directory (gives A, B=choir, V=view-only, L)."
-  echo "   Or create fresh ones: ./spikes/s3_wallets.sh init  (then fund A at https://faucet.testnet.valargroup.dev with its utest1… address)"
+  echo "   Or create fresh ones: ./research/spikes/s3_wallets.sh init  (then fund A at https://faucet.testnet.valargroup.dev with its utest1… address)"
 fi
 echo "== 6/6 smoke =="
 ./scripts/smoke.sh || true

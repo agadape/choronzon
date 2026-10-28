@@ -42,7 +42,7 @@ Expected tail of the output on a machine without wallets:
 ```
 == 5/6 wallets ==
 !! wallets/ missing. Unzip zecathon-wallets-TESTNET.zip into this directory (gives A, B=choir, V=view-only, L).
-   Or create fresh ones: ./spikes/s3_wallets.sh init  (then fund A at https://faucet.testnet.valargroup.dev with its utest1… address)
+   Or create fresh ones: ./research/spikes/s3_wallets.sh init  (then fund A at https://faucet.testnet.valargroup.dev with its utest1… address)
 == 6/6 smoke ==
 [protocol unit tests]
   ✅ wb_protocol self-tests

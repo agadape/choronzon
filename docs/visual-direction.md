@@ -1,8 +1,8 @@
 # Visual direction (decided 24 Oct 2026, replaces the 21 Oct "Reliquary Organism")
 
 The name of the work lives only in `config/brand.json` and is written as "the god" below.
-Reference mockups (exploration code, not production): `design/explorations/god6.html` + `god6.js` (the chosen
-direction), `folio.html` (the leaf, tilt / turn / tear), screenshots in `design/explorations/shots/`.
+Reference mockups (exploration code, not production): `media/design-explorations/god6.html` + `god6.js` (the chosen
+direction), `folio.html` (the leaf, tilt / turn / tear), screenshots in `media/design-explorations/shots/`.
 The path there (2D seal → WebGL black sun → three.js Ophan → budget pass → cinematic pass → icon) is kept in the
 same folder for comparison; only god6 + folio are the spec.
 

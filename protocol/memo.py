@@ -1,4 +1,4 @@
-"""Binary memo wire format v1. Canonical: this is what is already on testnet (ported from spikes/wb_protocol.py).
+"""Binary memo wire format v1. Canonical: this is what is already on testnet (ported from research/spikes/wb_protocol.py).
 
 Every memo is 512 bytes on chain. ZIP-302: first byte 0xFF => arbitrary data.
 

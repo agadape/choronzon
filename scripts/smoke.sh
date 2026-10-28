@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Quick health check of the environment and of the proven pipeline. Safe: read-only on chain.
 # Two chain checks with two purposes:
-#   regression — spikes/g6_render.py at the fixed G6 height must reproduce the recorded hash
+#   regression — research/spikes/g6_render.py at the fixed G6 height must reproduce the recorded hash
 #   health     — render at the current height; V (view-only) and B (spend key) must agree
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -24,9 +24,9 @@ sync(){ local i; for i in 1 2 3; do
           echo "  sync $1 attempt $i failed (over $LWD_CONNECTION)"; [ $i -lt 3 ] && sleep $((5 * i))
         done; return 1; }
 height(){ bin/devtool-aegis wallet -w "wallets/test/$1" balance 2>&1 | grep -oE "Height: [0-9]+" | grep -oE "[0-9]+"; }
-render(){ python3 spikes/g6_render.py "wallets/test/$1" "$2"; }
+render(){ python3 research/spikes/g6_render.py "wallets/test/$1" "$2"; }
 
-echo "[protocol unit tests]"; python3 spikes/wb_protocol.py >/dev/null && ok "wb_protocol self-tests" || bad "wb_protocol self-tests"
+echo "[protocol unit tests]"; python3 research/spikes/wb_protocol.py >/dev/null && ok "wb_protocol self-tests" || bad "wb_protocol self-tests"
 echo "[product tests]"; T=$(python3 -m pytest 2>&1 | tail -1); [[ "$T" == *passed* && "$T" != *failed* ]] && ok "pytest: $T" || bad "pytest: $T"
 echo "[codec2 / tts]"
 [ -x bin/c2enc ] && [ -x bin/c2dec ] && ok "codec2 pinned (bin/c2dec)" || bad "pinned codec2 missing (run scripts/setup.sh)"
@@ -34,7 +34,7 @@ command -v espeak-ng >/dev/null && ok "espeak-ng" || bad "espeak-ng"
 echo "[devtool]"; [ -x bin/devtool-aegis ] && ok "bin/devtool-aegis present" || { bad "bin/devtool-aegis missing (run scripts/setup.sh)"; exit 1; }
 echo "[lightwalletd testnet]"
 if [ "$LWD_CONNECTION" = direct ]; then   # the node probe connects directly: only when the operator chose direct
-  timeout 60 node spikes/s1_lightd.mjs test 2>/dev/null | grep -q '"chainName": "test"' && ok "testnet.zec.rocks reachable" || bad "lightwalletd unreachable"
+  timeout 60 node research/spikes/s1_lightd.mjs test 2>/dev/null | grep -q '"chainName": "test"' && ok "testnet.zec.rocks reachable" || bad "lightwalletd unreachable"
 else
   ok "reachability is checked by the sync over $LWD_CONNECTION below (the direct node probe is skipped)"
 fi

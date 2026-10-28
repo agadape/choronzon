@@ -2,7 +2,7 @@
 // perforated witness stub tears off (T / drag). Every edge is cut from the hashes and nothing else: the deckle from
 // the score hash, the tear line from the render hash (32 bytes = 32 fibres, finer score-hash fibres between).
 // A stub from any other evocation with the same render hash fits this edge exactly; a different one visibly does not.
-// Built from design/explorations/folio.html. No Math.random(); the pointer only tilts.
+// Built from media/design-explorations/folio.html. No Math.random(); the pointer only tilts.
 "use strict";
 
 window.Leaf = (() => {

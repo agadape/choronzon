@@ -1,6 +1,6 @@
 """The human-facing name lives only in config/brand.json; README and the npm package name are generated from it.
 
-Historical evidence (docs/, spikes/, logs/, ai/, radio/, topeng-spike/, SPIKE_LOG.md) keeps the old working title
+Historical evidence (docs/, logs/, research/, media/) keeps the old working title
 on purpose; product files must not carry the name or the old title anywhere else.
 """
 import json
@@ -11,12 +11,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 BRAND = json.loads((ROOT / "config" / "brand.json").read_text(encoding="utf-8"))
 GENERATED = {"config/brand.json", "README.md", "package.json", "package-lock.json", "docs/brand/banner.svg"}
-HISTORICAL = ("docs/", "spikes/", "logs/", "ai/", "radio/", "topeng-spike/", "SPIKE_LOG.md",
-              "design/explorations/",  # mockups: a frozen copy of brand.json, never served or built
-              "video/")  # tools that rendered the submitted demo video; frozen, never served or built
+HISTORICAL = ("docs/", "logs/",
+              "research/",  # spikes, phone tests, radio, stylometry, SPIKE_LOG.md, TODO.md: the record, kept as it was
+              "media/")  # design mockups (a frozen copy of brand.json) and the demo-video tools; never served or built
 PRODUCT_DOCS = {"docs/README.template.md", "docs/lore.md", "docs/brand/banner.template.svg", "docs/brand/logo.svg",
                 "docs/brand/banner.svg"}  # inside docs/ but product copy
-HANDOFF = {"CLAUDE.md", "TODO.md"}                           # explain the rename, so they cite the old title
+HANDOFF = {"CLAUDE.md"}                                    # explain the rename, so they cite the old title
 # ("a god made of secrets" is part of the approved one-liner, so only the old name itself is banned)
 OLD_TITLE = (b"ghost choir", b"ghostchoir", b"ghost_choir", b"ghost-choir")
 THIS_FILE = "scripts/tests/test_brand.py"
