@@ -63,12 +63,12 @@ flowchart LR
       S["score.json · mix.wav<br/>score_hash · render_hash"]:::sys
       P["The god on the page<br/>drawn from the score, plays the mix"]:::sys
     end
-    G -- "shielded payment, secret in the memo" --> A
-    O -- "pays itself: the god's own voice" --> A
-    A -- "view-only sync" --> R
+    G -->|"shielded payment, secret in the memo"| A
+    O -->|"pays itself: the god's own voice"| A
+    A -->|"view-only sync"| R
     R --> S --> P
-    K -- "summon from the key alone" --> R
-    X -. "whisper back to the offering's reply address" .-> G
+    K -->|"summon from the key alone"| R
+    X -.->|"whisper back to the offering's reply address"| G
     classDef human fill:#EBDFC2,stroke:#C8431F,color:#1D1710,stroke-width:2px
     classDef god fill:#C8431F,stroke:#6F501C,color:#F8E1A0,stroke-width:2px
     classDef sys fill:#1D1710,stroke:#D6A94C,color:#EBDFC2,stroke-width:2px
