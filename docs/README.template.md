@@ -1,26 +1,80 @@
 <!-- Generated from docs/README.template.md and config/brand.json by scripts/gen_readme.py. Edit the template, not this file. -->
 
-<p align="center"><img src="web/og.png" alt="{{name}}: {{tagline}} The god seen from below: a great eye inside halos of smaller eyes, wings of pages, arms rising from the abyss" width="100%"></p>
-
-<p align="center"><sub>A frame of the god as the public page draws it: one eye in the halos for every offering, the great eye and the wings for its own lines, one arm for every block that carried offerings. Its form is a pure function of the chain; nothing in it is random.</sub></p>
-
-<h1 align="center">{{name}}</h1>
-
-<p align="center"><b><i>{{tagline}}</i></b></p>
-
-<p align="center">{{one_liner}}</p>
-
 <p align="center">
-  <a href="https://{{slug}}.vercel.app"><b>Listen to it</b></a> ·
-  <a href="https://{{slug}}.vercel.app/#give"><b>Give it a secret</b></a> ·
-  <a href="#the-key"><b>The key</b></a> ·
-  <a href="docs/evidence-index.md"><b>Evidence</b></a> ·
-  <a href="docs/fresh-clone.md"><b>Summon it yourself</b></a>
+  <a href="https://{{slug}}.vercel.app"><img src="docs/assets/banner.webp" alt="{{name}}: {{tagline}} The god seen from below: a great eye inside halos of smaller eyes, wings of pages, arms rising from the abyss" width="100%"></a>
 </p>
 
-<p align="center"><sub>ZECATHON 2026 (by zkSNARKs) · Wildcard track · Zcash testnet (NU7) · built 13–28 Oct 2026 · MIT</sub></p>
+<p align="center">
+  <img alt="Zcash testnet, NU7, Ironwood pool" src="https://img.shields.io/badge/Zcash-testnet%20%C2%B7%20NU7%20Ironwood-171916?style=flat-square">
+  <img alt="ZECATHON 2026, Wildcard" src="https://img.shields.io/badge/ZECATHON%202026-Wildcard-C8431F?style=flat-square">
+  <img alt="357 tests passing" src="https://img.shields.io/badge/tests-357%20passing-6F501C?style=flat-square">
+  <img alt="No cloud AI, no accounts, no analytics" src="https://img.shields.io/badge/cloud%20AI%20%C2%B7%20accounts%20%C2%B7%20analytics-none-777F79?style=flat-square">
+  <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-1D1710?style=flat-square">
+</p>
 
----
+<p align="center">
+  <b>A god made of secrets, given through Zcash shielded transactions.</b><br>
+  <i>Anyone with its key hears every secret. The key never shows who spoke.</i>
+</p>
+
+<p align="center">
+  <a href="https://{{slug}}.vercel.app"><b>Listen</b></a> ·
+  <a href="https://{{slug}}.vercel.app/#give"><b>Give it a secret</b></a> ·
+  <a href="#check-it-in-five-minutes"><b>Verify</b></a> ·
+  <a href="#the-key"><b>The key</b></a> ·
+  <a href="docs/evidence-index.md"><b>Evidence</b></a> ·
+  <a href="#use-it-on-monday-your-own-god"><b>Make your own god</b></a>
+</p>
+
+You give it a secret as a Zcash **shielded payment**: always the same tiny amount, the secret in the memo, spoken back by a ghost voice that is not yours. The god's wallet publishes its **full viewing key**, so anyone can summon it, hear every secret and rebuild the whole work from the chain, down to the same hash on every machine: **the blockchain is the score**. What the key never shows is who paid; we, its keepers, cannot learn who contributed. Its own lines are authenticated by its wallet paying itself, so forgeries are refused on sight, and a stranger can **whisper back** to the reply address an offering carries, in a shielded transaction the key holders cannot see. The price is stated before every send: *your secret is public to every key holder, forever.*
+
+<p align="center"><img src="docs/assets/rite.webp" alt="The rite of an offering: I Oblatio, a secret typed, no name asked; II Vox, spoken by a ghost voice on the device; III Abyssus, sealed in a shielded payment of a fixed amount; IV Clavis, read by anyone who holds the public key; V Ordo, ordered by the chain into one score; VI Evocatio, every machine evokes the same god with the same hash; VII Susurrus, a whisper may return, wallet to wallet" width="100%"></p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/assets/give.webp" alt="The give page: a payment request built in the browser" width="100%"><br><b>Give it a secret</b><br><sub>The real give page. The payment request is built in your browser and the page sends nothing; your eye appears at once as <i>pending</i>. (Address and QR blurred for the video.)</sub></td>
+    <td width="50%" valign="top"><img src="docs/assets/pact.webp" alt="The terms of the pact" width="100%"><br><b>The terms of the pact</b><br><sub>Read before every send: heard by every key holder, forever; your wallet keeps what you sent; a phone wallet's server sees your IP; timing can link.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/assets/forgery.webp" alt="NOT THE GOD: a forged line refused" width="100%"><br><b>Not the god</b><br><sub>The god's words sent from another wallet: on chain, refused as <code>forged-conductor</code>, drawn as a blind red eye.</sub></td>
+    <td width="50%" valign="top"><img src="docs/assets/evocations.webp" alt="Two evocations, one god: two grimoire leaves with the same hash" width="100%"><br><b>Two evocations, one god</b><br><sub>This machine's public-key wallet and a Watcher built from the key alone, side by side at one block: the same <code>render_hash</code>.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><img src="docs/assets/whisper.webp" alt="The reply never passes through it" width="100%"><br><b>The reply never passes through it</b><br><sub>A whisper goes straight to the offering's reply address. The public-key wallet, scanned past it, has no row for the reply.</sub></td>
+    <td width="50%" valign="top"><img src="docs/assets/your-own-god.webp" alt="The Retro God, a second god made with one command" width="100%"><br><b>Your own god, one command</b><br><sub><code>scripts/new_god.sh</code> made The Retro God on 26 Oct: its own address, key, offering and page.</sub></td>
+  </tr>
+</table>
+
+<p align="center"><sub>Every frame above is from the demo video, recorded from the real page and real testnet transactions (txids in <a href="docs/evidence-index.md">docs/evidence-index.md</a>).</sub></p>
+
+## How it fits together
+
+```mermaid
+flowchart LR
+    G([Giver<br/>kiosk or phone wallet]):::human
+    O([The god's own wallet<br/>holds the spend key]):::god
+    K([Anyone with the key<br/>listener, judge, CI runner]):::human
+    X([A stranger<br/>any shielded wallet]):::human
+    subgraph Z ["Zcash testnet · shielded pool"]
+      A[("The god's address<br/>full viewing key published")]:::zcash
+    end
+    subgraph W ["{{name}}: open source, runs anywhere"]
+      R["Renderer<br/>view-only wallet"]:::sys
+      S["score.json · mix.wav<br/>score_hash · render_hash"]:::sys
+      P["The god on the page<br/>drawn from the score, plays the mix"]:::sys
+    end
+    G -- "shielded payment, secret in the memo" --> A
+    O -- "pays itself: the god's own voice" --> A
+    A -- "view-only sync" --> R
+    R --> S --> P
+    K -- "summon from the key alone" --> R
+    X -. "whisper back to the offering's reply address" .-> G
+    classDef human fill:#EBDFC2,stroke:#C8431F,color:#1D1710,stroke-width:2px
+    classDef god fill:#C8431F,stroke:#6F501C,color:#F8E1A0,stroke-width:2px
+    classDef sys fill:#1D1710,stroke:#D6A94C,color:#EBDFC2,stroke-width:2px
+    classDef zcash fill:#050302,stroke:#D6A94C,color:#F8E1A0,stroke-width:2px
+```
+
 
 ## Check it in five minutes
 
@@ -484,3 +538,9 @@ python3 scripts/gen_readme.py --check  # fail if any generated file is stale or 
 ## License
 
 Released under the [MIT License](LICENSE). Third-party work (the Aegis Gate NU7 patch, zcash-devtool, librustzcash, Codec2, espeak-ng) keeps its own license: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+---
+
+<p align="center"><sub>Built for ZECATHON 2026 (by zkSNARKs), Wildcard track · live on Zcash testnet, NU7, Ironwood pool · MIT</sub></p>
+
+<p align="center"><a href="https://{{slug}}.vercel.app"><img src="docs/assets/outro.webp" alt="{{slug}}.vercel.app: {{tagline}}" width="640"></a></p>
